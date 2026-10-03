@@ -43,4 +43,5 @@ app.use('/api/branches', require('./routes/branches'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/qr', require('./routes/qr'));
 // ✅ 6. تشغيل السيرفر (في النهاية)
-server.listen(5000, '0.0.0.0', () => console.log('✅ Server on http://0.0.0.0:5000'));
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, '0.0.0.0', () => console.log(`✅ Server on http://0.0.0.0:${PORT}`));
