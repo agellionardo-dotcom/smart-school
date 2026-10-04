@@ -26,3 +26,8 @@ npm-debug.log*
 
 # Capacitor
 frontend/android/app/src/main/assets/public/
+
+# Root junk
+api.js
+*.bat
+New Text Document.txt
