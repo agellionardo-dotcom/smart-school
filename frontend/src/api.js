@@ -1,5 +1,3 @@
-const isCapacitor = typeof window !== 'undefined' && window.Capacitor !== undefined;
+const API_URL = 'https://smart-school-production-fb82.up.railway.app';
 
-export const API_URL = isCapacitor
-  ? 'http://192.168.1.10:5000'
-  : 'http://localhost:5000';
+export { API_URL };
