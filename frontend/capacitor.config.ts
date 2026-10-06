@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Smart School',
   webDir: 'build',
   server: {
-    androidScheme: 'http',
+    androidScheme: 'https',  // ⚠️ غيرناها من http إلى https
     cleartext: true,
     allowNavigation: ['*']
   },

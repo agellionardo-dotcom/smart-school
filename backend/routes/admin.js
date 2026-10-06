@@ -136,5 +136,137 @@ router.put('/settings', auth, checkPermission('settings.edit'), async (req, res)
   }
   res.json(settings);
 });
+// ==================== ملف الموظف الكامل ====================
 
+// جلب ملف موظف واحد بكل تفاصيله
+router.get('/users/:id/profile', auth, async (req, res) => {
+  try {
+    // التحقق من الصلاحيات
+    const isAdmin = ['superadmin', 'hr', 'manager'].includes(req.user.role);
+    const isSelf = req.user.id === req.params.id;
+    
+    if (!isAdmin && !isSelf) {
+      return res.status(403).json({ msg: 'غير مصرح لك بعرض هذا الملف' });
+    }
+
+    const user = await User.findById(req.params.id)
+      .populate('branch', 'name location')
+      .populate('managerId', 'name email position')
+      .populate('createdBy', 'name')
+      .select('-password -faceDescriptor');
+
+    if (!user) {
+      return res.status(404).json({ msg: 'الموظف غير موجود' });
+    }
+
+    // إحصائيات الموظف
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const attendanceStats = {
+      totalDays: await Attendance.countDocuments({ user: user._id }),
+      presentDays: await Attendance.countDocuments({ user: user._id, checkIn: { $exists: true } }),
+      lateDays: await Attendance.countDocuments({ user: user._id, status: 'late' }),
+      absentDays: await Attendance.countDocuments({ 
+        user: user._id, 
+        date: { $gte: startOfMonth },
+        checkIn: { $exists: false }
+      }),
+      thisMonth: await Attendance.countDocuments({ 
+        user: user._id, 
+        date: { $gte: startOfMonth } 
+      })
+    };
+
+    const leavesStats = {
+      total: await Leave.countDocuments({ user: user._id }),
+      pending: await Leave.countDocuments({ user: user._id, status: 'pending' }),
+      approved: await Leave.countDocuments({ user: user._id, status: 'approved' }),
+      rejected: await Leave.countDocuments({ user: user._id, status: 'rejected' })
+    };
+
+    // آخر 10 سجلات حضور
+    const recentAttendance = await Attendance.find({ user: user._id })
+      .sort({ date: -1 })
+      .limit(10);
+
+    // آخر 5 إجازات
+    const recentLeaves = await Leave.find({ user: user._id })
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    res.json({
+      user,
+      stats: {
+        attendance: attendanceStats,
+        leaves: leavesStats
+      },
+      recentAttendance,
+      recentLeaves
+    });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// تحديث ملف الموظف (البيانات الإضافية)
+router.put('/users/:id/profile', auth, checkPermission('users.edit'), async (req, res) => {
+  try {
+    const allowedFields = [
+      'employeeId', 'salary', 'managerId', 'nationalId', 'birthDate',
+      'address', 'emergencyContact', 'contractType', 'contractEndDate',
+      'bankAccount', 'socialInsurance', 'qualifications'
+    ];
+
+    const update = {};
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        update[field] = req.body[field];
+      }
+    });
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      update,
+      { new: true, runValidators: true }
+    ).select('-password -faceDescriptor');
+
+    if (!user) {
+      return res.status(404).json({ msg: 'الموظف غير موجود' });
+    }
+
+    res.json({ msg: 'تم تحديث الملف بنجاح', user });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// جلب الهيكل التنظيمي (شجرة الموظفين)
+router.get('/organization/tree', auth, async (req, res) => {
+  try {
+    const users = await User.find({ active: true })
+      .select('name email position department role branch managerId profileImage')
+      .populate('branch', 'name')
+      .lean();
+
+    // بناء الشجرة
+    const buildTree = (managerId = null) => {
+      return users
+        .filter(u => {
+          const uManager = u.managerId ? String(u.managerId) : null;
+          return uManager === (managerId ? String(managerId) : null);
+        })
+        .map(u => ({
+          ...u,
+          children: buildTree(u._id)
+        }));
+    };
+
+    const tree = buildTree(null);
+    res.json(tree);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
 module.exports = router;
