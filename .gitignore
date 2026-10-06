@@ -31,3 +31,8 @@ frontend/android/app/src/main/assets/public/
 api.js
 *.bat
 New Text Document.txt
+# Signing Key - NEVER COMMIT THIS
+my-release-key.jks
+*.jks
+*.keystore
+frontend/android/my-release-key.jks
