@@ -36,3 +36,5 @@ my-release-key.jks
 *.jks
 *.keystore
 frontend/android/my-release-key.jks
+*.backup
+backend/middleware/*.backup
