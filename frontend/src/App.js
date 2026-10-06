@@ -1,4 +1,5 @@
 import ScanQr from './pages/ScanQr';
+import EmployeeProfile from './pages/EmployeeProfile';
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';

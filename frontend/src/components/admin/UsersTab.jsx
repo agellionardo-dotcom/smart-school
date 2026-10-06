@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_URL } from '../../api';
 
 const ROLES = [
-  { value: 'superadmin', label: 'المدير العام' },
+  { value: 'superadmin', label: 'مدير النظام' },
   { value: 'manager',    label: 'مدير فرع' },
   { value: 'hr',         label: 'موارد بشرية' },
   { value: 'employee',   label: 'موظف' },
@@ -60,27 +60,27 @@ export default function UsersTab() {
     try {
       if (editUser) {
         await axios.put(`${API_URL}/api/admin/users/${editUser._id}`, form, { headers });
-        setMsg('✅ تم تعديل المستخدم');
+        setMsg('✅ تم تحديث المستخدم');
       } else {
         await axios.post(`${API_URL}/api/admin/users`, form, { headers });
-        setMsg('✅ تم إضافة المستخدم');
+        setMsg('✅ تم إنشاء المستخدم');
       }
       resetForm();
       setShowForm(false);
       loadUsers();
     } catch (err) {
-      setMsg('❌ ' + (err.response?.data?.msg || 'فشل'));
+      setMsg('❌ ' + (err.response?.data?.msg || 'خطأ'));
     }
   };
 
   const deleteUser = async (id) => {
-    if (!window.confirm('هل أنت متأكد من الحذف؟')) return;
+    if (!window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
     try {
       await axios.delete(`${API_URL}/api/admin/users/${id}`, { headers });
       setMsg('✅ تم الحذف');
       loadUsers();
     } catch (err) {
-      setMsg('❌ ' + (err.response?.data?.msg || 'فشل'));
+      setMsg('❌ ' + (err.response?.data?.msg || 'خطأ'));
     }
   };
 
@@ -134,9 +134,9 @@ export default function UsersTab() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      setMsg('✅ تم التصدير بنجاح');
+      setMsg('✅ تم تحميل الملف');
     } catch (err) {
-      setMsg('❌ فشل التصدير');
+      setMsg('❌ فشل التحميل');
     }
   };
 
@@ -148,7 +148,7 @@ export default function UsersTab() {
     formData.append('file', file);
 
     try {
-      setMsg('⏳ جاري الاستيراد...');
+      setMsg('⏳ جاري استيراد المستخدمين...');
       const { data } = await axios.post(`${API_URL}/api/reports/users/import`, formData, {
         headers: { ...headers, 'Content-Type': 'multipart/form-data' }
       });
@@ -159,7 +159,7 @@ export default function UsersTab() {
 
       if (data.errors && data.errors.length > 0) {
         const errorsToShow = data.errors.slice(0, 10).join('\n');
-        alert('أخطاء الاستيراد:\n' + errorsToShow + (data.errors.length > 10 ? `\n... و${data.errors.length - 10} خطأ آخر` : ''));
+        alert('تفاصيل الأخطاء:\n' + errorsToShow + (data.errors.length > 10 ? `\n... و${data.errors.length - 10} أخطاء أخرى` : ''));
       }
 
       loadUsers();
@@ -171,7 +171,7 @@ export default function UsersTab() {
 
   return (
     <div>
-      {/* قسم التقارير */}
+      {/* قسم التقارير والاستيراد */}
       <div style={{
         background: '#fff',
         borderRadius: 14,
@@ -197,7 +197,7 @@ export default function UsersTab() {
               style={{ background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)', padding: '10px', fontSize: 13 }}
               onClick={() => downloadFile('/api/reports/users/excel', `users_${Date.now()}.xlsx`)}
             >
-              📊 Excel المستخدمين
+              📥 Excel المستخدمين
             </button>
             <button
               className="btn"
@@ -211,7 +211,7 @@ export default function UsersTab() {
               style={{ background: 'linear-gradient(145deg, #2e4373, #1a2a52)', padding: '10px', fontSize: 13 }}
               onClick={() => downloadFile('/api/reports/users/template', 'users_template.xlsx')}
             >
-              📥 قالب الاستيراد
+              📋 قالب المستخدمين
             </button>
             <label
               className="btn"
@@ -236,9 +236,9 @@ export default function UsersTab() {
         )}
       </div>
 
-      {/* رأس قائمة المستخدمين */}
+      {/* عنوان المستخدمين */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 style={{ color: 'var(--navy)' }}>👥 المستخدمون ({users.length})</h3>
+        <h3 style={{ color: 'var(--navy)' }}>👥 قائمة المستخدمين ({users.length})</h3>
         <button
           className="btn"
           onClick={() => { setShowForm(!showForm); resetForm(); }}
@@ -270,7 +270,7 @@ export default function UsersTab() {
               onChange={e => setForm({ ...form, email: e.target.value })} required />
             <br /><br />
             <input className="input" type="password"
-              placeholder={editUser ? 'كلمة المرور الجديدة (اتركها فارغة إن لم تغيّر)' : 'كلمة المرور *'}
+              placeholder={editUser ? 'كلمة المرور الجديدة (اتركها فارغة إذا لم ترد تغييرها)' : 'كلمة المرور *'}
               value={form.password}
               onChange={e => setForm({ ...form, password: e.target.value })}
               required={!editUser} />
@@ -292,32 +292,33 @@ export default function UsersTab() {
             <input className="input" placeholder="القسم" value={form.department}
               onChange={e => setForm({ ...form, department: e.target.value })} />
             <br /><br />
-            <input className="input" placeholder="الوظيفة" value={form.position}
+            <input className="input" placeholder="المسمى الوظيفي" value={form.position}
               onChange={e => setForm({ ...form, position: e.target.value })} />
             <br /><br />
             <button className="btn" style={{ width: '100%' }}>
-              {editUser ? '💾 حفظ التعديلات' : '✅ إضافة المستخدم'}
+              {editUser ? '💾 حفظ التعديلات' : '➕ إنشاء المستخدم'}
             </button>
           </form>
         </div>
       )}
 
+      {/* جدول المستخدمين */}
       <div className="glass" style={{ padding: 20 }}>
         {loading ? (
           <p style={{ textAlign: 'center', color: 'var(--gray)' }}>جاري التحميل...</p>
         ) : users.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--gray)' }}>لا يوجد مستخدمون بعد</p>
+          <p style={{ textAlign: 'center', color: 'var(--gray)' }}>لا يوجد مستخدمون</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table>
               <thead>
                 <tr>
                   <th>الاسم</th>
-                  <th>البريد</th>
+                  <th>البريد الإلكتروني</th>
                   <th>الدور</th>
                   <th>الفرع</th>
                   <th>الهاتف</th>
-                  <th>إجراءات</th>
+                  <th>الإجراءات</th>
                 </tr>
               </thead>
               <tbody>
@@ -329,12 +330,17 @@ export default function UsersTab() {
                     <td>{u.branch?.name || '-'}</td>
                     <td>{u.phone || '-'}</td>
                     <td>
+                      <button className="btn"
+                        style={{ padding: '6px 10px', fontSize: 12, background: '#2e4373', marginLeft: 4 }}
+                        onClick={() => window.location.href = `/employee/${u._id}`}>
+                        👁️ عرض الملف
+                      </button>
                       <button className="btn gray"
                         style={{ padding: '6px 10px', fontSize: 12, marginLeft: 4 }}
-                        onClick={() => startEdit(u)}>✏️</button>
+                        onClick={() => startEdit(u)}>✏️ تعديل</button>
                       <button className="btn"
-                        style={{ padding: '6px 10px', fontSize: 12, background: '#8e2b2b' }}
-                        onClick={() => deleteUser(u._id)}>🗑️</button>
+                        style={{ padding: '6px 10px', fontSize: 12, background: '#8e2b2b', marginLeft: 4 }}
+                        onClick={() => deleteUser(u._id)}>🗑️ حذف</button>
                     </td>
                   </tr>
                 ))}
