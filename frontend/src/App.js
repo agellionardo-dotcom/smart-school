@@ -28,6 +28,12 @@ export default function App() {
         <Route path="/leaves" element={<PrivateRoute><Navbar /><Leaves /></PrivateRoute>} />
         <Route path="/scan-qr" element={<PrivateRoute><Navbar /><ScanQr /></PrivateRoute>} />
         <Route path="/admin" element={<PrivateRoute><Navbar /><AdminDashboard /></PrivateRoute>} />
+
+        {/* ✅ السطر الجديد — ملف الموظف */}
+        <Route path="/employee/:id" element={<PrivateRoute><Navbar /><EmployeeProfile /></PrivateRoute>} />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>
   );
