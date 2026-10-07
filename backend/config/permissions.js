@@ -1,9 +1,9 @@
 module.exports = {
   // إدارة المستخدمين
-  'users.create':        ['superadmin', 'hr'],
-  'users.edit':          ['superadmin', 'hr'],
-  'users.delete':        ['superadmin'],
-  'users.view.all':      ['superadmin', 'hr'],
+  'users.create':        ['superadmin', 'hr', 'manager'],
+  'users.edit':          ['superadmin', 'hr', 'manager'],
+  'users.delete':        ['superadmin', 'hr', 'manager'],
+  'users.view.all':      ['superadmin'],
   'users.view.branch':   ['superadmin', 'hr', 'manager'],
   'users.assign.roles':  ['superadmin'],
   
@@ -26,7 +26,7 @@ module.exports = {
   // الإجازات
   'leaves.request':           ['superadmin', 'manager', 'hr', 'employee'],
   'leaves.view.own':          ['superadmin', 'manager', 'hr', 'employee'],
-  'leaves.approve.branch':    ['superadmin', 'manager'],
+  'leaves.approve.branch':    ['superadmin', 'manager', 'hr'],
   'leaves.approve.all':       ['superadmin', 'hr'],
   
   // التقارير

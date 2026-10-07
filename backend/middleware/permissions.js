@@ -1,4 +1,5 @@
 const PERMISSIONS = require('../config/permissions');
+const Branch = require('../models/Branch');
 
 // ============================================================
 // 1. التحقق من الصلاحية حسب الدور
@@ -26,21 +27,50 @@ const checkPermission = (permission) => {
 };
 
 // ============================================================
-// 2. تحديد نطاق الفلترة حسب الفرع
-//    بيستخدم بعد checkPermission عشان يحدد req.branchFilter
+// 2. التحقق إذا كان المستخدم HR في الفرع الرئيسي (المنيا)
 // ============================================================
-const scopeToBranch = (scopeType = 'branch') => {
-  return (req, res, next) => {
+const isHQHR = async (user) => {
+  if (user.role !== 'hr') return false;
+  if (!user.branch) return false;
+  try {
+    const hq = await Branch.findOne({ type: 'main' });
+    return hq && String(user.branch) === String(hq._id);
+  } catch (e) {
+    return false;
+  }
+};
+
+// ============================================================
+// 3. تحديد نطاق الفلترة حسب الفرع
+// ============================================================
+const scopeToBranch = () => {
+  return async (req, res, next) => {
     const { role, branch } = req.user || {};
 
-    // Super Admin / HR / Viewer → كل الفروع
-    if (['superadmin', 'hr', 'viewer'].includes(role)) {
+    // superadmin + viewer → كل الفروع
+    if (['superadmin', 'viewer'].includes(role)) {
       req.branchFilter = {};
       req.scope = 'all';
       return next();
     }
 
-    // Manager → فرعه بس
+    // hr → تحقق إذا في الفرع الرئيسي
+    if (role === 'hr') {
+      const hq = await isHQHR(req.user);
+      if (hq) {
+        req.branchFilter = {};
+        req.scope = 'all';
+        return next();
+      }
+      if (!branch) {
+        return res.status(403).json({ msg: 'المستخدم غير مرتبط بفرع' });
+      }
+      req.branchFilter = { branch: branch };
+      req.scope = 'branch';
+      return next();
+    }
+
+    // manager → فرعه بس
     if (role === 'manager') {
       if (!branch) {
         return res.status(403).json({ msg: 'المستخدم غير مرتبط بفرع' });
@@ -50,7 +80,7 @@ const scopeToBranch = (scopeType = 'branch') => {
       return next();
     }
 
-    // Employee → بياناته الشخصية بس
+    // employee → نفسه بس
     if (role === 'employee') {
       req.branchFilter = { _id: req.user._id };
       req.scope = 'own';
@@ -62,16 +92,30 @@ const scopeToBranch = (scopeType = 'branch') => {
 };
 
 // ============================================================
-// 3. للموارد اللي بتاعة الموظف نفسه (attendance, leaves)
-//    بيحدد req.dataFilter حسب الدور
+// 4. للموارد اللي بتاعة الموظف نفسه (attendance, leaves)
 // ============================================================
 const scopeToOwnOrBranch = (branchField = 'branch', userField = 'user') => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const { role, _id, branch } = req.user || {};
 
-    if (['superadmin', 'hr', 'viewer'].includes(role)) {
+    if (['superadmin', 'viewer'].includes(role)) {
       req.dataFilter = {};
       req.scope = 'all';
+      return next();
+    }
+
+    if (role === 'hr') {
+      const hq = await isHQHR(req.user);
+      if (hq) {
+        req.dataFilter = {};
+        req.scope = 'all';
+        return next();
+      }
+      if (!branch) {
+        return res.status(403).json({ msg: 'غير مرتبط بفرع' });
+      }
+      req.dataFilter = { [branchField]: branch };
+      req.scope = 'branch';
       return next();
     }
 
@@ -95,45 +139,39 @@ const scopeToOwnOrBranch = (branchField = 'branch', userField = 'user') => {
 };
 
 // ============================================================
-// 4. التحقق من الوصول لملف موظف معين
+// 5. التحقق من الوصول لملف موظف معين
 // ============================================================
-const canAccessUser = (targetUser) => {
-  return (req, res, next) => {
-    const { role, _id, branch } = req.user || {};
-    const targetUserId = targetUser._id?.toString() || targetUser.toString();
-    const targetBranchId = targetUser.branch?._id?.toString() || targetUser.branch?.toString();
+const canAccessUser = async (targetUser, reqUser) => {
+  const { role, _id, branch } = reqUser || {};
+  const targetUserId = targetUser._id?.toString() || targetUser.toString();
+  const targetBranchId = targetUser.branch?._id?.toString() || targetUser.branch?.toString();
 
-    // Admin / HR → كل الموظفين
-    if (['superadmin', 'hr'].includes(role)) {
-      return next();
-    }
+  if (role === 'superadmin') return true;
 
-    // Manager → موظفي فرعه
-    if (role === 'manager') {
-      if (targetBranchId === branch?.toString()) {
-        return next();
-      }
-      return res.status(403).json({ msg: 'غير مصرح — الموظف في فرع آخر' });
-    }
+  if (role === 'hr') {
+    const hq = await isHQHR(reqUser);
+    if (hq) return true;
+    return targetBranchId === branch?.toString();
+  }
 
-    // Employee → نفسه بس
-    if (role === 'employee') {
-      if (targetUserId === _id?.toString()) {
-        return next();
-      }
-      return res.status(403).json({ msg: 'غير مصرح — تقدر تشوف ملفك الشخصي فقط' });
-    }
+  if (role === 'manager') {
+    return targetBranchId === branch?.toString();
+  }
 
-    return res.status(403).json({ msg: 'غير مصرح' });
-  };
+  if (role === 'employee') {
+    return targetUserId === _id?.toString();
+  }
+
+  return false;
 };
 
 // ============================================================
-// 5. تصدير — function + properties (للتوافق مع الكود القديم والجديد)
+// 6. تصدير — function + properties (للتوافق مع الكود القديم)
 // ============================================================
 module.exports = checkPermission;
 module.exports.checkPermission = checkPermission;
 module.exports.scopeToBranch = scopeToBranch;
 module.exports.scopeToOwnOrBranch = scopeToOwnOrBranch;
 module.exports.canAccessUser = canAccessUser;
+module.exports.isHQHR = isHQHR;
 module.exports.default = checkPermission;
