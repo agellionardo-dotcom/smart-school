@@ -4,13 +4,17 @@ const config: CapacitorConfig = {
   appId: 'com.smartschool.app',
   appName: 'Smart School',
   webDir: 'build',
-  server: {
-    androidScheme: 'https',  // ⚠️ غيرناها من http إلى https
-    cleartext: true,
-    allowNavigation: ['*']
-  },
+  bundledWebRuntime: false,
   android: {
     allowMixedContent: true
+  },
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 2000,
+      backgroundColor: '#0A1F44',
+      showSpinner: false,
+      androidScaleType: 'CENTER_CROP'
+    }
   }
 };
 

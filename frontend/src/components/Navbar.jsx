@@ -29,8 +29,15 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Navbar */}
+      {/* Navbar — ✅ معكوس: القايمة على الشمال، الشعار على اليمين */}
       <nav className="navbar">
+        <button
+          className="navbar-toggle"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="فتح القائمة"
+        >
+          ☰
+        </button>
         <div className="navbar-brand">
           <img
             src="/logo.png"
@@ -39,13 +46,6 @@ export default function Navbar() {
           />
           <h2>Smart School</h2>
         </div>
-        <button
-          className="navbar-toggle"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="فتح القائمة"
-        >
-          ☰
-        </button>
       </nav>
 
       {/* Drawer */}
@@ -75,7 +75,6 @@ export default function Navbar() {
             {/* Menu */}
             <div className="drawer-menu">
               <Link
-                to="/scan-qr"
                 to="/dashboard"
                 className={`drawer-link ${isActive('/dashboard') ? 'active' : ''}`}
                 onClick={closeDrawer}
