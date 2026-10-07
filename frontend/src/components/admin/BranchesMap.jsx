@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';
 import { API_URL } from '../../api';
 
+// ==================== إعدادات الأيقونات ====================
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -14,61 +15,103 @@ L.Icon.Default.mergeOptions({
 const mainIcon = new L.DivIcon({
   html: `<div style="
     background: linear-gradient(145deg, #0a1f44, #142b5c);
-    width: 40px; height: 40px; border-radius: 50% 50% 50% 0;
+    width: 44px; height: 44px; border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
-    box-shadow: 0 4px 12px rgba(10,31,68,0.5);
+    box-shadow: 0 6px 16px rgba(10,31,68,0.6);
     border: 3px solid #fff;
     display:flex; align-items:center; justify-content:center;
-  "><span style="transform:rotate(45deg); font-size:18px;">🏛️</span></div>`,
+  "><span style="transform:rotate(45deg); font-size:20px;">🏛️</span></div>`,
   className: '',
-  iconSize: [40, 40],
-  iconAnchor: [20, 40]
+  iconSize: [44, 44],
+  iconAnchor: [22, 44],
+  popupAnchor: [0, -44],
 });
 
 const subIcon = new L.DivIcon({
   html: `<div style="
-    background: linear-gradient(145deg, #8b95a7, #5a6478);
-    width: 34px; height: 34px; border-radius: 50% 50% 50% 0;
+    background: linear-gradient(145deg, #2e7d5b, #1e5a40);
+    width: 38px; height: 38px; border-radius: 50% 50% 50% 0;
     transform: rotate(-45deg);
-    box-shadow: 0 4px 12px rgba(139,149,167,0.5);
+    box-shadow: 0 6px 16px rgba(46,125,91,0.6);
     border: 3px solid #fff;
     display:flex; align-items:center; justify-content:center;
-  "><span style="transform:rotate(45deg); font-size:14px;">🏬</span></div>`,
+  "><span style="transform:rotate(45deg); font-size:16px;">🏬</span></div>`,
   className: '',
-  iconSize: [34, 34],
-  iconAnchor: [17, 34]
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+  popupAnchor: [0, -38],
 });
 
+const userIcon = new L.DivIcon({
+  html: `<div style="
+    background: linear-gradient(145deg, #d9534f, #a94442);
+    width: 30px; height: 30px; border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(217,83,79,0.6);
+    border: 3px solid #fff;
+    display:flex; align-items:center; justify-content:center;
+  "><span style="font-size:14px;">📍</span></div>`,
+  className: '',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+});
+
+// ==================== طبقات الخريطة ====================
 const TILE_LAYERS = {
   satellite: {
     name: '🛰️ قمر صناعي',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri'
+    attribution: '&copy; Esri',
   },
   hybrid: {
-    name: '🌍 هجين (قمر + أسماء)',
+    name: '🌍 هجين',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri',
-    labels: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png'
+    labels: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
   },
   street: {
-    name: '🗺️ شارع (مع الأسماء)',
+    name: '🗺️ شارع',
     url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap France'
+    attribution: '&copy; OpenStreetMap France',
   },
   terrain: {
     name: '⛰️ تضاريس',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenTopoMap'
+    attribution: '&copy; OpenTopoMap',
   },
   dark: {
     name: '🌙 داكن',
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; CartoDB'
-  }
+    attribution: '&copy; CartoDB',
+  },
 };
 
-// ✅ Controller لإصلاح مشكلة عرض الخريطة
+// ==================== Helper: FitBounds ====================
+function FitBoundsToMarkers({ branches }) {
+  const map = useMap();
+  const hasFitted = useRef(false);
+
+  useEffect(() => {
+    if (hasFitted.current) return;
+    if (!branches || branches.length === 0) return;
+
+    const bounds = L.latLngBounds(
+      branches.map(b => [b.location.lat, b.location.lng])
+    );
+
+    map.fitBounds(bounds, {
+      padding: [60, 60],
+      maxZoom: 12,
+      animate: true,
+    });
+
+    hasFitted.current = true;
+    setTimeout(() => map.invalidateSize(), 200);
+  }, [branches, map]);
+
+  return null;
+}
+
+// ==================== Helper: Map Controller ====================
 function MapController({ mapType }) {
   const map = useMap();
 
@@ -79,6 +122,58 @@ function MapController({ mapType }) {
   return null;
 }
 
+// ==================== Helper: Locate Me ====================
+function LocateControl({ onLocation }) {
+  const map = useMap();
+
+  const locateMe = () => {
+    if (!navigator.geolocation) {
+      alert('المتصفح لا يدعم تحديد الموقع');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        map.setView([latitude, longitude], 16);
+        onLocation({ lat: latitude, lng: longitude, accuracy });
+      },
+      (err) => {
+        alert('فشل تحديد الموقع: ' + err.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  return (
+    <button
+      onClick={locateMe}
+      title="حدد موقعي"
+      style={{
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        zIndex: 1000,
+        width: 44,
+        height: 44,
+        borderRadius: '50%',
+        border: 'none',
+        background: 'linear-gradient(145deg, #0a1f44, #142b5c)',
+        color: '#fff',
+        fontSize: 20,
+        cursor: 'pointer',
+        boxShadow: '0 6px 16px rgba(10,31,68,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      📍
+    </button>
+  );
+}
+
+// ==================== Helper: Search ====================
 function SearchControl({ onLocationFound }) {
   const map = useMap();
   const [query, setQuery] = useState('');
@@ -92,7 +187,7 @@ function SearchControl({ onLocationFound }) {
     setResults([]);
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=ar`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=ar&countrycodes=eg`
       );
       const data = await res.json();
       setResults(data);
@@ -106,7 +201,7 @@ function SearchControl({ onLocationFound }) {
   const goTo = (item) => {
     const lat = parseFloat(item.lat);
     const lng = parseFloat(item.lon);
-    map.setView([lat, lng], 16);
+    map.setView([lat, lng], 15);
     if (onLocationFound) onLocationFound({ lat, lng, name: item.display_name });
     setResults([]);
     setQuery(item.display_name);
@@ -119,14 +214,14 @@ function SearchControl({ onLocationFound }) {
       right: 10,
       zIndex: 1000,
       width: 320,
-      maxWidth: '90%'
+      maxWidth: '90%',
     }}>
       <form onSubmit={search} style={{ display: 'flex', gap: 4 }}>
         <input
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="🔍 ابحث عن موقع..."
+          placeholder="🔍 ابحث عن موقع في مصر..."
           style={{
             flex: 1,
             padding: '10px 14px',
@@ -136,7 +231,7 @@ function SearchControl({ onLocationFound }) {
             fontSize: 14,
             outline: 'none',
             fontFamily: 'inherit',
-            direction: 'rtl'
+            direction: 'rtl',
           }}
         />
         <button
@@ -150,7 +245,7 @@ function SearchControl({ onLocationFound }) {
             color: '#fff',
             cursor: 'pointer',
             fontSize: 16,
-            boxShadow: '0 4px 12px rgba(10,31,68,0.3)'
+            boxShadow: '0 4px 12px rgba(10,31,68,0.3)',
           }}
         >
           {searching ? '⏳' : '🔍'}
@@ -165,7 +260,7 @@ function SearchControl({ onLocationFound }) {
           boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
           maxHeight: 250,
           overflowY: 'auto',
-          direction: 'rtl'
+          direction: 'rtl',
         }}>
           {results.map((r, i) => (
             <div
@@ -176,7 +271,7 @@ function SearchControl({ onLocationFound }) {
                 borderBottom: i < results.length - 1 ? '1px solid #eef1f7' : 'none',
                 cursor: 'pointer',
                 fontSize: 13,
-                color: '#0a1f44'
+                color: '#0a1f44',
               }}
               onMouseEnter={(e) => e.currentTarget.style.background = '#f5f7fa'}
               onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
@@ -190,10 +285,12 @@ function SearchControl({ onLocationFound }) {
   );
 }
 
+// ==================== المكوّن الرئيسي ====================
 export default function BranchesMap() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mapType, setMapType] = useState('satellite'); // ✅ افتراضي: قمر صناعي
+  const [mapType, setMapType] = useState('satellite');
+  const [userLocation, setUserLocation] = useState(null);
   const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
   useEffect(() => {
@@ -219,24 +316,38 @@ export default function BranchesMap() {
     );
   }
 
-  const center = branches.length > 0
+  // ✅ نفلتر الفروع اللي إحداثياتها صالحة (جوه نطاق مصر)
+  const validBranches = branches.filter(b => {
+    const lat = b.location?.lat;
+    const lng = b.location?.lng;
+    return lat && lng && lat >= 22 && lat <= 32 && lng >= 24 && lng <= 37;
+  });
+
+  const fallbackCenter = [28.1099, 30.7503]; // المنيا
+  const center = validBranches.length > 0
     ? [
-        branches.reduce((sum, b) => sum + b.location.lat, 0) / branches.length,
-        branches.reduce((sum, b) => sum + b.location.lng, 0) / branches.length
+        validBranches.reduce((sum, b) => sum + b.location.lat, 0) / validBranches.length,
+        validBranches.reduce((sum, b) => sum + b.location.lng, 0) / validBranches.length,
       ]
-    : [28.1099, 30.7503];
+    : fallbackCenter;
 
   return (
     <div>
-      <h3 style={{ color: 'var(--navy)', marginBottom: 16 }}>
-        🗺️ خريطة الفروع ({branches.length})
-      </h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <h3 style={{ color: 'var(--navy)', margin: 0 }}>
+          🗺️ خريطة الفروع ({validBranches.length})
+        </h3>
+        <span style={{ fontSize: 12, color: 'var(--gray)' }}>
+          اسحب للتنقل · عجلة الفأرة للتكبير
+        </span>
+      </div>
 
+      {/* أزرار الطبقات */}
       <div style={{
         display: 'flex',
         gap: 8,
         marginBottom: 12,
-        flexWrap: 'wrap'
+        flexWrap: 'wrap',
       }}>
         {Object.entries(TILE_LAYERS).map(([key, layer]) => (
           <button
@@ -254,7 +365,7 @@ export default function BranchesMap() {
               fontWeight: 600,
               cursor: 'pointer',
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              fontFamily: 'inherit'
+              fontFamily: 'inherit',
             }}
           >
             {layer.name}
@@ -262,19 +373,21 @@ export default function BranchesMap() {
         ))}
       </div>
 
+      {/* الخريطة */}
       <div style={{
-        height: 'clamp(350px, 60vh, 550px)',
+        height: 'clamp(400px, 65vh, 600px)',
         borderRadius: 20,
         overflow: 'hidden',
         boxShadow: '0 15px 40px rgba(10,31,68,0.3)',
         border: '3px solid #fff',
-        position: 'relative'
+        position: 'relative',
       }}>
         <MapContainer
           center={center}
-          zoom={7}
+          zoom={8}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
+          zoomControl={true}
         >
           <TileLayer
             url={TILE_LAYERS[mapType].url}
@@ -282,7 +395,6 @@ export default function BranchesMap() {
             key={`base-${mapType}`}
           />
 
-          {/* ✅ Labels Layer للطبقة الهجينة */}
           {mapType === 'hybrid' && (
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
@@ -292,17 +404,49 @@ export default function BranchesMap() {
           )}
 
           <MapController mapType={mapType} />
+          <FitBoundsToMarkers branches={validBranches} />
           <SearchControl />
+          <LocateControl onLocation={setUserLocation} />
 
-          {branches.map(b => (
+          {/* موقع المستخدم */}
+          {userLocation && (
+            <>
+              <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
+                <Popup>
+                  <div style={{ direction: 'rtl' }}>
+                    <b>📍 موقعك الحالي</b>
+                    <br />
+                    <span style={{ fontSize: 12, color: '#666' }}>
+                      الدقة: {Math.round(userLocation.accuracy || 0)} متر
+                    </span>
+                  </div>
+                </Popup>
+              </Marker>
+              <Circle
+                center={[userLocation.lat, userLocation.lng]}
+                radius={userLocation.accuracy || 50}
+                pathOptions={{
+                  color: '#d9534f',
+                  fillColor: '#d9534f',
+                  fillOpacity: 0.15,
+                  weight: 2,
+                }}
+              />
+            </>
+          )}
+
+          {/* الفروع */}
+          {validBranches.map(b => (
             <React.Fragment key={b._id}>
               <Circle
                 center={[b.location.lat, b.location.lng]}
-                radius={b.radius || 5}
+                radius={b.radius || 100}
                 pathOptions={{
-                  color: b.type === 'main' ? '#0a1f44' : '#8b95a7',
-                  fillOpacity: 0.2,
-                  weight: 2
+                  color: b.type === 'main' ? '#0a1f44' : '#2e7d5b',
+                  fillColor: b.type === 'main' ? '#0a1f44' : '#2e7d5b',
+                  fillOpacity: 0.15,
+                  weight: 2,
+                  dashArray: '5, 5',
                 }}
               />
 
@@ -311,11 +455,11 @@ export default function BranchesMap() {
                 icon={b.type === 'main' ? mainIcon : subIcon}
               >
                 <Popup>
-                  <div style={{ direction: 'rtl', minWidth: 200 }}>
+                  <div style={{ direction: 'rtl', minWidth: 220 }}>
                     <h3 style={{
                       color: '#0a1f44',
                       margin: '0 0 8px',
-                      fontSize: 16
+                      fontSize: 16,
                     }}>
                       {b.type === 'main' ? '🏛️' : '🏬'} {b.name}
                     </h3>
@@ -346,6 +490,7 @@ export default function BranchesMap() {
         </MapContainer>
       </div>
 
+      {/* الإحصائيات */}
       <div style={{
         marginTop: 16,
         padding: 16,
@@ -354,26 +499,31 @@ export default function BranchesMap() {
         display: 'flex',
         gap: 20,
         flexWrap: 'wrap',
-        fontSize: 13
+        fontSize: 13,
       }}>
         <div>
           <span style={{ color: '#0a1f44', fontWeight: 'bold' }}>
             🏛️ الفروع الرئيسية:
           </span>{' '}
-          {branches.filter(b => b.type === 'main').length}
+          {validBranches.filter(b => b.type === 'main').length}
         </div>
         <div>
-          <span style={{ color: '#8b95a7', fontWeight: 'bold' }}>
+          <span style={{ color: '#2e7d5b', fontWeight: 'bold' }}>
             🏬 الفروع الفرعية:
           </span>{' '}
-          {branches.filter(b => b.type === 'sub').length}
+          {validBranches.filter(b => b.type === 'sub').length}
         </div>
         <div>
           <span style={{ color: 'var(--navy)', fontWeight: 'bold' }}>
             📍 الإجمالي:
           </span>{' '}
-          {branches.length}
+          {validBranches.length}
         </div>
+        {branches.length !== validBranches.length && (
+          <div style={{ color: '#d9534f', fontWeight: 'bold' }}>
+            ⚠️ {branches.length - validBranches.length} فرع بإحداثيات غير صالحة
+          </div>
+        )}
       </div>
     </div>
   );
