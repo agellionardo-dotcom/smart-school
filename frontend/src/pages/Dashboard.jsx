@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_URL } from '../api';
+import EmergencyButton from '../components/EmergencyButton';
 
 export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -16,6 +17,10 @@ export default function Dashboard() {
     <div className="dashboard">
       <h1 style={{ color: 'var(--navy)', marginBottom: 8 }}>مرحباً، {user.name} 👋</h1>
       <p style={{ color: 'var(--gray)', marginBottom: 30 }}>الفرع: {user.branch?.name}</p>
+
+      {/* ✅ زر الطوارئ */}
+      <EmergencyButton />
+
       <div className="grid">
         <div className="stat-card"><h3>{stats.totalDays}</h3><p>أيام الحضور</p></div>
         <div className="stat-card" style={{ background: 'linear-gradient(145deg, #5a6478, #3e4657)' }}>
