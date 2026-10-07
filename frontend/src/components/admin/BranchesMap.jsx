@@ -94,18 +94,24 @@ function FitBoundsToMarkers({ branches }) {
     if (hasFitted.current) return;
     if (!branches || branches.length === 0) return;
 
-    const bounds = L.latLngBounds(
-      branches.map(b => [b.location.lat, b.location.lng])
-    );
+    const timer = setTimeout(() => {
+      map.invalidateSize();
 
-    map.fitBounds(bounds, {
-      padding: [60, 60],
-      maxZoom: 12,
-      animate: true,
-    });
+      const bounds = L.latLngBounds(
+        branches.map(b => [b.location.lat, b.location.lng])
+      );
 
-    hasFitted.current = true;
-    setTimeout(() => map.invalidateSize(), 200);
+      map.fitBounds(bounds, {
+        padding: [80, 80],
+        maxZoom: 13,
+        animate: true,
+        duration: 1,
+      });
+
+      hasFitted.current = true;
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [branches, map]);
 
   return null;
@@ -384,8 +390,8 @@ export default function BranchesMap() {
       }}>
         <MapContainer
           center={center}
-          zoom={8}
-          style={{ height: '100%', width: '100%' }}
+          zoom={10}
+          style={{ height: '100%', width: '100%', minHeight: '400px' }}
           scrollWheelZoom={true}
           zoomControl={true}
         >
