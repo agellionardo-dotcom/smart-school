@@ -40,27 +40,44 @@ const subIcon = new L.DivIcon({
 });
 
 const TILE_LAYERS = {
+  satellite: {
+    name: '🛰️ قمر صناعي',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri'
+  },
+  hybrid: {
+    name: '🌍 هجين (قمر + أسماء)',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; Esri',
+    labels: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png'
+  },
   street: {
     name: '🗺️ شارع (مع الأسماء)',
     url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap France | Humanitarian'
-  },
-  standard: {
-    name: '🛣️ خريطة قياسية',
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; OpenStreetMap'
+    attribution: '&copy; OpenStreetMap France'
   },
   terrain: {
     name: '⛰️ تضاريس',
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     attribution: '&copy; OpenTopoMap'
   },
-  satellite: {
-    name: '🛰️ قمر صناعي',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri'
+  dark: {
+    name: '🌙 داكن',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; CartoDB'
   }
 };
+
+// ✅ Controller لإصلاح مشكلة عرض الخريطة
+function MapController({ mapType }) {
+  const map = useMap();
+
+  useEffect(() => {
+    setTimeout(() => map.invalidateSize(), 150);
+  }, [map, mapType]);
+
+  return null;
+}
 
 function SearchControl({ onLocationFound }) {
   const map = useMap();
@@ -89,7 +106,7 @@ function SearchControl({ onLocationFound }) {
   const goTo = (item) => {
     const lat = parseFloat(item.lat);
     const lng = parseFloat(item.lon);
-    map.setView([lat, lng], 15);
+    map.setView([lat, lng], 16);
     if (onLocationFound) onLocationFound({ lat, lng, name: item.display_name });
     setResults([]);
     setQuery(item.display_name);
@@ -176,7 +193,7 @@ function SearchControl({ onLocationFound }) {
 export default function BranchesMap() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mapType, setMapType] = useState('street');
+  const [mapType, setMapType] = useState('satellite'); // ✅ افتراضي: قمر صناعي
   const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
   useEffect(() => {
@@ -246,23 +263,35 @@ export default function BranchesMap() {
       </div>
 
       <div style={{
-        height: 'clamp(300px, 50vh, 450px)',
+        height: 'clamp(350px, 60vh, 550px)',
         borderRadius: 20,
         overflow: 'hidden',
         boxShadow: '0 15px 40px rgba(10,31,68,0.3)',
-        border: '3px solid #fff'
+        border: '3px solid #fff',
+        position: 'relative'
       }}>
         <MapContainer
           center={center}
           zoom={7}
           style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={true}
         >
           <TileLayer
             url={TILE_LAYERS[mapType].url}
             attribution={TILE_LAYERS[mapType].attribution}
-            key={mapType}
+            key={`base-${mapType}`}
           />
 
+          {/* ✅ Labels Layer للطبقة الهجينة */}
+          {mapType === 'hybrid' && (
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+              attribution="&copy; CartoDB"
+              key="labels-layer"
+            />
+          )}
+
+          <MapController mapType={mapType} />
           <SearchControl />
 
           {branches.map(b => (
