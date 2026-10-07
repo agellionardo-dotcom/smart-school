@@ -97,19 +97,26 @@ function FitBoundsToMarkers({ branches }) {
     const timer = setTimeout(() => {
       map.invalidateSize();
 
-      const bounds = L.latLngBounds(
-        branches.map(b => [b.location.lat, b.location.lng])
-      );
+      const avgLat = branches.reduce((sum, b) => sum + b.location.lat, 0) / branches.length;
+      const avgLng = branches.reduce((sum, b) => sum + b.location.lng, 0) / branches.length;
 
-      map.fitBounds(bounds, {
-        padding: [80, 80],
-        maxZoom: 13,
-        animate: true,
-        duration: 1,
-      });
+      map.setView([avgLat, avgLng], 10, { animate: false });
 
-      hasFitted.current = true;
-    }, 500);
+      setTimeout(() => {
+        const bounds = L.latLngBounds(
+          branches.map(b => [b.location.lat, b.location.lng])
+        );
+
+        map.fitBounds(bounds, {
+          padding: [80, 80],
+          maxZoom: 13,
+          animate: true,
+          duration: 1.5,
+        });
+
+        hasFitted.current = true;
+      }, 100);
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [branches, map]);
@@ -322,20 +329,11 @@ export default function BranchesMap() {
     );
   }
 
-  // ✅ نفلتر الفروع اللي إحداثياتها صالحة (جوه نطاق مصر)
   const validBranches = branches.filter(b => {
     const lat = b.location?.lat;
     const lng = b.location?.lng;
     return lat && lng && lat >= 22 && lat <= 32 && lng >= 24 && lng <= 37;
   });
-
-  const fallbackCenter = [28.1099, 30.7503]; // المنيا
-  const center = validBranches.length > 0
-    ? [
-        validBranches.reduce((sum, b) => sum + b.location.lat, 0) / validBranches.length,
-        validBranches.reduce((sum, b) => sum + b.location.lng, 0) / validBranches.length,
-      ]
-    : fallbackCenter;
 
   return (
     <div>
@@ -348,7 +346,6 @@ export default function BranchesMap() {
         </span>
       </div>
 
-      {/* أزرار الطبقات */}
       <div style={{
         display: 'flex',
         gap: 8,
@@ -379,7 +376,6 @@ export default function BranchesMap() {
         ))}
       </div>
 
-      {/* الخريطة */}
       <div style={{
         height: 'clamp(400px, 65vh, 600px)',
         borderRadius: 20,
@@ -389,7 +385,7 @@ export default function BranchesMap() {
         position: 'relative',
       }}>
         <MapContainer
-          center={center}
+          center={[28.1099, 30.7503]}
           zoom={10}
           style={{ height: '100%', width: '100%', minHeight: '400px' }}
           scrollWheelZoom={true}
@@ -414,7 +410,6 @@ export default function BranchesMap() {
           <SearchControl />
           <LocateControl onLocation={setUserLocation} />
 
-          {/* موقع المستخدم */}
           {userLocation && (
             <>
               <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
@@ -441,7 +436,6 @@ export default function BranchesMap() {
             </>
           )}
 
-          {/* الفروع */}
           {validBranches.map(b => (
             <React.Fragment key={b._id}>
               <Circle
@@ -496,7 +490,6 @@ export default function BranchesMap() {
         </MapContainer>
       </div>
 
-      {/* الإحصائيات */}
       <div style={{
         marginTop: 16,
         padding: 16,
