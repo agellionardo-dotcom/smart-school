@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';
 import { API_URL } from '../../api';
@@ -66,7 +66,6 @@ const TILE_LAYERS = {
     name: '🌍 هجين',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri',
-    labels: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
   },
   street: {
     name: '🗺️ شارع',
@@ -85,60 +84,8 @@ const TILE_LAYERS = {
   },
 };
 
-// ==================== Helper: FitBounds ====================
-function FitBoundsToMarkers({ branches }) {
-  const map = useMap();
-  const hasFitted = useRef(false);
-
-  useEffect(() => {
-    if (hasFitted.current) return;
-    if (!branches || branches.length === 0) return;
-
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-
-      const avgLat = branches.reduce((sum, b) => sum + b.location.lat, 0) / branches.length;
-      const avgLng = branches.reduce((sum, b) => sum + b.location.lng, 0) / branches.length;
-
-      map.setView([avgLat, avgLng], 10, { animate: false });
-
-      setTimeout(() => {
-        const bounds = L.latLngBounds(
-          branches.map(b => [b.location.lat, b.location.lng])
-        );
-
-        map.fitBounds(bounds, {
-          padding: [80, 80],
-          maxZoom: 13,
-          animate: true,
-          duration: 1.5,
-        });
-
-        hasFitted.current = true;
-      }, 100);
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [branches, map]);
-
-  return null;
-}
-
-// ==================== Helper: Map Controller ====================
-function MapController({ mapType }) {
-  const map = useMap();
-
-  useEffect(() => {
-    setTimeout(() => map.invalidateSize(), 150);
-  }, [map, mapType]);
-
-  return null;
-}
-
 // ==================== Helper: Locate Me ====================
-function LocateControl({ onLocation }) {
-  const map = useMap();
-
+function LocateControl({ mapRef, onLocation }) {
   const locateMe = () => {
     if (!navigator.geolocation) {
       alert('المتصفح لا يدعم تحديد الموقع');
@@ -148,7 +95,9 @@ function LocateControl({ onLocation }) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        map.setView([latitude, longitude], 16);
+        if (mapRef.current) {
+          mapRef.current.setView([latitude, longitude], 16);
+        }
         onLocation({ lat: latitude, lng: longitude, accuracy });
       },
       (err) => {
@@ -187,8 +136,7 @@ function LocateControl({ onLocation }) {
 }
 
 // ==================== Helper: Search ====================
-function SearchControl({ onLocationFound }) {
-  const map = useMap();
+function SearchControl({ mapRef }) {
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
@@ -214,8 +162,9 @@ function SearchControl({ onLocationFound }) {
   const goTo = (item) => {
     const lat = parseFloat(item.lat);
     const lng = parseFloat(item.lon);
-    map.setView([lat, lng], 15);
-    if (onLocationFound) onLocationFound({ lat, lng, name: item.display_name });
+    if (mapRef.current) {
+      mapRef.current.setView([lat, lng], 15);
+    }
     setResults([]);
     setQuery(item.display_name);
   };
@@ -304,6 +253,7 @@ export default function BranchesMap() {
   const [loading, setLoading] = useState(true);
   const [mapType, setMapType] = useState('satellite');
   const [userLocation, setUserLocation] = useState(null);
+  const mapRef = useRef(null);
   const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
   useEffect(() => {
@@ -312,6 +262,38 @@ export default function BranchesMap() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // ✅ نظبط الخريطة بعد ما البيانات تتحمل
+  useEffect(() => {
+    if (!mapRef.current || branches.length === 0) return;
+
+    const valid = branches.filter(b => {
+      const lat = b.location?.lat;
+      const lng = b.location?.lng;
+      return lat && lng && lat >= 22 && lat <= 32 && lng >= 24 && lng <= 37;
+    });
+
+    if (valid.length === 0) return;
+
+    const timer = setTimeout(() => {
+      const map = mapRef.current;
+      if (!map) return;
+
+      map.invalidateSize();
+
+      const bounds = L.latLngBounds(
+        valid.map(b => [b.location.lat, b.location.lng])
+      );
+
+      map.fitBounds(bounds, {
+        padding: [80, 80],
+        maxZoom: 13,
+        animate: true,
+      });
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [branches]);
 
   if (loading) {
     return (
@@ -385,6 +367,7 @@ export default function BranchesMap() {
         position: 'relative',
       }}>
         <MapContainer
+          ref={mapRef}
           center={[28.1099, 30.7503]}
           zoom={10}
           style={{ height: '100%', width: '100%', minHeight: '400px' }}
@@ -405,10 +388,8 @@ export default function BranchesMap() {
             />
           )}
 
-          <MapController mapType={mapType} />
-          <FitBoundsToMarkers branches={validBranches} />
-          <SearchControl />
-          <LocateControl onLocation={setUserLocation} />
+          <SearchControl mapRef={mapRef} />
+          <LocateControl mapRef={mapRef} onLocation={setUserLocation} />
 
           {userLocation && (
             <>
