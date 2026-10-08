@@ -1,454 +1,54 @@
-:root {
-  /* ==================== اللون الكحلي الأساسي ==================== */
-  --navy: #0a1f44;
-  --navy-light: #142b5c;
-  --navy-dark: #06122e;
-  --navy-soft: #1e3a6b;
-
-  /* ==================== ألوان محايدة هادئة ==================== */
-  --cream: #faf8f5;
-  --cream-dark: #f0ede8;
-  --beige: #e8e4dd;
-  --beige-dark: #d8d2c8;
-  --sand: #f5f1ea;
-
-  /* ==================== ألوان النصوص ==================== */
-  --text-dark: #0a1f44;
-  --text-medium: #3a4a6b;
-  --text-light: #8b95a7;
-  --text-white: #ffffff;
-
-  /* ==================== ألوان الخلفيات ==================== */
-  --bg-main: #f7f4ef;
-  --bg-glass: rgba(255, 255, 255, 0.75);
-  --bg-glass-hover: rgba(255, 255, 255, 0.9);
-  --bg-card: rgba(255, 255, 255, 0.85);
-
-  /* ==================== ألوان الحالات (متناسقة مع الكحلي) ==================== */
-  --success: #2e7d5b;
-  --success-light: #d4e8db;
-  --danger: #8e2b2b;
-  --danger-light: #f0d4d4;
-  --warning: #b8860b;
-  --warning-light: #f5e8c8;
-  --info: #2e4373;
-  --info-light: #dde4f0;
-
-  /* ==================== حدود وظلال ==================== */
-  --border: rgba(10, 31, 68, 0.1);
-  --border-strong: rgba(10, 31, 68, 0.2);
-  --shadow-sm: 0 2px 8px rgba(10, 31, 68, 0.06);
-  --shadow: 0 8px 24px rgba(10, 31, 68, 0.08);
-  --shadow-lg: 0 16px 48px rgba(10, 31, 68, 0.12);
-
-  /* ==================== الاحتفاظ بالأسماء القديمة ==================== */
-  --gray: #8b95a7;
-  --gray-light: #d1d7e0;
-  --bg: #f7f4ef;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: 'Cairo', 'Segoe UI', sans-serif;
-}
-
-/* ==================== الخلفية العامة ==================== */
-body {
-  background:
-    radial-gradient(circle at 20% 10%, rgba(232, 228, 221, 0.8) 0%, transparent 40%),
-    radial-gradient(circle at 80% 20%, rgba(240, 237, 232, 0.6) 0%, transparent 40%),
-    radial-gradient(circle at 50% 90%, rgba(245, 241, 234, 0.8) 0%, transparent 50%),
-    linear-gradient(135deg, var(--bg-main), var(--sand), var(--cream-dark));
-  background-attachment: fixed;
-  min-height: 100vh;
-  direction: rtl;
-  color: var(--text-dark);
-}
-
-/* ==================== Glassmorphism ==================== */
-.glass {
-  background: var(--bg-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  box-shadow: var(--shadow);
-}
-
-.glass:hover {
-  background: var(--bg-glass-hover);
-  transition: background 0.3s;
-}
-
-/* ==================== الأزرار ==================== */
-.btn {
-  padding: 14px 32px;
-  border: none;
-  border-radius: 14px;
-  background: linear-gradient(145deg, var(--navy), var(--navy-light));
-  color: var(--text-white);
-  font-weight: 700;
-  font-size: 16px;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgba(10, 31, 68, 0.25);
-  transition: all 0.25s;
-  font-family: inherit;
-}
-
-.btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 24px rgba(10, 31, 68, 0.35);
-}
-
-.btn:active {
-  transform: translateY(-1px);
-}
-
-.btn.gray {
-  background: linear-gradient(145deg, #a8b0bd, #8b95a7);
-  box-shadow: 0 6px 16px rgba(139, 149, 167, 0.25);
-}
-
-.btn.success {
-  background: linear-gradient(145deg, var(--success), #1e5a40);
-}
-
-.btn.danger {
-  background: linear-gradient(145deg, var(--danger), #5c1c1c);
-}
-
-/* ==================== الحقول ==================== */
-.input {
-  width: 100%;
-  padding: 14px 18px;
-  border-radius: 12px;
-  border: 2px solid var(--border-strong);
-  background: rgba(255, 255, 255, 0.95);
-  font-size: 15px;
-  outline: none;
-  transition: all 0.25s;
-  font-family: inherit;
-  color: var(--navy);
-  font-weight: 600;
-}
-
-.input:focus {
-  border-color: var(--navy);
-  background: #fff;
-  box-shadow: 0 0 0 4px rgba(10, 31, 68, 0.08);
-}
-
-.input::placeholder {
-  color: var(--text-light);
-  font-weight: 500;
-}
-
-/* ==================== Dashboard ==================== */
-.dashboard {
-  padding: 30px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.grid {
-  display: grid;
-  gap: 24px;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-}
-
-/* ==================== بطاقات الإحصائيات ==================== */
-.stat-card {
-  padding: 28px;
-  text-align: center;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-
-.stat-card h3 {
-  font-size: 42px;
-  margin-bottom: 8px;
-  color: var(--navy);
-  font-weight: 900;
-  text-shadow: 0 1px 2px rgba(10, 31, 68, 0.05);
-}
-
-.stat-card p {
-  color: var(--navy);
-  font-size: 15px;
-  font-weight: 700;
-}
-
-/* ==================== Navbar ==================== */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 20px;
-  background: linear-gradient(90deg, var(--navy), var(--navy-light));
-  color: #fff;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 4px 15px rgba(10, 31, 68, 0.2);
-}
-
-.navbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.navbar-brand img {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
-}
-
-.navbar-brand h2 {
-  font-size: 18px;
-  margin: 0;
-  color: #fff;
-  font-weight: 800;
-}
-
-.navbar a {
-  color: #fff;
-  margin: 0 12px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s;
-}
-
-.navbar a:hover {
-  color: var(--gray-light);
-}
-
-.navbar-toggle {
-  background: rgba(255, 255, 255, 0.15);
-  border: none;
-  color: #fff;
-  font-size: 24px;
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.navbar-toggle:hover {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-/* ==================== الجداول ==================== */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-th, td {
-  padding: 14px;
-  text-align: right;
-  border-bottom: 1px solid var(--border);
-  color: var(--navy);
-  font-weight: 600;
-}
-
-th {
-  background: var(--navy);
-  color: #fff;
-  font-weight: 800;
-  font-size: 14px;
-}
-
-tr {
-  transition: background 0.2s;
-}
-
-tr:hover {
-  background: rgba(10, 31, 68, 0.04);
-}
-
-/* ==================== Drawer Menu ==================== */
-.drawer-overlay {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background: rgba(10, 31, 68, 0.4);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 998;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 280px;
-  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-light) 100%);
-  color: #fff;
-  z-index: 999;
-  box-shadow: -10px 0 30px rgba(10, 31, 68, 0.3);
-  animation: slideIn 0.3s ease;
-  overflow-y: auto;
-  direction: rtl;
-}
-
-@keyframes slideIn {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
-}
-
-.drawer-header {
-  padding: 24px;
-  text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.drawer-header img {
-  width: 80px;
-  height: 80px;
-  object-fit: contain;
-  margin-bottom: 12px;
-}
-
-.drawer-header h3 {
-  font-size: 18px;
-  margin: 0 0 4px 0;
-  color: #fff;
-  font-weight: 800;
-}
-
-.drawer-header p {
-  font-size: 12px;
-  color: var(--gray-light);
-  margin: 0;
-}
-
-.drawer-user {
-  padding: 16px 24px;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-.drawer-user-name {
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 4px;
-  color: #fff;
-}
-
-.drawer-user-role {
-  font-size: 12px;
-  color: #FFD966;
-  font-weight: 600;
-}
-
-.drawer-menu {
-  padding: 12px 0;
-}
-
-.drawer-link {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 24px;
-  color: #fff;
-  text-decoration: none;
-  transition: background 0.2s;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-  border: none;
-  background: transparent;
-  width: 100%;
-  text-align: right;
-  font-family: inherit;
-}
-
-.drawer-link:hover,
-.drawer-link.active {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.drawer-link.admin-link {
-  color: #FFD966;
-  font-weight: 700;
-}
-
-.drawer-link .icon {
-  font-size: 22px;
-  width: 30px;
-  text-align: center;
-}
-
-.drawer-divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.15);
-  margin: 8px 24px;
-}
-
-.drawer-footer {
-  padding: 16px 24px;
-  font-size: 11px;
-  color: var(--gray-light);
-  text-align: center;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-}
-
-/* ==================== Responsive ==================== */
-@media (max-width: 768px) {
-  .dashboard {
-    padding: 16px;
-  }
-
-  .grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .stat-card h3 {
-    font-size: 32px;
-  }
-
-  table {
-    font-size: 13px;
-  }
-
-  th, td {
-    padding: 10px 8px;
-  }
-
-  .btn {
-    padding: 12px 20px;
-    font-size: 14px;
-  }
-
-  .input {
-    font-size: 14px;
-  }
-
-  .navbar-brand h2 {
-    font-size: 16px;
-  }
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { API_URL } from '../api';
+import EmergencyButton from '../components/EmergencyButton';
+
+export default function Dashboard() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [stats, setStats] = useState({ totalDays: 0, totalLate: 0 });
+
+  useEffect(() => {
+    axios.get(`${API_URL}/api/attendance/my`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    }).then(r => setStats(r.data)).catch(() => {});
+  }, []);
+
+  return (
+    <div className="dashboard">
+      <h1 style={{
+        color: 'var(--navy)',
+        marginBottom: 8,
+        fontSize: 28,
+        fontWeight: 800,
+      }}>
+        مرحباً، {user.name} 👋
+      </h1>
+      <p style={{ color: 'var(--text-medium)', marginBottom: 30, fontSize: 15 }}>
+        الفرع: {user.branch?.name}
+      </p>
+
+      {/* ✅ زر الطوارئ */}
+      <EmergencyButton />
+
+      <div className="grid">
+        {/* نطاق التسجيل */}
+        <div className="stat-card">
+          <h3>{user.branch?.radius || 5}م</h3>
+          <p>نطاق التسجيل</p>
+        </div>
+
+        {/* دقائق التأخير */}
+        <div className="stat-card">
+          <h3>{stats.totalLate}</h3>
+          <p>دقائق التأخير</p>
+        </div>
+
+        {/* أيام الحضور */}
+        <div className="stat-card">
+          <h3>{stats.totalDays}</h3>
+          <p>أيام الحضور</p>
+        </div>
+      </div>
+    </div>
+  );
 }
