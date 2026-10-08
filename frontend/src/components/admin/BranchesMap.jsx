@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import axios from 'axios';
 import { API_URL } from '../../api';
@@ -84,8 +84,60 @@ const TILE_LAYERS = {
   },
 };
 
+// ==================== Helper: FitBounds باستخدام useMap ====================
+function FitBoundsToBranches({ branches }) {
+  const map = useMap();
+  const hasFitted = useRef(false);
+
+  useEffect(() => {
+    if (hasFitted.current) return;
+    if (!branches || branches.length === 0) return;
+
+    // ✅ نحاول كل 200ms لحد ما الخريطة تبقى جاهزة
+    let attempts = 0;
+    const maxAttempts = 15; // 3 ثواني بالكتير
+
+    const tryFit = () => {
+      attempts++;
+
+      const container = map.getContainer();
+      const isReady = container && container.offsetWidth > 0 && container.offsetHeight > 0;
+
+      if (isReady) {
+        map.invalidateSize();
+
+        const bounds = L.latLngBounds(
+          branches.map(b => [b.location.lat, b.location.lng])
+        );
+
+        map.fitBounds(bounds, {
+          padding: [80, 80],
+          maxZoom: 13,
+          animate: true,
+        });
+
+        hasFitted.current = true;
+        console.log('✅ Map fitted to', branches.length, 'branches');
+      } else if (attempts < maxAttempts) {
+        setTimeout(tryFit, 200);
+      } else {
+        console.warn('⚠️ Map container not ready after', maxAttempts, 'attempts');
+      }
+    };
+
+    // نبدأ المحاولة بعد 300ms
+    const timer = setTimeout(tryFit, 300);
+
+    return () => clearTimeout(timer);
+  }, [branches, map]);
+
+  return null;
+}
+
 // ==================== Helper: Locate Me ====================
-function LocateControl({ mapRef, onLocation }) {
+function LocateControl({ onLocation }) {
+  const map = useMap();
+
   const locateMe = () => {
     if (!navigator.geolocation) {
       alert('المتصفح لا يدعم تحديد الموقع');
@@ -95,9 +147,7 @@ function LocateControl({ mapRef, onLocation }) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        if (mapRef.current) {
-          mapRef.current.setView([latitude, longitude], 16);
-        }
+        map.setView([latitude, longitude], 16);
         onLocation({ lat: latitude, lng: longitude, accuracy });
       },
       (err) => {
@@ -136,7 +186,8 @@ function LocateControl({ mapRef, onLocation }) {
 }
 
 // ==================== Helper: Search ====================
-function SearchControl({ mapRef }) {
+function SearchControl() {
+  const map = useMap();
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
@@ -162,9 +213,7 @@ function SearchControl({ mapRef }) {
   const goTo = (item) => {
     const lat = parseFloat(item.lat);
     const lng = parseFloat(item.lon);
-    if (mapRef.current) {
-      mapRef.current.setView([lat, lng], 15);
-    }
+    map.setView([lat, lng], 15);
     setResults([]);
     setQuery(item.display_name);
   };
@@ -253,7 +302,6 @@ export default function BranchesMap() {
   const [loading, setLoading] = useState(true);
   const [mapType, setMapType] = useState('satellite');
   const [userLocation, setUserLocation] = useState(null);
-  const mapRef = useRef(null);
   const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
   useEffect(() => {
@@ -262,38 +310,6 @@ export default function BranchesMap() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
-
-  // ✅ نظبط الخريطة بعد ما البيانات تتحمل
-  useEffect(() => {
-    if (!mapRef.current || branches.length === 0) return;
-
-    const valid = branches.filter(b => {
-      const lat = b.location?.lat;
-      const lng = b.location?.lng;
-      return lat && lng && lat >= 22 && lat <= 32 && lng >= 24 && lng <= 37;
-    });
-
-    if (valid.length === 0) return;
-
-    const timer = setTimeout(() => {
-      const map = mapRef.current;
-      if (!map) return;
-
-      map.invalidateSize();
-
-      const bounds = L.latLngBounds(
-        valid.map(b => [b.location.lat, b.location.lng])
-      );
-
-      map.fitBounds(bounds, {
-        padding: [80, 80],
-        maxZoom: 13,
-        animate: true,
-      });
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, [branches]);
 
   if (loading) {
     return (
@@ -367,7 +383,6 @@ export default function BranchesMap() {
         position: 'relative',
       }}>
         <MapContainer
-          ref={mapRef}
           center={[28.1099, 30.7503]}
           zoom={10}
           style={{ height: '100%', width: '100%', minHeight: '400px' }}
@@ -388,8 +403,11 @@ export default function BranchesMap() {
             />
           )}
 
-          <SearchControl mapRef={mapRef} />
-          <LocateControl mapRef={mapRef} onLocation={setUserLocation} />
+          {/* ✅ المكون ده هو اللي بيعمل FitBounds */}
+          <FitBoundsToBranches branches={validBranches} />
+
+          <SearchControl />
+          <LocateControl onLocation={setUserLocation} />
 
           {userLocation && (
             <>
