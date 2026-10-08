@@ -1225,4 +1225,188 @@ router.get('/absence-late/pdf', auth, async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+// ==================== لوحة التحليلات ====================
+router.get('/analytics/dashboard', auth, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const Payroll = require('../models/Payroll');
+    const Attendance = require('../models/Attendance');
+    const Leave = require('../models/Leave');
+    const Branch = require('../models/Branch');
+
+    // ✅ الفلترة حسب الدور
+    let branchFilter = {};
+    let userFilter = { role: { $ne: 'superadmin' } };
+
+    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+      // كل الفروع
+    } else if (req.user.role === 'hr') {
+      const hq = await Branch.findOne({ type: 'main' });
+      if (hq && String(req.user.branch) === String(hq._id)) {
+        // كل الفروع
+      } else {
+        branchFilter = { branch: req.user.branch };
+        userFilter.branch = req.user.branch;
+      }
+    } else if (req.user.role === 'manager') {
+      branchFilter = { branch: req.user.branch };
+      userFilter.branch = req.user.branch;
+    }
+
+    // ✅ 1. تكلفة الرواتب (آخر 6 شهور)
+    const payrollCosts = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const month = d.getMonth() + 1;
+      const year = d.getFullYear();
+      const monthName = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'][d.getMonth()];
+
+      const payrolls = await Payroll.find({
+        month,
+        year,
+        ...branchFilter,
+      });
+
+      payrollCosts.push({
+        month: monthName,
+        year,
+        totalBasic: payrolls.reduce((s, p) => s + (p.basicSalary || 0), 0),
+        totalAllowances: payrolls.reduce((s, p) => s + (p.totalAllowances || 0), 0),
+        totalBonuses: payrolls.reduce((s, p) => s + (p.totalBonuses || 0), 0),
+        totalDeductions: payrolls.reduce((s, p) => s + (p.totalDeductions || 0), 0),
+        totalNet: payrolls.reduce((s, p) => s + (p.netSalary || 0), 0),
+        count: payrolls.length,
+      });
+    }
+
+    // ✅ 2. نسب الغياب (آخر 30 يوم)
+    const attendanceTrend = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const nextDay = new Date(d);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      const dayAttendance = await Attendance.find({
+        date: { $gte: d, $lt: nextDay },
+        ...branchFilter,
+      });
+
+      const present = dayAttendance.filter(a => a.checkIn).length;
+      const late = dayAttendance.filter(a => a.status === 'late').length;
+      const absent = dayAttendance.filter(a => !a.checkIn).length;
+
+      attendanceTrend.push({
+        date: d.toLocaleDateString('ar-EG', { day: '2-digit', month: '2-digit' }),
+        present,
+        late,
+        absent,
+      });
+    }
+
+    // ✅ 3. معدل دوران العمالة (Turnover Rate)
+    const totalUsers = await User.countDocuments({ ...userFilter, active: true });
+    const inactiveUsers = await User.countDocuments({ ...userFilter, active: false });
+    const turnoverRate = totalUsers > 0 ? Math.round((inactiveUsers / totalUsers) * 100) : 0;
+
+    // ✅ 4. توزيع التنوع الجندري
+    const genderDistribution = await User.aggregate([
+      { $match: { ...userFilter, active: true } },
+      { $group: { _id: '$gender', count: { $sum: 1 } } },
+    ]);
+
+    const genderData = [
+      { name: 'ذكور', value: 0, color: '#3a4a6b' },
+      { name: 'إناث', value: 0, color: '#6b8cae' },
+      { name: 'غير محدد', value: 0, color: '#cbd5e1' },
+    ];
+    genderDistribution.forEach(g => {
+      if (g._id === 'male') genderData[0].value = g.count;
+      else if (g._id === 'female') genderData[1].value = g.count;
+      else genderData[2].value += g.count;
+    });
+
+    // ✅ 5. توزيع الأعمار
+    const users = await User.find({ ...userFilter, active: true }).select('birthDate');
+    const ageGroups = {
+      'أقل من 25': 0,
+      '25-34': 0,
+      '35-44': 0,
+      '45-54': 0,
+      '55+': 0,
+      'غير محدد': 0,
+    };
+
+    users.forEach(u => {
+      if (!u.birthDate) {
+        ageGroups['غير محدد']++;
+        return;
+      }
+      const age = Math.floor((new Date() - new Date(u.birthDate)) / (365.25 * 24 * 60 * 60 * 1000));
+      if (age < 25) ageGroups['أقل من 25']++;
+      else if (age < 35) ageGroups['25-34']++;
+      else if (age < 45) ageGroups['35-44']++;
+      else if (age < 55) ageGroups['45-54']++;
+      else ageGroups['55+']++;
+    });
+
+    const ageData = Object.entries(ageGroups)
+      .filter(([_, count]) => count > 0)
+      .map(([name, value]) => ({ name, value }));
+
+    // ✅ 6. توزيع الموظفين حسب الفرع
+    const branchDistribution = await User.aggregate([
+      { $match: { ...userFilter, active: true } },
+      { $group: { _id: '$branch', count: { $sum: 1 } } },
+      { $lookup: { from: 'branches', localField: '_id', foreignField: '_id', as: 'branch' } },
+      { $unwind: { path: '$branch', preserveNullAndEmptyArrays: true } },
+      { $project: { name: { $ifNull: ['$branch.name', 'غير محدد'] }, count: 1 } },
+    ]);
+
+    // ✅ 7. توزيع الموظفين حسب القسم
+    const departmentDistribution = await User.aggregate([
+      { $match: { ...userFilter, active: true } },
+      { $group: { _id: '$department', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
+
+    const departmentData = departmentDistribution.map(d => ({
+      name: d._id || 'غير محدد',
+      value: d.count,
+    }));
+
+    // ✅ 8. إحصائيات عامة
+    const totalEmployees = totalUsers;
+    const totalBranches = await Branch.countDocuments();
+    const activeLeaves = await Leave.countDocuments({ status: 'pending' });
+    const todayAttendance = await Attendance.countDocuments({
+      date: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) },
+      checkIn: { $exists: true },
+      ...branchFilter,
+    });
+
+    res.json({
+      payrollCosts,
+      attendanceTrend,
+      turnoverRate,
+      genderData,
+      ageData,
+      branchDistribution,
+      departmentData,
+      summary: {
+        totalEmployees,
+        totalBranches,
+        activeLeaves,
+        todayAttendance,
+        inactiveUsers,
+      },
+    });
+  } catch (err) {
+    console.error('Analytics error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
 module.exports = router;

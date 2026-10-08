@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema({
   
   // ===== البيانات الشخصية =====
   phone: { type: String },
+  gender: {
+    type: String,
+    enum: ['male', 'female', ''],
+    default: ''
+  },
   nationalId: { type: String, unique: true, sparse: true },
   birthDate: { type: Date },
   address: { type: String },

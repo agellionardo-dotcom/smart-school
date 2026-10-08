@@ -10,6 +10,7 @@ import EmergencyTab from '../components/admin/EmergencyTab';
 import PayrollTab from '../components/admin/PayrollTab';
 import AttendanceReportTab from '../components/admin/AttendanceReportTab';
 import AnnouncementsTab from '../components/admin/AnnouncementsTab';
+import AnalyticsTab from '../components/admin/AnalyticsTab';
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState('overview');
@@ -17,6 +18,7 @@ export default function AdminDashboard() {
 
   const tabs = [
     { id: 'overview',      label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'analytics',     label: '📈 التحليلات',      roles: ['superadmin', 'manager', 'hr'] },
     { id: 'emergency',     label: '🚨 الطوارئ',        roles: ['superadmin', 'manager', 'hr'] },
     { id: 'announcements', label: '📢 الإعلانات',      roles: ['superadmin', 'manager', 'hr'] },
     { id: 'payroll',       label: '💰 المرتبات',       roles: ['superadmin', 'hr'] },
@@ -75,6 +77,7 @@ export default function AdminDashboard() {
 
       <div>
         {tab === 'overview' && <OverviewTab />}
+        {tab === 'analytics' && <AnalyticsTab />}
         {tab === 'emergency' && <EmergencyTab />}
         {tab === 'announcements' && <AnnouncementsTab />}
         {tab === 'payroll' && <PayrollTab />}
