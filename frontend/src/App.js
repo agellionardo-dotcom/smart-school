@@ -1,4 +1,3 @@
-import ScanQr from './pages/ScanQr';
 import EmployeeProfile from './pages/EmployeeProfile';
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -8,7 +7,9 @@ import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Attendance from './pages/Attendance';
 import Leaves from './pages/Leaves';
+import ScanQr from './pages/ScanQr';
 import AdminDashboard from './pages/AdminDashboard';
+import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
 import { startNetworkMonitoring } from './services/networkStatus';
 import { getQueue, removeFromQueue } from './services/offlineStorage';
@@ -35,8 +36,9 @@ export default function App() {
           const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
           for (const item of queue) {
             try {
+              const endpoint = item.type === 'checkin' ? 'checkin' : 'checkout';
               await axios.post(
-                `${API_URL}/api/attendance/${item.type}`,
+                `${API_URL}/api/attendance/${endpoint}`,
                 { lat: item.lat, lng: item.lng },
                 { headers }
               );
@@ -67,6 +69,7 @@ export default function App() {
         <Route path="/scan-qr" element={<PrivateRoute><Navbar /><ScanQr /></PrivateRoute>} />
         <Route path="/admin" element={<PrivateRoute><Navbar /><AdminDashboard /></PrivateRoute>} />
         <Route path="/employee/:id" element={<PrivateRoute><Navbar /><EmployeeProfile /></PrivateRoute>} />
+        <Route path="/sync-queue" element={<PrivateRoute><Navbar /><SyncQueue /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </BrowserRouter>

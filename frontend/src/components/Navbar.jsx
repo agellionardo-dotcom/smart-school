@@ -1,12 +1,30 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { getQueueCount } from '../services/offlineStorage';
 
 export default function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [queueCount, setQueueCount] = useState(0);
   const nav = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  // ✅ تحميل عدد الطلبات المعلقة
+  useEffect(() => {
+    const loadCount = async () => {
+      try {
+        const count = await getQueueCount();
+        setQueueCount(count);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    loadCount();
+    const interval = setInterval(loadCount, 5000); // كل 5 ثواني
+    return () => clearInterval(interval);
+  }, []);
 
   const logout = () => {
     if (window.confirm('هل تريد تسجيل الخروج؟')) {
@@ -48,7 +66,7 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Navbar — ✅ معكوس: القايمة على الشمال، الشعار على اليمين */}
+      {/* Navbar */}
       <nav className="navbar">
         <button
           className="navbar-toggle"
@@ -118,6 +136,37 @@ export default function Navbar() {
               >
                 <span className="icon">📝</span>
                 <span>الإجازات</span>
+              </Link>
+
+              {/* ✅ رابط المزامنة مع العداد */}
+              <Link
+                to="/sync-queue"
+                className={`drawer-link ${isActive('/sync-queue') ? 'active' : ''}`}
+                onClick={closeDrawer}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span className="icon">🔄</span>
+                  <span>المزامنة</span>
+                </div>
+                {queueCount > 0 && (
+                  <span style={{
+                    background: '#b8860b',
+                    color: '#fff',
+                    padding: '2px 10px',
+                    borderRadius: 10,
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                    minWidth: 20,
+                    textAlign: 'center',
+                  }}>
+                    {queueCount}
+                  </span>
+                )}
               </Link>
 
               {canAccessAdmin && (
