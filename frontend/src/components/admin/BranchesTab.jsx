@@ -1,78 +1,96 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../api';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
-// ✅ أيقونة الموقع المختار
-const pickerIcon = new L.DivIcon({
-  html: `<div style="
-    background: linear-gradient(145deg, #e74c3c, #c0392b);
-    width: 36px; height: 36px; border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    box-shadow: 0 4px 12px rgba(231,76,60,0.6);
-    border: 3px solid #fff;
-    display:flex; align-items:center; justify-content:center;
-  "><span style="transform:rotate(45deg); font-size:16px;">📍</span></div>`,
-  className: '',
-  iconSize: [36, 36],
-  iconAnchor: [18, 36]
-});
-
-// ✅ مكون اختيار الموقع (Click + Drag)
-function LocationPicker({ position, onChange }) {
-  const map = useMapEvents({
-    click(e) {
-      onChange({
-        lat: parseFloat(e.latlng.lat.toFixed(6)),
-        lng: parseFloat(e.latlng.lng.toFixed(6))
-      });
-    }
-  });
-
-  return position.lat && position.lng ? (
-    <Marker
-      position={[position.lat, position.lng]}
-      icon={pickerIcon}
-      draggable={true}
-      eventHandlers={{
-        dragend: (e) => {
-          const marker = e.target;
-          const pos = marker.getLatLng();
-          onChange({
-            lat: parseFloat(pos.lat.toFixed(6)),
-            lng: parseFloat(pos.lng.toFixed(6))
-          });
-        }
-      }}
-    />
-  ) : null;
-}
-
-// ✅ مكون تحديث الخريطة عند تغيير الإحداثيات
-function MapUpdater({ center }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (center && center[0] && center[1] && !isNaN(center[0]) && !isNaN(center[1])) {
-      map.flyTo(center, map.getZoom(), { duration: 1 });
-    }
-  }, [center, map]);
-
-  return null;
-}
+// ==================== خريطة التايلز (Google Satellite) ====================
+const MAP_STYLES = {
+  satellite: {
+    name: '🛰️ قمر صناعي',
+    style: {
+      version: 8,
+      sources: {
+        'google-satellite': {
+          type: 'raster',
+          tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+          tileSize: 256,
+          attribution: '&copy; Google',
+        },
+      },
+      layers: [
+        { id: 'google-satellite-layer', type: 'raster', source: 'google-satellite', minzoom: 0, maxzoom: 19 },
+      ],
+    },
+  },
+  hybrid: {
+    name: '🌍 هجين',
+    style: {
+      version: 8,
+      sources: {
+        'google-hybrid': {
+          type: 'raster',
+          tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
+          tileSize: 256,
+          attribution: '&copy; Google',
+        },
+      },
+      layers: [
+        { id: 'google-hybrid-layer', type: 'raster', source: 'google-hybrid', minzoom: 0, maxzoom: 19 },
+      ],
+    },
+  },
+  street: {
+    name: '🗺️ شارع',
+    style: {
+      version: 8,
+      sources: {
+        'osm-street': {
+          type: 'raster',
+          tiles: [
+            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          ],
+          tileSize: 256,
+          attribution: '&copy; OpenStreetMap',
+        },
+      },
+      layers: [
+        { id: 'osm-street-layer', type: 'raster', source: 'osm-street', minzoom: 0, maxzoom: 19 },
+      ],
+    },
+  },
+  terrain: {
+    name: '⛰️ تضاريس',
+    style: {
+      version: 8,
+      sources: {
+        'osm-terrain': {
+          type: 'raster',
+          tiles: ['https://a.tile.opentopomap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '&copy; OpenTopoMap',
+        },
+      },
+      layers: [
+        { id: 'osm-terrain-layer', type: 'raster', source: 'osm-terrain', minzoom: 0, maxzoom: 19 },
+      ],
+    },
+  },
+};
 
 export default function BranchesTab() {
   const [branches, setBranches] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editBranch, setEditBranch] = useState(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
-  const [mapType, setMapType] = useState('satellite'); // ✅ افتراضي قمر صناعي
+  const [mapType, setMapType] = useState('satellite');
   const [form, setForm] = useState({
     name: '', type: 'sub', parent: '', radius: 100,
     lat: '', lng: '', address: '', phone: ''
   });
   const [msg, setMsg] = useState('');
+  const mapRef = useRef(null);
   const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
   const loadBranches = () => {
@@ -82,6 +100,21 @@ export default function BranchesTab() {
   };
 
   useEffect(() => { loadBranches(); }, []);
+
+  // ✅ تحريك الخريطة لما الإحداثيات تتغير
+  useEffect(() => {
+    if (mapRef.current && form.lat && form.lng && showMapPicker) {
+      const lat = parseFloat(form.lat);
+      const lng = parseFloat(form.lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        mapRef.current.flyTo({
+          center: [lng, lat],
+          zoom: 15,
+          duration: 1000,
+        });
+      }
+    }
+  }, [form.lat, form.lng, showMapPicker]);
 
   const resetForm = () => {
     setForm({
@@ -134,7 +167,7 @@ export default function BranchesTab() {
       phone: branch.phone || ''
     });
     setShowForm(true);
-    setShowMapPicker(true); // ✅ نفتح الخريطة على طول
+    setShowMapPicker(true);
     window.scrollTo(0, 0);
   };
 
@@ -269,24 +302,19 @@ export default function BranchesTab() {
                   flexWrap: 'wrap',
                   marginBottom: 12
                 }}>
-                  {[
-                    { id: 'satellite', label: '🛰️ قمر صناعي' },
-                    { id: 'street', label: '🗺️ شارع' },
-                    { id: 'terrain', label: '⛰️ تضاريس' },
-                    { id: 'hybrid', label: '🌍 هجين' },
-                  ].map(t => (
+                  {Object.entries(MAP_STYLES).map(([key, layer]) => (
                     <button
-                      key={t.id}
+                      key={key}
                       type="button"
-                      onClick={() => setMapType(t.id)}
+                      onClick={() => setMapType(key)}
                       style={{
                         padding: '8px 14px',
                         borderRadius: 10,
                         border: 'none',
-                        background: mapType === t.id
+                        background: mapType === key
                           ? 'linear-gradient(145deg, #0a1f44, #142b5c)'
                           : '#fff',
-                        color: mapType === t.id ? '#fff' : 'var(--navy)',
+                        color: mapType === key ? '#fff' : 'var(--navy)',
                         fontSize: 12,
                         fontWeight: 600,
                         cursor: 'pointer',
@@ -294,63 +322,71 @@ export default function BranchesTab() {
                         fontFamily: 'inherit'
                       }}
                     >
-                      {t.label}
+                      {layer.name}
                     </button>
                   ))}
                 </div>
 
                 {/* الخريطة الكبيرة */}
                 <div style={{
-                  height: 'clamp(300px, 50vh, 450px)', // ✅ كبيرة
+                  height: 'clamp(300px, 50vh, 450px)',
                   borderRadius: 16,
                   overflow: 'hidden',
                   border: '3px solid #0a1f44',
                   boxShadow: '0 8px 24px rgba(10,31,68,0.15)',
                   position: 'relative'
                 }}>
-                  <MapContainer
-                    center={[
-                      parseFloat(form.lat) || 28.1099,
-                      parseFloat(form.lng) || 30.7503
-                    ]}
-                    zoom={15}
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer
-                      url={
-                        mapType === 'satellite'
-                          ? 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'
-                          : mapType === 'hybrid'
-                          ? 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
-                          : mapType === 'terrain'
-                          ? 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
-                          : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-                      }
-                      attribution={
-                        mapType === 'satellite' || mapType === 'hybrid'
-                          ? '&copy; Google'
-                          : mapType === 'terrain'
-                          ? '&copy; OpenTopoMap'
-                          : '&copy; OpenStreetMap'
-                      }
-                      key={mapType}
-                    />
-                    <MapUpdater center={[
-                      parseFloat(form.lat) || 28.1099,
-                      parseFloat(form.lng) || 30.7503
-                    ]} />
-                    <LocationPicker
-                      position={{
-                        lat: parseFloat(form.lat) || 0,
-                        lng: parseFloat(form.lng) || 0
-                      }}
-                      onChange={(loc) => setForm({
+                  <Map
+                    ref={mapRef}
+                    initialViewState={{
+                      longitude: parseFloat(form.lng) || 30.7503,
+                      latitude: parseFloat(form.lat) || 28.1099,
+                      zoom: 15,
+                    }}
+                    mapStyle={MAP_STYLES[mapType].style}
+                    style={{ width: '100%', height: '100%' }}
+                    onClick={(e) => {
+                      setForm({
                         ...form,
-                        lat: String(loc.lat),
-                        lng: String(loc.lng)
-                      })}
-                    />
-                  </MapContainer>
+                        lat: e.lngLat.lat.toFixed(6),
+                        lng: e.lngLat.lng.toFixed(6),
+                      });
+                    }}
+                  >
+                    <NavigationControl position="top-left" />
+
+                    {form.lat && form.lng && !isNaN(parseFloat(form.lat)) && !isNaN(parseFloat(form.lng)) && (
+                      <Marker
+                        longitude={parseFloat(form.lng)}
+                        latitude={parseFloat(form.lat)}
+                        anchor="bottom"
+                        draggable={true}
+                        onDragEnd={(e) => {
+                          setForm({
+                            ...form,
+                            lat: e.lngLat.lat.toFixed(6),
+                            lng: e.lngLat.lng.toFixed(6),
+                          });
+                        }}
+                      >
+                        <div style={{
+                          width: 36,
+                          height: 36,
+                          background: 'linear-gradient(145deg, #e74c3c, #c0392b)',
+                          borderRadius: '50% 50% 50% 0',
+                          transform: 'rotate(-45deg)',
+                          boxShadow: '0 4px 12px rgba(231,76,60,0.6)',
+                          border: '3px solid #fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'grab',
+                        }}>
+                          <span style={{ transform: 'rotate(45deg)', fontSize: 16 }}>📍</span>
+                        </div>
+                      </Marker>
+                    )}
+                  </Map>
                 </div>
 
                 {/* صندوق الإحداثيات + زر مسح */}
