@@ -55,17 +55,17 @@ const userIcon = new L.DivIcon({
   iconAnchor: [15, 15],
 });
 
-// ==================== طبقات الخريطة ====================
+// ==================== طبقات الخريطة (Google Satellite) ====================
 const TILE_LAYERS = {
   satellite: {
     name: '🛰️ قمر صناعي',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri',
+    url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+    attribution: '&copy; Google',
   },
   hybrid: {
     name: '🌍 هجين',
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '&copy; Esri',
+    url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+    attribution: '&copy; Google',
   },
   street: {
     name: '🗺️ شارع',
