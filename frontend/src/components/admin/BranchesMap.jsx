@@ -84,7 +84,7 @@ const TILE_LAYERS = {
   },
 };
 
-// ==================== Helper: FitBounds باستخدام useMap ====================
+// ==================== Helper: FitBounds ====================
 function FitBoundsToBranches({ branches }) {
   const map = useMap();
   const hasFitted = useRef(false);
@@ -96,15 +96,11 @@ function FitBoundsToBranches({ branches }) {
     const timer = setTimeout(() => {
       map.invalidateSize();
 
-      // ✅ نحسب المتوسط (المركز)
       const avgLat = branches.reduce((sum, b) => sum + b.location.lat, 0) / branches.length;
       const avgLng = branches.reduce((sum, b) => sum + b.location.lng, 0) / branches.length;
 
-      // ✅ نحدد المركز والـ Zoom يدوياً
-      // (الـ Zoom 10 بيغطي المنيا وضواحيها)
       map.setView([avgLat, avgLng], 10, { animate: true });
 
-      // ✅ بعدين نعمل fitBounds بـ maxZoom محدود
       const bounds = L.latLngBounds(
         branches.map(b => [b.location.lat, b.location.lng])
       );
@@ -120,23 +116,6 @@ function FitBoundsToBranches({ branches }) {
       console.log('✅ Map fitted to', branches.length, 'branches');
       console.log('📍 Center:', avgLat.toFixed(4), avgLng.toFixed(4));
     }, 500);
-
-    return () => clearTimeout(timer);
-  }, [branches, map]);
-
-  return null;
-}
-        hasFitted.current = true;
-        console.log('✅ Map fitted to', branches.length, 'branches');
-      } else if (attempts < maxAttempts) {
-        setTimeout(tryFit, 200);
-      } else {
-        console.warn('⚠️ Map container not ready after', maxAttempts, 'attempts');
-      }
-    };
-
-    // نبدأ المحاولة بعد 300ms
-    const timer = setTimeout(tryFit, 300);
 
     return () => clearTimeout(timer);
   }, [branches, map]);
@@ -413,7 +392,6 @@ export default function BranchesMap() {
             />
           )}
 
-          {/* ✅ المكون ده هو اللي بيعمل FitBounds */}
           <FitBoundsToBranches branches={validBranches} />
 
           <SearchControl />
