@@ -15,9 +15,11 @@
   font-family: 'Cairo', 'Segoe UI', sans-serif;
 }
 
-/* ✅ الخلفية الجديدة - صورة تقنية */
+/* ✅ الخلفية - دمج الصورة مع الطبقة الشفافة في body */
 body {
-  background-image: url('./background.jpg');
+  background-image: 
+    linear-gradient(rgba(247, 244, 239, 0.65), rgba(247, 244, 239, 0.65)),
+    url('./background.jpg');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -25,19 +27,6 @@ body {
   min-height: 100vh;
   direction: rtl;
   color: var(--navy);
-  position: relative;
-}
-
-/* ✅ طبقة شفافة فوق الصورة عشان النص يبان */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(247, 244, 239, 0.65);
-  z-index: -1;
 }
 
 .glass {
