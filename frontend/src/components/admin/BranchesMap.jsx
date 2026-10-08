@@ -93,29 +93,39 @@ function FitBoundsToBranches({ branches }) {
     if (hasFitted.current) return;
     if (!branches || branches.length === 0) return;
 
-    // ✅ نحاول كل 200ms لحد ما الخريطة تبقى جاهزة
-    let attempts = 0;
-    const maxAttempts = 15; // 3 ثواني بالكتير
+    const timer = setTimeout(() => {
+      map.invalidateSize();
 
-    const tryFit = () => {
-      attempts++;
+      // ✅ نحسب المتوسط (المركز)
+      const avgLat = branches.reduce((sum, b) => sum + b.location.lat, 0) / branches.length;
+      const avgLng = branches.reduce((sum, b) => sum + b.location.lng, 0) / branches.length;
 
-      const container = map.getContainer();
-      const isReady = container && container.offsetWidth > 0 && container.offsetHeight > 0;
+      // ✅ نحدد المركز والـ Zoom يدوياً
+      // (الـ Zoom 10 بيغطي المنيا وضواحيها)
+      map.setView([avgLat, avgLng], 10, { animate: true });
 
-      if (isReady) {
-        map.invalidateSize();
+      // ✅ بعدين نعمل fitBounds بـ maxZoom محدود
+      const bounds = L.latLngBounds(
+        branches.map(b => [b.location.lat, b.location.lng])
+      );
 
-        const bounds = L.latLngBounds(
-          branches.map(b => [b.location.lat, b.location.lng])
-        );
+      map.fitBounds(bounds, {
+        padding: [100, 100],
+        maxZoom: 11,
+        animate: true,
+        duration: 1,
+      });
 
-        map.fitBounds(bounds, {
-          padding: [80, 80],
-          maxZoom: 13,
-          animate: true,
-        });
+      hasFitted.current = true;
+      console.log('✅ Map fitted to', branches.length, 'branches');
+      console.log('📍 Center:', avgLat.toFixed(4), avgLng.toFixed(4));
+    }, 500);
 
+    return () => clearTimeout(timer);
+  }, [branches, map]);
+
+  return null;
+}
         hasFitted.current = true;
         console.log('✅ Map fitted to', branches.length, 'branches');
       } else if (attempts < maxAttempts) {
