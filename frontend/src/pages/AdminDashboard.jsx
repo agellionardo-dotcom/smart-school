@@ -9,22 +9,24 @@ import OrganizationTab from '../components/admin/OrganizationTab';
 import EmergencyTab from '../components/admin/EmergencyTab';
 import PayrollTab from '../components/admin/PayrollTab';
 import AttendanceReportTab from '../components/admin/AttendanceReportTab';
+import AnnouncementsTab from '../components/admin/AnnouncementsTab';
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState('overview');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const tabs = [
-    { id: 'overview',     label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'emergency',    label: '🚨 الطوارئ',        roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'payroll',      label: '💰 المرتبات',       roles: ['superadmin', 'hr'] },
-    { id: 'reports',      label: '📊 التقارير',       roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'organization', label: '📄 الهيكل التنظيمي',  roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'users',        label: '👥 المستخدمون',     roles: ['superadmin', 'hr'] },
-    { id: 'branches',     label: '🏢 الفروع',         roles: ['superadmin'] },
-    { id: 'map',          label: '🗺️ الخريطة',        roles: ['superadmin', 'manager', 'hr', 'viewer'] },
-    { id: 'qr',           label: '📱 QR Code',        roles: ['superadmin', 'manager'] },
-    { id: 'settings',     label: '⚙️ الإعدادات',      roles: ['superadmin'] },
+    { id: 'overview',      label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'emergency',     label: '🚨 الطوارئ',        roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'announcements', label: '📢 الإعلانات',      roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'payroll',       label: '💰 المرتبات',       roles: ['superadmin', 'hr'] },
+    { id: 'reports',       label: '📊 التقارير',       roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'organization',  label: '📄 الهيكل التنظيمي',  roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'users',         label: '👥 المستخدمون',     roles: ['superadmin', 'hr'] },
+    { id: 'branches',      label: '🏢 الفروع',         roles: ['superadmin'] },
+    { id: 'map',           label: '🗺️ الخريطة',        roles: ['superadmin', 'manager', 'hr', 'viewer'] },
+    { id: 'qr',            label: '📱 QR Code',        roles: ['superadmin', 'manager'] },
+    { id: 'settings',      label: '⚙️ الإعدادات',      roles: ['superadmin'] },
   ];
 
   const allowed = tabs.filter(t => t.roles.includes(user.role));
@@ -74,6 +76,7 @@ export default function AdminDashboard() {
       <div>
         {tab === 'overview' && <OverviewTab />}
         {tab === 'emergency' && <EmergencyTab />}
+        {tab === 'announcements' && <AnnouncementsTab />}
         {tab === 'payroll' && <PayrollTab />}
         {tab === 'reports' && <AttendanceReportTab />}
         {tab === 'users' && <UsersTab />}

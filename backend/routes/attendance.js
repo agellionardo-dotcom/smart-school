@@ -52,5 +52,72 @@ router.get('/my', auth, async (req, res) => {
   const totalLate = list.reduce((s, a) => s + (a.lateMinutes || 0), 0);
   res.json({ list, totalDays, totalLate });
 });
+// ==================== الحضور المباشر ====================
+router.get('/live', auth, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const Branch = require('../models/Branch');
 
+    // ✅ الفلترة حسب الدور
+    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+
+    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+      // كل الفروع
+    } else if (req.user.role === 'hr') {
+      const hq = await Branch.findOne({ type: 'main' });
+      if (hq && String(req.user.branch) === String(hq._id)) {
+        // كل الفروع
+      } else {
+        userFilter.branch = req.user.branch;
+      }
+    } else if (req.user.role === 'manager') {
+      userFilter.branch = req.user.branch;
+    } else {
+      userFilter._id = req.user.id;
+    }
+
+    // ✅ جلب الموظفين
+    const users = await User.find(userFilter)
+      .populate('branch', 'name location type')
+      .select('name email position department branch phone');
+
+    // ✅ تاريخ النهاردة
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // ✅ جلب حضور النهاردة
+    const Attendance = require('../models/Attendance');
+    const todayAttendances = await Attendance.find({
+      date: { $gte: today, $lt: tomorrow },
+    });
+
+    // ✅ بناء التقرير
+    const report = users.map(user => {
+      const att = todayAttendances.find(a => String(a.user) === String(user._id));
+      
+      return {
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          position: user.position,
+          department: user.department,
+          phone: user.phone,
+        },
+        branch: user.branch,
+        status: att?.checkIn ? (att.status === 'late' ? 'late' : 'present') : 'absent',
+        checkIn: att?.checkIn || null,
+        checkOut: att?.checkOut || null,
+        lateMinutes: att?.lateMinutes || 0,
+        location: att?.location || null,
+      };
+    });
+
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
 module.exports = router;
