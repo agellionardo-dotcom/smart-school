@@ -84,7 +84,7 @@ const TILE_LAYERS = {
   },
 };
 
-// ==================== Helper: FitBounds ====================
+// ==================== Helper: FitBounds (يستبعد الفروع البعيدة) ====================
 function FitBoundsToBranches({ branches }) {
   const map = useMap();
   const hasFitted = useRef(false);
@@ -96,17 +96,38 @@ function FitBoundsToBranches({ branches }) {
     const timer = setTimeout(() => {
       map.invalidateSize();
 
-      // ✅ نركز على الفرع الرئيسي (المنيا)
+      // ✅ الفرع الرئيسي
       const mainBranch = branches.find(b => b.type === 'main') || branches[0];
+      const mainLat = mainBranch.location.lat;
+      const mainLng = mainBranch.location.lng;
 
-      map.setView([mainBranch.location.lat, mainBranch.location.lng], 12, {
+      // ✅ نستبعد الفروع البعيدة (أكتر من 100 كم عن الفرع الرئيسي)
+      const nearbyBranches = branches.filter(b => {
+        const dist = Math.sqrt(
+          Math.pow(b.location.lat - mainLat, 2) +
+          Math.pow(b.location.lng - mainLng, 2)
+        );
+        return dist < 1.0; // تقريباً 100 كم
+      });
+
+      // ✅ نعمل fitBounds على الفروع القريبة بس
+      const targetBranches = nearbyBranches.length > 0 ? nearbyBranches : [mainBranch];
+
+      const bounds = L.latLngBounds(
+        targetBranches.map(b => [b.location.lat, b.location.lng])
+      );
+
+      map.fitBounds(bounds, {
+        padding: [80, 80],
+        maxZoom: 13,
         animate: true,
       });
 
       hasFitted.current = true;
-      console.log('✅ Map centered on:', mainBranch.name);
-      console.log('📍 Center:', mainBranch.location.lat, mainBranch.location.lng);
-      console.log('🔍 Zoom: 12');
+      console.log('✅ Map fitted to', targetBranches.length, 'nearby branches');
+      console.log('📍 Main branch:', mainBranch.name);
+      console.log('🔍 Zoom:', map.getZoom());
+      console.log('📋 Nearby:', targetBranches.map(b => b.name).join(', '));
     }, 500);
 
     return () => clearTimeout(timer);
