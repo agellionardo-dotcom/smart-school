@@ -152,6 +152,67 @@ export default function PayrollTab() {
     }
   };
 
+  // ==================== تحميل قالب Excel للموظفين ====================
+  const downloadTemplate = async () => {
+    try {
+      setMsg('⏳ جاري تحميل القالب...');
+      const response = await axios.get(`${API_URL}/api/payroll/template`, {
+        headers,
+        responseType: 'blob',
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'users_template.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setMsg('✅ تم تحميل القالب');
+    } catch (err) {
+      setMsg('❌ فشل التحميل');
+    }
+  };
+
+  // ==================== استيراد موظفين من Excel ====================
+  const importUsers = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      setMsg('⏳ جاري الاستيراد...');
+
+      const { data } = await axios.post(
+        `${API_URL}/api/payroll/import`,
+        formData,
+        {
+          headers: {
+            ...headers,
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      setMsg(data.msg);
+
+      if (data.results?.errors?.length > 0) {
+        const errorsToShow = data.results.errors.slice(0, 10).join('\n');
+        alert('تفاصيل الأخطاء:\n' + errorsToShow + (data.results.errors.length > 10 ? `\n... و${data.results.errors.length - 10} أخطاء أخرى` : ''));
+      }
+
+      loadPayrolls();
+      loadStats();
+    } catch (err) {
+      setMsg('❌ ' + (err.response?.data?.msg || 'فشل الاستيراد'));
+    }
+
+    e.target.value = '';
+  };
+
   // ==================== تنسيق المبلغ ====================
   const formatMoney = (n) => {
     return (n || 0).toLocaleString('ar-EG') + ' ج.م';
@@ -191,6 +252,35 @@ export default function PayrollTab() {
           >
             📄 PDF
           </button>
+          <button
+            className="btn"
+            onClick={downloadTemplate}
+            style={{
+              padding: '10px 20px',
+              fontSize: 13,
+              background: 'linear-gradient(145deg, #6b8cae, #3a4a6b)',
+            }}
+          >
+            📋 تحميل قالب
+          </button>
+          <label
+            className="btn"
+            style={{
+              padding: '10px 20px',
+              fontSize: 13,
+              background: 'linear-gradient(145deg, #b8860b, #8b6508)',
+              cursor: 'pointer',
+              display: 'inline-block',
+            }}
+          >
+            📤 استيراد موظفين
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={importUsers}
+            />
+          </label>
         </div>
       </div>
 

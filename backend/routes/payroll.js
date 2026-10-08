@@ -558,4 +558,185 @@ router.get('/export/pdf', auth, checkPermission('users.view.branch'), async (req
     res.status(500).json({ msg: err.message });
   }
 });
+// ==================== استيراد موظفين من Excel ====================
+router.post('/import', auth, checkPermission('users.create'), async (req, res) => {
+  try {
+    const multer = require('multer');
+    const ExcelJS = require('exceljs');
+    const bcrypt = require('bcryptjs');
+
+    // ✅ إعدادات multer
+    const upload = multer({ storage: multer.memoryStorage() }).single('file');
+
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ msg: 'فشل رفع الملف: ' + err.message });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ msg: 'مفيش ملف' });
+      }
+
+      try {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(req.file.buffer);
+
+        const sheet = workbook.worksheets[0];
+        if (!sheet) {
+          return res.status(400).json({ msg: 'الملف مش فيه شيت' });
+        }
+
+        // ✅ قراءة الصفوف
+        const rows = [];
+        sheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return; // تخطي الرؤوس
+          rows.push({
+            name: row.getCell(1).value,
+            email: row.getCell(2).value,
+            password: row.getCell(3).value,
+            role: row.getCell(4).value,
+            branch: row.getCell(5).value,
+            phone: row.getCell(6).value,
+            position: row.getCell(7).value,
+            department: row.getCell(8).value,
+            salary: row.getCell(9).value,
+          });
+        });
+
+        const results = {
+          success: 0,
+          failed: 0,
+          errors: [],
+        };
+
+        const User = require('../models/User');
+        const Branch = require('../models/Branch');
+
+        for (const row of rows) {
+          try {
+            // ✅ validation
+            if (!row.name || !row.email || !row.password) {
+              results.failed++;
+              results.errors.push(`صف ${row.name || 'بدون اسم'}: الاسم والبريد والباسورد مطلوبين`);
+              continue;
+            }
+
+            // ✅ نتأكد إن الإيميل مش مستخدم
+            const exists = await User.findOne({ email: row.email });
+            if (exists) {
+              results.failed++;
+              results.errors.push(`${row.email}: البريد مستخدم بالفعل`);
+              continue;
+            }
+
+            // ✅ نحدد الفرع بالاسم
+            let branchId = null;
+            if (row.branch) {
+              const branch = await Branch.findOne({ name: row.branch });
+              if (branch) branchId = branch._id;
+            }
+
+            // لو مش لاقي الفرع، نستخدم فرع المستخدم الحالي
+            if (!branchId) branchId = req.user.branch;
+
+            // ✅ نشفر الباسورد
+            const hashed = await bcrypt.hash(String(row.password), 10);
+
+            // ✅ ننشئ المستخدم
+            await User.create({
+              name: row.name,
+              email: row.email,
+              password: hashed,
+              role: row.role || 'employee',
+              branch: branchId,
+              phone: row.phone || '',
+              position: row.position || '',
+              department: row.department || '',
+              salary: row.salary || 0,
+              active: true,
+              createdBy: req.user.id,
+            });
+
+            results.success++;
+          } catch (rowErr) {
+            results.failed++;
+            results.errors.push(`${row.email || row.name}: ${rowErr.message}`);
+          }
+        }
+
+        res.json({
+          msg: `✅ تم استيراد ${results.success} موظف · فشل ${results.failed}`,
+          results,
+        });
+      } catch (parseErr) {
+        res.status(500).json({ msg: 'خطأ في قراءة الملف: ' + parseErr.message });
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ==================== تحميل قالب Excel للموظفين ====================
+router.get('/template', auth, async (req, res) => {
+  try {
+    const ExcelJS = require('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('قالب الموظفين');
+
+    sheet.views = [{ rightToLeft: true }];
+
+    // ✅ الرؤوس
+    const headers = [
+      'الاسم', 'البريد الإلكتروني', 'كلمة المرور', 'الدور',
+      'الفرع', 'رقم الهاتف', 'المسمى الوظيفي', 'القسم', 'الراتب'
+    ];
+
+    const headerRow = sheet.addRow(headers);
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A1F44' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    // ✅ صف تجريبي
+    sheet.addRow([
+      'أحمد محمد',
+      'ahmed@example.com',
+      '123456',
+      'employee',
+      'فرع ملوي',
+      '01012345678',
+      'محاسب',
+      'المالية',
+      5000
+    ]);
+
+    // ✅ صف توضيحي للدور
+    sheet.addRow([
+      'سارة علي',
+      'sara@example.com',
+      '123456',
+      'hr',
+      'الفرع الرئيسي - المنيا',
+      '01098765432',
+      'أخصائي موارد بشرية',
+      'الموارد البشرية',
+      7000
+    ]);
+
+    // ✅ عرض الأعمدة
+    sheet.columns.forEach((col, i) => {
+      col.width = [20, 25, 15, 12, 25, 15, 20, 20, 12][i] || 15;
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=users_template.xlsx');
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
 module.exports = router;
