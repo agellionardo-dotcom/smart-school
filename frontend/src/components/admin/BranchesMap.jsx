@@ -99,18 +99,24 @@ function FitBoundsToBranches({ branches }) {
       const avgLat = branches.reduce((sum, b) => sum + b.location.lat, 0) / branches.length;
       const avgLng = branches.reduce((sum, b) => sum + b.location.lng, 0) / branches.length;
 
-      map.setView([avgLat, avgLng], 10, { animate: true });
-
       const bounds = L.latLngBounds(
         branches.map(b => [b.location.lat, b.location.lng])
       );
 
       map.fitBounds(bounds, {
-        padding: [100, 100],
-        maxZoom: 11,
+        padding: [80, 80],
+        maxZoom: 12,
         animate: true,
-        duration: 1,
       });
+
+      // ✅ لو الـ Zoom أقل من 11، نرفعه لـ 12
+      setTimeout(() => {
+        const currentZoom = map.getZoom();
+        if (currentZoom < 11) {
+          map.setZoom(12);
+        }
+        console.log('✅ Map fitted. Zoom:', map.getZoom());
+      }, 500);
 
       hasFitted.current = true;
       console.log('✅ Map fitted to', branches.length, 'branches');
