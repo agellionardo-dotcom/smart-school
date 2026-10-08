@@ -1,3 +1,6 @@
+// ✅ ضبط التوقيت على القاهرة (لازم يكون أول سطر قبل أي require)
+process.env.TZ = 'Africa/Cairo';
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -31,7 +34,11 @@ app.use(express.json());
 
 // ✅ 4. MongoDB
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB Connected'))
+  .then(() => {
+    console.log('✅ MongoDB Connected');
+    console.log('🕐 Timezone:', process.env.TZ || 'default');
+    console.log('🕐 Current time:', new Date().toString());
+  })
   .catch(err => console.error('❌ MongoDB:', err.message));
 
 // ✅ 5. Routes
@@ -45,6 +52,10 @@ app.use('/api/qr', require('./routes/qr'));
 app.use('/api/emergency', require('./routes/emergency'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/announcements', require('./routes/announcements'));
+
 // ✅ 6. تشغيل السيرفر (في النهاية)
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => console.log(`✅ Server on http://0.0.0.0:${PORT}`));
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server on http://0.0.0.0:${PORT}`);
+  console.log(`🕐 Server time: ${new Date().toLocaleString('ar-EG')}`);
+});
