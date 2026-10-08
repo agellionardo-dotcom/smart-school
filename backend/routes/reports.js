@@ -900,4 +900,329 @@ router.get('/monthly-attendance/pdf', auth, async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+// ==================== تقرير الغياب والتأخير ====================
+router.get('/absence-late', auth, async (req, res) => {
+  try {
+    const { month, year, branch, from, to } = req.query;
+
+    // ✅ الفلترة حسب الدور
+    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+
+    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+      // كل الفروع
+    } else if (req.user.role === 'hr') {
+      const hq = await Branch.findOne({ type: 'main' });
+      if (hq && String(req.user.branch) === String(hq._id)) {
+        // كل الفروع
+      } else {
+        userFilter.branch = req.user.branch;
+      }
+    } else if (req.user.role === 'manager') {
+      userFilter.branch = req.user.branch;
+    } else {
+      userFilter._id = req.user.id;
+    }
+
+    if (branch) userFilter.branch = branch;
+
+    const users = await User.find(userFilter)
+      .populate('branch', 'name')
+      .select('name email position department branch');
+
+    // ✅ تواريخ الفترة
+    let startDate, endDate;
+    if (from && to) {
+      startDate = new Date(from);
+      endDate = new Date(to);
+      endDate.setHours(23, 59, 59);
+    } else if (month && year) {
+      startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+    } else {
+      return res.status(400).json({ msg: 'لازم تحدد الفترة (month/year أو from/to)' });
+    }
+
+    const attendances = await Attendance.find({
+      date: { $gte: startDate, $lte: endDate },
+    });
+
+    // ✅ حساب الغياب والتأخير لكل موظف
+    const report = users.map(user => {
+      const userAttendances = attendances.filter(a => String(a.user) === String(user._id));
+
+      const lateRecords = userAttendances.filter(a => a.status === 'late');
+      const absentRecords = userAttendances.filter(a => !a.checkIn);
+
+      const totalLateMinutes = lateRecords.reduce((sum, a) => sum + (a.lateMinutes || 0), 0);
+      const avgLateMinutes = lateRecords.length > 0
+        ? Math.round(totalLateMinutes / lateRecords.length)
+        : 0;
+
+      return {
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          position: user.position,
+          department: user.department,
+        },
+        branch: user.branch,
+        lateDays: lateRecords.length,
+        totalLateMinutes,
+        avgLateMinutes,
+        absentDays: absentRecords.length,
+        absentDates: absentRecords.map(a => a.date),
+        lateDates: lateRecords.map(a => ({
+          date: a.date,
+          minutes: a.lateMinutes || 0,
+        })),
+      };
+    });
+
+    // ✅ نرتب حسب أكتر غياب وتأخير
+    report.sort((a, b) => {
+      const scoreA = a.absentDays * 100 + a.totalLateMinutes;
+      const scoreB = b.absentDays * 100 + b.totalLateMinutes;
+      return scoreB - scoreA;
+    });
+
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ==================== تصدير تقرير الغياب والتأخير - Excel ====================
+router.get('/absence-late/excel', auth, async (req, res) => {
+  try {
+    const { month, year, branch, from, to } = req.query;
+
+    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+
+    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+      // كل الفروع
+    } else if (req.user.role === 'hr') {
+      const hq = await Branch.findOne({ type: 'main' });
+      if (hq && String(req.user.branch) === String(hq._id)) {
+        // كل الفروع
+      } else {
+        userFilter.branch = req.user.branch;
+      }
+    } else if (req.user.role === 'manager') {
+      userFilter.branch = req.user.branch;
+    } else {
+      userFilter._id = req.user.id;
+    }
+
+    if (branch) userFilter.branch = branch;
+
+    const users = await User.find(userFilter).populate('branch', 'name');
+
+    let startDate, endDate;
+    if (from && to) {
+      startDate = new Date(from);
+      endDate = new Date(to);
+      endDate.setHours(23, 59, 59);
+    } else if (month && year) {
+      startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+    } else {
+      return res.status(400).json({ msg: 'لازم تحدد الفترة' });
+    }
+
+    const attendances = await Attendance.find({
+      date: { $gte: startDate, $lte: endDate },
+    });
+
+    const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    const periodLabel = month && year ? `${MONTHS[month - 1]} ${year}` : `${from} → ${to}`;
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('تقرير الغياب والتأخير');
+
+    sheet.views = [{ rightToLeft: true }];
+
+    sheet.mergeCells('A1:H1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = `تقرير الغياب والتأخير - ${periodLabel}`;
+    titleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8E2B2B' } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(1).height = 30;
+
+    const headers = ['الاسم', 'البريد', 'الوظيفة', 'الفرع', 'أيام الغياب', 'أيام التأخير', 'إجمالي دقائق التأخير', 'متوسط التأخير اليومي'];
+    const headerRow = sheet.addRow(headers);
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A1F44' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' },
+      };
+    });
+
+    users.forEach(user => {
+      const userAttendances = attendances.filter(a => String(a.user) === String(user._id));
+      const lateRecords = userAttendances.filter(a => a.status === 'late');
+      const absentRecords = userAttendances.filter(a => !a.checkIn);
+      const totalLateMinutes = lateRecords.reduce((sum, a) => sum + (a.lateMinutes || 0), 0);
+      const avgLateMinutes = lateRecords.length > 0 ? Math.round(totalLateMinutes / lateRecords.length) : 0;
+
+      const row = sheet.addRow([
+        user.name,
+        user.email,
+        user.position || '-',
+        user.branch?.name || '-',
+        absentRecords.length,
+        lateRecords.length,
+        totalLateMinutes,
+        avgLateMinutes,
+      ]);
+
+      // ✅ تمييز الألوان
+      if (absentRecords.length > 0) {
+        row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8D7DA' } };
+        row.getCell(5).font = { color: { argb: 'FF8E2B2B' }, bold: true };
+      }
+      if (totalLateMinutes > 0) {
+        row.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3CD' } };
+        row.getCell(7).font = { color: { argb: 'FF8B6508' }, bold: true };
+      }
+    });
+
+    sheet.columns.forEach((col, i) => {
+      col.width = [22, 28, 18, 20, 14, 14, 20, 20][i] || 15;
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=absence_late_${Date.now()}.xlsx`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Excel error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ==================== تصدير تقرير الغياب والتأخير - PDF ====================
+router.get('/absence-late/pdf', auth, async (req, res) => {
+  try {
+    const { month, year, branch, from, to } = req.query;
+
+    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+
+    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+      // كل الفروع
+    } else if (req.user.role === 'hr') {
+      const hq = await Branch.findOne({ type: 'main' });
+      if (hq && String(req.user.branch) === String(hq._id)) {
+        // كل الفروع
+      } else {
+        userFilter.branch = req.user.branch;
+      }
+    } else if (req.user.role === 'manager') {
+      userFilter.branch = req.user.branch;
+    } else {
+      userFilter._id = req.user.id;
+    }
+
+    if (branch) userFilter.branch = branch;
+
+    const users = await User.find(userFilter).populate('branch', 'name');
+
+    let startDate, endDate;
+    if (from && to) {
+      startDate = new Date(from);
+      endDate = new Date(to);
+      endDate.setHours(23, 59, 59);
+    } else if (month && year) {
+      startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+    } else {
+      return res.status(400).json({ msg: 'لازم تحدد الفترة' });
+    }
+
+    const attendances = await Attendance.find({
+      date: { $gte: startDate, $lte: endDate },
+    });
+
+    const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    const periodLabel = month && year ? `${MONTHS[month - 1]} ${year}` : `${from} → ${to}`;
+
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30 });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=absence_late_${Date.now()}.pdf`);
+
+    doc.pipe(res);
+
+    doc.fontSize(18).fillColor('#8e2b2b').text(`تقرير الغياب والتأخير - ${periodLabel}`, { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(10).fillColor('#5a6478').text(`عدد الموظفين: ${users.length}`, { align: 'right' });
+    doc.moveDown();
+
+    const startY = doc.y;
+    const rowHeight = 22;
+
+    const columns = [
+      { label: 'الاسم', width: 130 },
+      { label: 'الوظيفة', width: 100 },
+      { label: 'الفرع', width: 110 },
+      { label: 'أيام الغياب', width: 70 },
+      { label: 'أيام التأخير', width: 70 },
+      { label: 'دقائق التأخير', width: 80 },
+      { label: 'المتوسط اليومي', width: 80 },
+    ];
+
+    let x = 30;
+    doc.rect(30, startY, 740, rowHeight).fill('#8e2b2b');
+
+    columns.forEach(col => {
+      doc.fillColor('#ffffff').fontSize(9).text(col.label, x + 5, startY + 6, { width: col.width - 10, align: 'center' });
+      x += col.width;
+    });
+
+    let y = startY + rowHeight;
+
+    users.forEach((user, i) => {
+      x = 30;
+      if (i % 2 === 0) doc.rect(30, y, 740, rowHeight).fill('#f5f7fa');
+
+      const userAttendances = attendances.filter(a => String(a.user) === String(user._id));
+      const lateRecords = userAttendances.filter(a => a.status === 'late');
+      const absentRecords = userAttendances.filter(a => !a.checkIn);
+      const totalLateMinutes = lateRecords.reduce((sum, a) => sum + (a.lateMinutes || 0), 0);
+      const avgLateMinutes = lateRecords.length > 0 ? Math.round(totalLateMinutes / lateRecords.length) : 0;
+
+      const row = [
+        user.name,
+        user.position || '-',
+        user.branch?.name || '-',
+        absentRecords.length,
+        lateRecords.length,
+        totalLateMinutes,
+        avgLateMinutes,
+      ];
+
+      columns.forEach((col, j) => {
+        let color = '#0a1f44';
+        if (j === 3 && absentRecords.length > 0) color = '#8e2b2b';
+        if (j === 5 && totalLateMinutes > 0) color = '#b8860b';
+
+        doc.fillColor(color).fontSize(8).text(String(row[j]), x + 5, y + 6, { width: col.width - 10, align: 'center' });
+        x += col.width;
+      });
+
+      y += rowHeight;
+      if (y > doc.page.height - 50) { doc.addPage(); y = 30; }
+    });
+
+    doc.end();
+  } catch (err) {
+    console.error('PDF error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
 module.exports = router;
