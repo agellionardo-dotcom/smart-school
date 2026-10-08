@@ -15,12 +15,45 @@ export default function EmergencyTab() {
   const [emergencies, setEmergencies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
-  const [filter, setFilter] = useState('active'); // active | resolved | all
+  const [filter, setFilter] = useState('active');
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const headers = { Authorization: `Bearer ${token}` };
+
+  // ✅ دالة تشغيل صوت التنبيه
+  const playAlertSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      const playTone = (frequency, startTime, duration) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = frequency;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+        gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
+        
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
+      };
+      
+      const now = audioContext.currentTime;
+      
+      playTone(800, now, 0.3);
+      playTone(600, now + 0.3, 0.3);
+      playTone(800, now + 0.6, 0.3);
+    } catch (err) {
+      console.error('Audio error:', err);
+    }
+  };
 
   // ✅ جلب حالات الطوارئ
   const loadEmergencies = async () => {
@@ -55,6 +88,15 @@ export default function EmergencyTab() {
 
     socket.on('emergency:new', (data) => {
       setMsg(`🚨 حالة طوارئ جديدة: ${data.emergency?.user?.name || 'موظف'}`);
+      
+      // ✅ تشغيل الصوت
+      playAlertSound();
+      
+      // ✅ اهتزاز (لو موبايل)
+      if (navigator.vibrate) {
+        navigator.vibrate([500, 200, 500, 200, 500]);
+      }
+      
       loadEmergencies();
     });
 
@@ -89,16 +131,25 @@ export default function EmergencyTab() {
         <h3 style={{ color: 'var(--navy)', margin: 0 }}>
           🚨 حالات الطوارئ ({emergencies.length})
         </h3>
-        <button
-          className="btn gray"
-          style={{ padding: '6px 12px', fontSize: 12 }}
-          onClick={loadEmergencies}
-        >
-          🔄 تحديث
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn gray"
+            style={{ padding: '6px 12px', fontSize: 12 }}
+            onClick={playAlertSound}
+            title="اختبار الصوت"
+          >
+            🔊 اختبار الصوت
+          </button>
+          <button
+            className="btn gray"
+            style={{ padding: '6px 12px', fontSize: 12 }}
+            onClick={loadEmergencies}
+          >
+            🔄 تحديث
+          </button>
+        </div>
       </div>
 
-      {/* فلاتر */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {[
           { key: 'active', label: '🚨 النشطة', color: '#d9534f' },
@@ -137,7 +188,6 @@ export default function EmergencyTab() {
         }}>{msg}</p>
       )}
 
-      {/* قائمة الحالات */}
       <div className="glass" style={{ padding: 20 }}>
         {loading ? (
           <p style={{ textAlign: 'center', color: 'var(--gray)' }}>⏳ جاري التحميل...</p>
