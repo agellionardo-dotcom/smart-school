@@ -7,6 +7,7 @@ import BranchesMap from '../components/admin/BranchesMap';
 import SettingsTab from '../components/admin/SettingsTab';
 import OrganizationTab from '../components/admin/OrganizationTab';
 import EmergencyTab from '../components/admin/EmergencyTab';
+import PayrollTab from '../components/admin/PayrollTab';
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState('overview');
@@ -15,6 +16,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'overview',     label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr'] },
     { id: 'emergency',    label: '🚨 الطوارئ',        roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'payroll',      label: '💰 المرتبات',       roles: ['superadmin', 'hr'] },
     { id: 'organization', label: '📄 الهيكل التنظيمي',  roles: ['superadmin', 'manager', 'hr'] },
     { id: 'users',        label: '👥 المستخدمون',     roles: ['superadmin', 'hr'] },
     { id: 'branches',     label: '🏢 الفروع',         roles: ['superadmin'] },
@@ -40,7 +42,6 @@ export default function AdminDashboard() {
         overflowX: 'auto',
         paddingBottom: 8,
         marginBottom: 20,
-        WebkitOverflowScrolling: 'touch'
       }}>
         {allowed.map(t => (
           <button
@@ -71,6 +72,7 @@ export default function AdminDashboard() {
       <div>
         {tab === 'overview' && <OverviewTab />}
         {tab === 'emergency' && <EmergencyTab />}
+        {tab === 'payroll' && <PayrollTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'branches' && <BranchesTab />}
         {tab === 'map' && <BranchesMap />}
