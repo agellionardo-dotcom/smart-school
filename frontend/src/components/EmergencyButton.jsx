@@ -177,30 +177,54 @@ export default function EmergencyButton() {
         }}>{msg}</p>
       )}
 
-      {/* زر الطوارئ */}
+      {/* زر الطوارئ - صغير وثابت على اليمين */}
       {!activeEmergency && (
         <button
           onClick={() => setShowModal(true)}
+          title="زر الطوارئ"
           style={{
-            width: '100%',
-            padding: '20px',
+            position: 'fixed',
+            top: '50%',
+            right: 0,
+            transform: 'translateY(-50%)',
+            zIndex: 9998,
+            padding: '20px 10px',
             background: 'linear-gradient(145deg, #d9534f, #a94442)',
             color: '#fff',
             border: 'none',
-            borderRadius: 16,
-            fontSize: 18,
+            borderTopLeftRadius: 12,
+            borderBottomLeftRadius: 12,
+            borderTopRightRadius: 0,
+            borderBottomRightRadius: 0,
+            fontSize: 13,
             fontWeight: 'bold',
             cursor: 'pointer',
-            boxShadow: '0 8px 24px rgba(217,83,79,0.4)',
-            marginBottom: 20,
+            boxShadow: '-4px 0 16px rgba(217,83,79,0.5)',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 10,
+            gap: 6,
             fontFamily: 'inherit',
+            transition: 'all 0.3s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.paddingRight = '16px';
+            e.currentTarget.style.boxShadow = '-6px 0 24px rgba(217,83,79,0.7)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.paddingRight = '10px';
+            e.currentTarget.style.boxShadow = '-4px 0 16px rgba(217,83,79,0.5)';
           }}
         >
-          🚨 زر الطوارئ
+          <span style={{ fontSize: 22 }}>🚨</span>
+          <span style={{
+            writingMode: 'vertical-rl',
+            textOrientation: 'mixed',
+            letterSpacing: 2,
+          }}>
+            طوارئ
+          </span>
         </button>
       )}
 
