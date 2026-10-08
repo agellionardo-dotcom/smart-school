@@ -183,8 +183,8 @@ export default function EmergencyButton() {
           title="زر الطوارئ"
           style={{
             position: 'fixed',
-            top: 110,
-            right: 20,
+            top: 130,
+            left: 20,
             zIndex: 9998,
             padding: '10px 20px',
             background: 'linear-gradient(145deg, #d9534f, #a94442)',
