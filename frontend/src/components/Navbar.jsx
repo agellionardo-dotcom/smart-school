@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 export default function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const nav = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -26,6 +27,24 @@ export default function Navbar() {
     employee: 'موظف',
     viewer: 'مشاهد'
   };
+
+  // ✅ تبويبات لوحة الإدارة
+  const adminTabs = [
+    { id: 'overview',      label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'analytics',     label: '📈 التحليلات',      roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'emergency',     label: '🚨 الطوارئ',        roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'announcements', label: '📢 الإعلانات',      roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'payroll',       label: '💰 المرتبات',       roles: ['superadmin', 'hr'] },
+    { id: 'reports',       label: '📊 التقارير',       roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'organization',  label: '📄 الهيكل التنظيمي',  roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'users',         label: '👥 المستخدمون',     roles: ['superadmin', 'hr'] },
+    { id: 'branches',      label: '🏢 الفروع',         roles: ['superadmin'] },
+    { id: 'map',           label: '🗺️ الخريطة',        roles: ['superadmin', 'manager', 'hr', 'viewer'] },
+    { id: 'qr',            label: '📱 QR Code',        roles: ['superadmin', 'manager'] },
+    { id: 'settings',      label: '⚙️ الإعدادات',      roles: ['superadmin'] },
+  ];
+
+  const allowedAdminTabs = adminTabs.filter(t => t.roles.includes(user.role));
 
   return (
     <>
@@ -104,14 +123,71 @@ export default function Navbar() {
               {canAccessAdmin && (
                 <>
                   <div className="drawer-divider"></div>
-                  <Link
-                    to="/admin"
-                    className={`drawer-link admin-link ${isActive('/admin') ? 'active' : ''}`}
-                    onClick={closeDrawer}
-                  >
-                    <span className="icon">👑</span>
-                    <span>لوحة الإدارة</span>
-                  </Link>
+
+                  {/* ✅ لوحة الإدارة - قائمة فرعية */}
+                  <div>
+                    <button
+                      onClick={() => setAdminOpen(!adminOpen)}
+                      className={`drawer-link admin-link ${isActive('/admin') ? 'active' : ''}`}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        width: '100%',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <span className="icon">👑</span>
+                        <span>لوحة الإدارة</span>
+                      </div>
+                      <span style={{
+                        fontSize: 10,
+                        transition: 'transform 0.2s',
+                        transform: adminOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+                        display: 'inline-block',
+                      }}>
+                        ▶
+                      </span>
+                    </button>
+
+                    {adminOpen && (
+                      <div style={{
+                        background: 'rgba(0,0,0,0.15)',
+                        padding: '4px 0',
+                        borderTop: '1px solid rgba(255,255,255,0.1)',
+                      }}>
+                        {allowedAdminTabs.map(t => (
+                          <Link
+                            key={t.id}
+                            to={`/admin?tab=${t.id}`}
+                            onClick={closeDrawer}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '10px 24px 10px 50px',
+                              color: '#fff',
+                              textDecoration: 'none',
+                              fontSize: 13,
+                              opacity: 0.85,
+                              transition: 'all 0.2s',
+                              borderRight: '3px solid transparent',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                              e.currentTarget.style.opacity = '1';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'transparent';
+                              e.currentTarget.style.opacity = '0.85';
+                            }}
+                          >
+                            {t.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 

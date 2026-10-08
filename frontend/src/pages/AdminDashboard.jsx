@@ -1,5 +1,6 @@
 import QrTab from '../components/admin/QrTab';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import UsersTab from '../components/admin/UsersTab';
 import BranchesTab from '../components/admin/BranchesTab';
 import OverviewTab from '../components/admin/OverviewTab';
@@ -13,8 +14,23 @@ import AnnouncementsTab from '../components/admin/AnnouncementsTab';
 import AnalyticsTab from '../components/admin/AnalyticsTab';
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState(searchParams.get('tab') || 'overview');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  // ✅ تحديث التبويب لما الـ URL يتغير
+  useEffect(() => {
+    const urlTab = searchParams.get('tab');
+    if (urlTab && urlTab !== tab) {
+      setTab(urlTab);
+    }
+  }, [searchParams]);
+
+  // ✅ تحديث الـ URL لما التبويب يتغير
+  const handleTabChange = (newTab) => {
+    setTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
 
   const tabs = [
     { id: 'overview',      label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr'] },
@@ -32,6 +48,13 @@ export default function AdminDashboard() {
   ];
 
   const allowed = tabs.filter(t => t.roles.includes(user.role));
+
+  // ✅ لو التبويب الحالي مش مسموح، نرجع لـ overview
+  useEffect(() => {
+    if (allowed.length > 0 && !allowed.find(t => t.id === tab)) {
+      handleTabChange('overview');
+    }
+  }, [user.role]);
 
   return (
     <div className="dashboard">
@@ -52,7 +75,7 @@ export default function AdminDashboard() {
         {allowed.map(t => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => handleTabChange(t.id)}
             style={{
               flex: '0 0 auto',
               padding: '10px 18px',
