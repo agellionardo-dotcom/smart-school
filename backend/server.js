@@ -43,6 +43,7 @@ app.use('/api/branches', require('./routes/branches'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/qr', require('./routes/qr'));
 app.use('/api/emergency', require('./routes/emergency'));
+app.use('/api/payroll', require('./routes/payroll'));
 // ✅ 6. تشغيل السيرفر (في النهاية)
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => console.log(`✅ Server on http://0.0.0.0:${PORT}`));
