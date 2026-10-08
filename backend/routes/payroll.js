@@ -330,5 +330,232 @@ router.post('/bulk', auth, checkPermission('users.edit'), async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+// ==================== تصدير Excel ====================
+router.get('/export/excel', auth, checkPermission('users.view.branch'), async (req, res) => {
+  try {
+    const ExcelJS = require('exceljs');
+    const { month, year } = req.query;
 
+    if (!month || !year) {
+      return res.status(400).json({ msg: 'الشهر والسنة مطلوبين' });
+    }
+
+    const filter = await getFilter(req.user, { month, year });
+    const payrolls = await Payroll.find(filter)
+      .populate('user', 'name email position department employeeId')
+      .populate('branch', 'name')
+      .sort({ 'user.name': 1 });
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('المرتبات');
+
+    // ✅ RTL
+    sheet.views = [{ rightToLeft: true }];
+
+    // ✅ العنوان
+    sheet.mergeCells('A1:L1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = `تقرير المرتبات - ${month}/${year}`;
+    titleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A1F44' } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(1).height = 30;
+
+    // ✅ الرؤوس
+    const headers = [
+      'الاسم', 'البريد', 'الوظيفة', 'القسم', 'الفرع',
+      'الأساسي', 'البدلات', 'المكافآت', 'الخصومات', 'الصافي', 'الحالة', 'ملاحظات'
+    ];
+
+    const headerRow = sheet.addRow(headers);
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF142B5C' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+    });
+    headerRow.height = 25;
+
+    // ✅ البيانات
+    payrolls.forEach(p => {
+      const statusLabels = {
+        draft: 'مسودة',
+        approved: 'معتمد',
+        paid: 'مدفوع',
+      };
+
+      sheet.addRow([
+        p.user?.name || '-',
+        p.user?.email || '-',
+        p.user?.position || '-',
+        p.user?.department || '-',
+        p.branch?.name || '-',
+        p.basicSalary || 0,
+        p.totalAllowances || 0,
+        p.totalBonuses || 0,
+        p.totalDeductions || 0,
+        p.netSalary || 0,
+        statusLabels[p.status] || p.status,
+        p.notes || '',
+      ]);
+    });
+
+    // ✅ الإجماليات
+    const totalRow = sheet.addRow([
+      'الإجمالي', '', '', '', '',
+      payrolls.reduce((s, p) => s + (p.basicSalary || 0), 0),
+      payrolls.reduce((s, p) => s + (p.totalAllowances || 0), 0),
+      payrolls.reduce((s, p) => s + (p.totalBonuses || 0), 0),
+      payrolls.reduce((s, p) => s + (p.totalDeductions || 0), 0),
+      payrolls.reduce((s, p) => s + (p.netSalary || 0), 0),
+      '', '',
+    ]);
+
+    totalRow.eachCell(cell => {
+      cell.font = { bold: true };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3CD' } };
+    });
+
+    // ✅ عرض الأعمدة
+    sheet.columns.forEach((col, i) => {
+      col.width = [20, 25, 18, 18, 18, 12, 12, 12, 12, 14, 12, 20][i] || 15;
+    });
+
+    // ✅ الإرسال
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=payroll_${year}_${month}.xlsx`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Excel export error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ==================== تصدير PDF ====================
+router.get('/export/pdf', auth, checkPermission('users.view.branch'), async (req, res) => {
+  try {
+    const PDFDocument = require('pdfkit');
+    const { month, year } = req.query;
+
+    if (!month || !year) {
+      return res.status(400).json({ msg: 'الشهر والسنة مطلوبين' });
+    }
+
+    const filter = await getFilter(req.user, { month, year });
+    const payrolls = await Payroll.find(filter)
+      .populate('user', 'name position')
+      .populate('branch', 'name')
+      .sort({ 'user.name': 1 });
+
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30 });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=payroll_${year}_${month}.pdf`);
+
+    doc.pipe(res);
+
+    // ✅ العنوان
+    doc.fontSize(18)
+       .fillColor('#0a1f44')
+       .text(`تقرير المرتبات - ${month}/${year}`, { align: 'center' });
+
+    doc.moveDown();
+
+    // ✅ معلومات
+    doc.fontSize(10)
+       .fillColor('#5a6478')
+       .text(`عدد الموظفين: ${payrolls.length}`, { align: 'right' })
+       .text(`إجمالي الصافي: ${payrolls.reduce((s, p) => s + (p.netSalary || 0), 0).toLocaleString('ar-EG')} ج.م`, { align: 'right' });
+
+    doc.moveDown();
+
+    // ✅ الجدول (بسيط بـ rows)
+    const startY = doc.y;
+    const rowHeight = 20;
+
+    // رؤوس الأعمدة
+    const columns = [
+      { label: 'الاسم', width: 120 },
+      { label: 'الوظيفة', width: 90 },
+      { label: 'الفرع', width: 90 },
+      { label: 'الأساسي', width: 70 },
+      { label: 'البدلات', width: 70 },
+      { label: 'المكافآت', width: 70 },
+      { label: 'الخصومات', width: 70 },
+      { label: 'الصافي', width: 80 },
+      { label: 'الحالة', width: 60 },
+    ];
+
+    let x = 30;
+    doc.fontSize(9).fillColor('#ffffff');
+
+    // خلفية الرؤوس
+    doc.rect(30, startY, 750, rowHeight).fill('#0a1f44');
+
+    columns.forEach(col => {
+      doc.fillColor('#ffffff')
+         .text(col.label, x + 5, startY + 5, { width: col.width - 10, align: 'center' });
+      x += col.width;
+    });
+
+    let y = startY + rowHeight;
+
+    // الصفوف
+    payrolls.forEach((p, i) => {
+      x = 30;
+
+      // خلفية متبادلة
+      if (i % 2 === 0) {
+        doc.rect(30, y, 750, rowHeight).fill('#f5f7fa');
+      }
+
+      const statusLabels = { draft: 'مسودة', approved: 'معتمد', paid: 'مدفوع' };
+
+      const row = [
+        p.user?.name || '-',
+        p.user?.position || '-',
+        p.branch?.name || '-',
+        (p.basicSalary || 0).toLocaleString('ar-EG'),
+        (p.totalAllowances || 0).toLocaleString('ar-EG'),
+        (p.totalBonuses || 0).toLocaleString('ar-EG'),
+        (p.totalDeductions || 0).toLocaleString('ar-EG'),
+        (p.netSalary || 0).toLocaleString('ar-EG'),
+        statusLabels[p.status] || p.status,
+      ];
+
+      columns.forEach((col, j) => {
+        doc.fillColor('#0a1f44')
+           .fontSize(8)
+           .text(row[j], x + 5, y + 6, { width: col.width - 10, align: 'center' });
+        x += col.width;
+      });
+
+      y += rowHeight;
+
+      // صفحة جديدة لو خلصت
+      if (y > doc.page.height - 50) {
+        doc.addPage();
+        y = 30;
+      }
+    });
+
+    // ✅ الإجماليات
+    doc.moveDown(2);
+    doc.fontSize(11)
+       .fillColor('#0a1f44')
+       .text(`الإجمالي الصافي: ${payrolls.reduce((s, p) => s + (p.netSalary || 0), 0).toLocaleString('ar-EG')} ج.م`, { align: 'right' });
+
+    doc.end();
+  } catch (err) {
+    console.error('PDF export error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
 module.exports = router;

@@ -21,9 +21,6 @@ export default function PayrollTab() {
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [filterStatus, setFilterStatus] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [users, setUsers] = useState([]);
-  const [editPayroll, setEditPayroll] = useState(null);
 
   const token = localStorage.getItem('token');
   const headers = { Authorization: `Bearer ${token}` };
@@ -59,24 +56,10 @@ export default function PayrollTab() {
     }
   };
 
-  // ==================== جلب الموظفين ====================
-  const loadUsers = async () => {
-    try {
-      const { data } = await axios.get(`${API_URL}/api/admin/users`, { headers });
-      setUsers(data.filter(u => u.role !== 'superadmin'));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   useEffect(() => {
     loadPayrolls();
     loadStats();
   }, [filterMonth, filterYear, filterStatus]);
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
 
   // ==================== اعتماد راتب ====================
   const approvePayroll = async (id) => {
@@ -135,6 +118,40 @@ export default function PayrollTab() {
     }
   };
 
+  // ==================== تصدير Excel أو PDF ====================
+  const exportPayroll = async (type) => {
+    try {
+      setMsg('⏳ جاري التحميل...');
+
+      const params = new URLSearchParams();
+      params.append('month', filterMonth);
+      params.append('year', filterYear);
+
+      const response = await axios.get(
+        `${API_URL}/api/payroll/export/${type}?${params}`,
+        {
+          headers,
+          responseType: 'blob',
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+
+      const ext = type === 'excel' ? 'xlsx' : 'pdf';
+      link.setAttribute('download', `payroll_${filterYear}_${filterMonth}.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setMsg('✅ تم تحميل الملف');
+    } catch (err) {
+      console.error(err);
+      setMsg('❌ فشل التحميل');
+    }
+  };
+
   // ==================== تنسيق المبلغ ====================
   const formatMoney = (n) => {
     return (n || 0).toLocaleString('ar-EG') + ' ج.م';
@@ -144,13 +161,37 @@ export default function PayrollTab() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
         <h3 style={{ color: 'var(--navy)', margin: 0 }}>💰 نظام المرتبات</h3>
-        <button
-          className="btn"
-          onClick={bulkGenerate}
-          style={{ padding: '10px 20px', fontSize: 13 }}
-        >
-          📋 إنشاء رواتب جماعية
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            className="btn"
+            onClick={bulkGenerate}
+            style={{ padding: '10px 20px', fontSize: 13 }}
+          >
+            📋 إنشاء رواتب جماعية
+          </button>
+          <button
+            className="btn"
+            onClick={() => exportPayroll('excel')}
+            style={{
+              padding: '10px 20px',
+              fontSize: 13,
+              background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)',
+            }}
+          >
+            📥 Excel
+          </button>
+          <button
+            className="btn"
+            onClick={() => exportPayroll('pdf')}
+            style={{
+              padding: '10px 20px',
+              fontSize: 13,
+              background: 'linear-gradient(145deg, #8e2b2b, #5c1c1c)',
+            }}
+          >
+            📄 PDF
+          </button>
+        </div>
       </div>
 
       {/* فلاتر */}
