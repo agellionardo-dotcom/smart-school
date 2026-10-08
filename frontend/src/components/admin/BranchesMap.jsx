@@ -96,31 +96,16 @@ function FitBoundsToBranches({ branches }) {
     const timer = setTimeout(() => {
       map.invalidateSize();
 
+      // ✅ نحسب المتوسط
       const avgLat = branches.reduce((sum, b) => sum + b.location.lat, 0) / branches.length;
       const avgLng = branches.reduce((sum, b) => sum + b.location.lng, 0) / branches.length;
 
-      const bounds = L.latLngBounds(
-        branches.map(b => [b.location.lat, b.location.lng])
-      );
-
-      map.fitBounds(bounds, {
-        padding: [80, 80],
-        maxZoom: 12,
-        animate: true,
-      });
-
-      // ✅ لو الـ Zoom أقل من 11، نرفعه لـ 12
-      setTimeout(() => {
-        const currentZoom = map.getZoom();
-        if (currentZoom < 11) {
-          map.setZoom(12);
-        }
-        console.log('✅ Map fitted. Zoom:', map.getZoom());
-      }, 500);
+      // ✅ نعمل setView على المتوسط بـ Zoom 9
+      map.setView([avgLat, avgLng], 9, { animate: true });
 
       hasFitted.current = true;
-      console.log('✅ Map fitted to', branches.length, 'branches');
-      console.log('📍 Center:', avgLat.toFixed(4), avgLng.toFixed(4));
+      console.log('✅ Map centered on avg:', avgLat.toFixed(4), avgLng.toFixed(4));
+      console.log('📍 Zoom: 9');
     }, 500);
 
     return () => clearTimeout(timer);
@@ -379,7 +364,7 @@ export default function BranchesMap() {
       }}>
         <MapContainer
           center={[28.1099, 30.7503]}
-          zoom={10}
+          zoom={9}
           style={{ height: '100%', width: '100%', minHeight: '400px' }}
           scrollWheelZoom={true}
           zoomControl={true}
