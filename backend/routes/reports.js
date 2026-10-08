@@ -597,5 +597,307 @@ router.get('/monthly/excel', auth, checkPermission('reports.export'), async (req
     res.status(500).json({ msg: err.message });
   }
 });
+// ==================== تقرير الحضور الشهري (مفصل لكل موظف) ====================
+router.get('/monthly-attendance', auth, async (req, res) => {
+  try {
+    const { month, year, branch } = req.query;
 
+    if (!month || !year) {
+      return res.status(400).json({ msg: 'الشهر والسنة مطلوبين' });
+    }
+
+    // ✅ الفلترة حسب الدور
+    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+
+    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+      // كل الفروع
+    } else if (req.user.role === 'hr') {
+      const hq = await Branch.findOne({ type: 'main' });
+      if (hq && String(req.user.branch) === String(hq._id)) {
+        // HR في المنيا → كل الفروع
+      } else {
+        userFilter.branch = req.user.branch;
+      }
+    } else if (req.user.role === 'manager') {
+      userFilter.branch = req.user.branch;
+    } else {
+      userFilter._id = req.user.id;
+    }
+
+    if (branch) userFilter.branch = branch;
+
+    // ✅ جلب الموظفين
+    const users = await User.find(userFilter)
+      .populate('branch', 'name')
+      .select('name email position department employeeId branch');
+
+    // ✅ تواريخ الشهر
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+
+    // ✅ جلب الحضور
+    const attendances = await Attendance.find({
+      date: { $gte: startDate, $lte: endDate },
+    });
+
+    // ✅ حساب الإحصائيات لكل موظف
+    const report = users.map(user => {
+      const userAttendances = attendances.filter(a => String(a.user) === String(user._id));
+
+      const presentDays = userAttendances.filter(a => a.checkIn).length;
+      const lateDays = userAttendances.filter(a => a.status === 'late').length;
+      const absentDays = userAttendances.filter(a => !a.checkIn).length;
+
+      const totalLateMinutes = userAttendances
+        .filter(a => a.status === 'late' && a.lateMinutes)
+        .reduce((sum, a) => sum + (a.lateMinutes || 0), 0);
+
+      const totalWorkHours = userAttendances
+        .filter(a => a.checkIn && a.checkOut)
+        .reduce((sum, a) => {
+          const diff = new Date(a.checkOut) - new Date(a.checkIn);
+          return sum + (diff / (1000 * 60 * 60));
+        }, 0);
+
+      return {
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          position: user.position,
+          department: user.department,
+          employeeId: user.employeeId,
+        },
+        branch: user.branch,
+        presentDays,
+        lateDays,
+        absentDays,
+        totalLateMinutes: Math.round(totalLateMinutes),
+        totalWorkHours: Math.round(totalWorkHours * 10) / 10,
+        attendanceRate: Math.round((presentDays / (presentDays + absentDays || 1)) * 100),
+      };
+    });
+
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ==================== تصدير تقرير الحضور الشهري - Excel ====================
+router.get('/monthly-attendance/excel', auth, async (req, res) => {
+  try {
+    const { month, year, branch } = req.query;
+
+    if (!month || !year) {
+      return res.status(400).json({ msg: 'الشهر والسنة مطلوبين' });
+    }
+
+    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+
+    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+      // كل الفروع
+    } else if (req.user.role === 'hr') {
+      const hq = await Branch.findOne({ type: 'main' });
+      if (hq && String(req.user.branch) === String(hq._id)) {
+        // كل الفروع
+      } else {
+        userFilter.branch = req.user.branch;
+      }
+    } else if (req.user.role === 'manager') {
+      userFilter.branch = req.user.branch;
+    } else {
+      userFilter._id = req.user.id;
+    }
+
+    if (branch) userFilter.branch = branch;
+
+    const users = await User.find(userFilter).populate('branch', 'name');
+
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+
+    const attendances = await Attendance.find({
+      date: { $gte: startDate, $lte: endDate },
+    });
+
+    const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('تقرير الحضور');
+
+    sheet.views = [{ rightToLeft: true }];
+
+    sheet.mergeCells('A1:K1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = `تقرير الحضور الشهري - ${MONTHS[month - 1]} ${year}`;
+    titleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A1F44' } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(1).height = 30;
+
+    const headers = ['الاسم', 'البريد', 'الوظيفة', 'القسم', 'الفرع', 'أيام الحضور', 'أيام التأخير', 'أيام الغياب', 'دقائق التأخير', 'ساعات العمل', 'نسبة الحضور %'];
+    const headerRow = sheet.addRow(headers);
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF142B5C' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' },
+      };
+    });
+
+    users.forEach(user => {
+      const userAttendances = attendances.filter(a => String(a.user) === String(user._id));
+
+      const presentDays = userAttendances.filter(a => a.checkIn).length;
+      const lateDays = userAttendances.filter(a => a.status === 'late').length;
+      const absentDays = userAttendances.filter(a => !a.checkIn).length;
+      const totalLateMinutes = userAttendances.reduce((sum, a) => sum + (a.lateMinutes || 0), 0);
+      const totalWorkHours = userAttendances
+        .filter(a => a.checkIn && a.checkOut)
+        .reduce((sum, a) => sum + ((new Date(a.checkOut) - new Date(a.checkIn)) / (1000 * 60 * 60)), 0);
+
+      sheet.addRow([
+        user.name,
+        user.email,
+        user.position || '-',
+        user.department || '-',
+        user.branch?.name || '-',
+        presentDays,
+        lateDays,
+        absentDays,
+        Math.round(totalLateMinutes),
+        Math.round(totalWorkHours * 10) / 10,
+        Math.round((presentDays / (presentDays + absentDays || 1)) * 100),
+      ]);
+    });
+
+    sheet.columns.forEach((col, i) => {
+      col.width = [20, 25, 18, 18, 18, 12, 12, 12, 14, 12, 14][i] || 15;
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=monthly_attendance_${year}_${month}.xlsx`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Excel error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ==================== تصدير تقرير الحضور الشهري - PDF ====================
+router.get('/monthly-attendance/pdf', auth, async (req, res) => {
+  try {
+    const { month, year, branch } = req.query;
+
+    if (!month || !year) {
+      return res.status(400).json({ msg: 'الشهر والسنة مطلوبين' });
+    }
+
+    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+
+    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+      // كل الفروع
+    } else if (req.user.role === 'hr') {
+      const hq = await Branch.findOne({ type: 'main' });
+      if (hq && String(req.user.branch) === String(hq._id)) {
+        // كل الفروع
+      } else {
+        userFilter.branch = req.user.branch;
+      }
+    } else if (req.user.role === 'manager') {
+      userFilter.branch = req.user.branch;
+    } else {
+      userFilter._id = req.user.id;
+    }
+
+    if (branch) userFilter.branch = branch;
+
+    const users = await User.find(userFilter).populate('branch', 'name');
+
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59);
+
+    const attendances = await Attendance.find({
+      date: { $gte: startDate, $lte: endDate },
+    });
+
+    const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 30 });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=monthly_attendance_${year}_${month}.pdf`);
+
+    doc.pipe(res);
+
+    doc.fontSize(18).fillColor('#0a1f44').text(`تقرير الحضور الشهري - ${MONTHS[month - 1]} ${year}`, { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(10).fillColor('#5a6478').text(`عدد الموظفين: ${users.length}`, { align: 'right' });
+    doc.moveDown();
+
+    const startY = doc.y;
+    const rowHeight = 22;
+
+    const columns = [
+      { label: 'الاسم', width: 110 },
+      { label: 'الوظيفة', width: 90 },
+      { label: 'الفرع', width: 90 },
+      { label: 'حضور', width: 50 },
+      { label: 'تأخير', width: 50 },
+      { label: 'غياب', width: 50 },
+      { label: 'دقائق تأخير', width: 70 },
+      { label: 'ساعات العمل', width: 70 },
+      { label: 'النسبة %', width: 60 },
+    ];
+
+    let x = 30;
+    doc.rect(30, startY, 750, rowHeight).fill('#0a1f44');
+
+    columns.forEach(col => {
+      doc.fillColor('#ffffff').fontSize(9).text(col.label, x + 5, startY + 6, { width: col.width - 10, align: 'center' });
+      x += col.width;
+    });
+
+    let y = startY + rowHeight;
+
+    users.forEach((user, i) => {
+      x = 30;
+      if (i % 2 === 0) doc.rect(30, y, 750, rowHeight).fill('#f5f7fa');
+
+      const userAttendances = attendances.filter(a => String(a.user) === String(user._id));
+      const presentDays = userAttendances.filter(a => a.checkIn).length;
+      const lateDays = userAttendances.filter(a => a.status === 'late').length;
+      const absentDays = userAttendances.filter(a => !a.checkIn).length;
+      const totalLateMinutes = userAttendances.reduce((sum, a) => sum + (a.lateMinutes || 0), 0);
+      const totalWorkHours = userAttendances
+        .filter(a => a.checkIn && a.checkOut)
+        .reduce((sum, a) => sum + ((new Date(a.checkOut) - new Date(a.checkIn)) / (1000 * 60 * 60)), 0);
+
+      const row = [
+        user.name, user.position || '-', user.branch?.name || '-',
+        presentDays, lateDays, absentDays,
+        Math.round(totalLateMinutes), Math.round(totalWorkHours * 10) / 10,
+        Math.round((presentDays / (presentDays + absentDays || 1)) * 100),
+      ];
+
+      columns.forEach((col, j) => {
+        doc.fillColor('#0a1f44').fontSize(8).text(String(row[j]), x + 5, y + 6, { width: col.width - 10, align: 'center' });
+        x += col.width;
+      });
+
+      y += rowHeight;
+      if (y > doc.page.height - 50) { doc.addPage(); y = 30; }
+    });
+
+    doc.end();
+  } catch (err) {
+    console.error('PDF error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
 module.exports = router;

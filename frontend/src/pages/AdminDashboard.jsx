@@ -8,6 +8,7 @@ import SettingsTab from '../components/admin/SettingsTab';
 import OrganizationTab from '../components/admin/OrganizationTab';
 import EmergencyTab from '../components/admin/EmergencyTab';
 import PayrollTab from '../components/admin/PayrollTab';
+import AttendanceReportTab from '../components/admin/AttendanceReportTab';
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState('overview');
@@ -17,6 +18,7 @@ export default function AdminDashboard() {
     { id: 'overview',     label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr'] },
     { id: 'emergency',    label: '🚨 الطوارئ',        roles: ['superadmin', 'manager', 'hr'] },
     { id: 'payroll',      label: '💰 المرتبات',       roles: ['superadmin', 'hr'] },
+    { id: 'reports',      label: '📊 التقارير',       roles: ['superadmin', 'manager', 'hr'] },
     { id: 'organization', label: '📄 الهيكل التنظيمي',  roles: ['superadmin', 'manager', 'hr'] },
     { id: 'users',        label: '👥 المستخدمون',     roles: ['superadmin', 'hr'] },
     { id: 'branches',     label: '🏢 الفروع',         roles: ['superadmin'] },
@@ -73,6 +75,7 @@ export default function AdminDashboard() {
         {tab === 'overview' && <OverviewTab />}
         {tab === 'emergency' && <EmergencyTab />}
         {tab === 'payroll' && <PayrollTab />}
+        {tab === 'reports' && <AttendanceReportTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'branches' && <BranchesTab />}
         {tab === 'map' && <BranchesMap />}
