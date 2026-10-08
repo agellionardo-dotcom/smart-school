@@ -20,21 +20,13 @@ const MAP_STYLES = {
       sources: {
         'google-satellite': {
           type: 'raster',
-          tiles: [
-            'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
-          ],
+          tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
           tileSize: 256,
           attribution: '&copy; Google',
         },
       },
       layers: [
-        {
-          id: 'google-satellite-layer',
-          type: 'raster',
-          source: 'google-satellite',
-          minzoom: 0,
-          maxzoom: 19,
-        },
+        { id: 'google-satellite-layer', type: 'raster', source: 'google-satellite', minzoom: 0, maxzoom: 19 },
       ],
     },
   },
@@ -45,21 +37,13 @@ const MAP_STYLES = {
       sources: {
         'google-hybrid': {
           type: 'raster',
-          tiles: [
-            'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-          ],
+          tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
           tileSize: 256,
           attribution: '&copy; Google',
         },
       },
       layers: [
-        {
-          id: 'google-hybrid-layer',
-          type: 'raster',
-          source: 'google-hybrid',
-          minzoom: 0,
-          maxzoom: 19,
-        },
+        { id: 'google-hybrid-layer', type: 'raster', source: 'google-hybrid', minzoom: 0, maxzoom: 19 },
       ],
     },
   },
@@ -80,13 +64,7 @@ const MAP_STYLES = {
         },
       },
       layers: [
-        {
-          id: 'osm-street-layer',
-          type: 'raster',
-          source: 'osm-street',
-          minzoom: 0,
-          maxzoom: 19,
-        },
+        { id: 'osm-street-layer', type: 'raster', source: 'osm-street', minzoom: 0, maxzoom: 19 },
       ],
     },
   },
@@ -106,39 +84,10 @@ const MAP_STYLES = {
         },
       },
       layers: [
-        {
-          id: 'carto-dark-layer',
-          type: 'raster',
-          source: 'carto-dark',
-          minzoom: 0,
-          maxzoom: 19,
-        },
+        { id: 'carto-dark-layer', type: 'raster', source: 'carto-dark', minzoom: 0, maxzoom: 19 },
       ],
     },
   },
-};
-
-// ==================== أيقونة العلامة ====================
-const createMarkerElement = (color, emoji, size = 40) => {
-  const el = document.createElement('div');
-  el.style.cssText = `
-    width: ${size}px;
-    height: ${size}px;
-    background: ${color};
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    border: 3px solid #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  `;
-  const span = document.createElement('span');
-  span.style.cssText = `transform: rotate(45deg); font-size: ${size * 0.4}px;`;
-  span.textContent = emoji;
-  el.appendChild(span);
-  return el;
 };
 
 // ==================== المكوّن الرئيسي ====================
@@ -151,6 +100,10 @@ export default function BranchesMap() {
   const [viewState, setViewState] = useState(DEFAULT_VIEW);
   const mapRef = useRef(null);
   const hasFitted = useRef(false);
+
+  // ✅ حالة البحث
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
@@ -175,20 +128,15 @@ export default function BranchesMap() {
 
     if (valid.length === 0) return;
 
-    // ✅ المركز على الفرع الرئيسي
     const mainBranch = valid.find(b => b.type === 'main') || valid[0];
 
-    // ✅ نأجل التنفيذ شوية عشان الخريطة تتحمل
     const timer = setTimeout(() => {
       setViewState({
         longitude: mainBranch.location.lng,
         latitude: mainBranch.location.lat,
         zoom: 10,
       });
-
       hasFitted.current = true;
-      console.log('✅ Map centered on:', mainBranch.name);
-      console.log('📍 Center:', mainBranch.location.lat, mainBranch.location.lng);
     }, 500);
 
     return () => clearTimeout(timer);
@@ -204,11 +152,7 @@ export default function BranchesMap() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        setViewState({
-          longitude,
-          latitude,
-          zoom: 16,
-        });
+        setViewState({ longitude, latitude, zoom: 16 });
         setUserLocation({ lat: latitude, lng: longitude, accuracy });
       },
       (err) => {
@@ -240,6 +184,32 @@ export default function BranchesMap() {
     return lat && lng && lat >= 22 && lat <= 32 && lng >= 24 && lng <= 37;
   });
 
+  // ✅ فلترة الفروع حسب البحث
+  const filteredBranches = searchQuery.trim()
+    ? validBranches.filter(b => {
+        const q = searchQuery.trim().toLowerCase();
+        return (
+          b.name?.toLowerCase().includes(q) ||
+          b.address?.toLowerCase().includes(q) ||
+          b.phone?.includes(q)
+        );
+      })
+    : [];
+
+  // ✅ عند اختيار فرع من البحث
+  const selectBranch = (branch) => {
+    if (mapRef.current) {
+      mapRef.current.flyTo({
+        center: [branch.location.lng, branch.location.lat],
+        zoom: 16,
+        duration: 1500,
+      });
+    }
+    setPopupInfo(branch);
+    setSearchQuery(branch.name);
+    setShowDropdown(false);
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -251,13 +221,143 @@ export default function BranchesMap() {
         </span>
       </div>
 
+      {/* ✅ مربع البحث مع Autocomplete */}
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setShowDropdown(true);
+          }}
+          onFocus={() => searchQuery && setShowDropdown(true)}
+          onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
+          placeholder="🔍 ابحث عن فرع بالاسم أو العنوان أو الهاتف..."
+          style={{
+            width: '100%',
+            padding: '12px 44px 12px 16px',
+            borderRadius: 12,
+            border: '2px solid var(--border)',
+            background: '#fff',
+            fontSize: 14,
+            fontFamily: 'inherit',
+            outline: 'none',
+            color: 'var(--navy)',
+            fontWeight: 600,
+          }}
+        />
+        <span style={{
+          position: 'absolute',
+          left: 14,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          fontSize: 18,
+          pointerEvents: 'none',
+        }}>
+          🔍
+        </span>
+        {searchQuery && (
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setShowDropdown(false);
+            }}
+            style={{
+              position: 'absolute',
+              right: 12,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'transparent',
+              border: 'none',
+              fontSize: 18,
+              cursor: 'pointer',
+              color: '#8b95a7',
+            }}
+            title="مسح البحث"
+          >
+            ✖
+          </button>
+        )}
+
+        {/* ✅ القائمة المنسدلة */}
+        {showDropdown && searchQuery && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            left: 0,
+            background: '#fff',
+            borderRadius: 12,
+            boxShadow: '0 8px 24px rgba(10,31,68,0.15)',
+            marginTop: 6,
+            maxHeight: 300,
+            overflowY: 'auto',
+            zIndex: 1000,
+            border: '1px solid var(--border)',
+          }}>
+            {filteredBranches.length === 0 ? (
+              <div style={{ padding: 16, textAlign: 'center', color: '#5a6478', fontSize: 13 }}>
+                ❌ لا توجد نتائج مطابقة
+              </div>
+            ) : (
+              filteredBranches.map(b => (
+                <div
+                  key={b._id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    selectBranch(b);
+                  }}
+                  style={{
+                    padding: '12px 16px',
+                    borderBottom: '1px solid #f0f3f7',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f5f7fa'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                >
+                  <div>
+                    <div style={{
+                      color: 'var(--navy)',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      marginBottom: 2,
+                    }}>
+                      {b.type === 'main' ? '🏛️' : '🏬'} {b.name}
+                    </div>
+                    {b.address && (
+                      <div style={{ fontSize: 11, color: '#5a6478' }}>
+                        📍 {b.address}
+                      </div>
+                    )}
+                    {b.phone && (
+                      <div style={{ fontSize: 11, color: '#5a6478' }}>
+                        📞 {b.phone}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{
+                    background: b.type === 'main' ? '#0a1f44' : '#2e7d5b',
+                    color: '#fff',
+                    padding: '3px 10px',
+                    borderRadius: 10,
+                    fontSize: 10,
+                    fontWeight: 'bold',
+                  }}>
+                    {b.type === 'main' ? 'رئيسي' : 'فرعي'}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
       {/* أزرار الطبقات */}
-      <div style={{
-        display: 'flex',
-        gap: 8,
-        marginBottom: 12,
-        flexWrap: 'wrap',
-      }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         {Object.entries(MAP_STYLES).map(([key, layer]) => (
           <button
             key={key}
@@ -330,10 +430,7 @@ export default function BranchesMap() {
                   cursor: 'pointer',
                 }}
               >
-                <span style={{
-                  transform: 'rotate(45deg)',
-                  fontSize: b.type === 'main' ? 20 : 16,
-                }}>
+                <span style={{ transform: 'rotate(45deg)', fontSize: b.type === 'main' ? 20 : 16 }}>
                   {b.type === 'main' ? '🏛️' : '🏬'}
                 </span>
               </div>
@@ -351,11 +448,7 @@ export default function BranchesMap() {
               maxWidth="300px"
             >
               <div style={{ direction: 'rtl', minWidth: 220, fontFamily: 'inherit' }}>
-                <h3 style={{
-                  color: '#0a1f44',
-                  margin: '0 0 8px',
-                  fontSize: 16,
-                }}>
+                <h3 style={{ color: '#0a1f44', margin: '0 0 8px', fontSize: 16 }}>
                   {popupInfo.type === 'main' ? '🏛️' : '🏬'} {popupInfo.name}
                 </h3>
                 <p style={{ margin: '4px 0', color: '#5a6478', fontSize: 13 }}>
@@ -383,15 +476,10 @@ export default function BranchesMap() {
 
           {/* موقع المستخدم */}
           {userLocation && (
-            <Marker
-              longitude={userLocation.lng}
-              latitude={userLocation.lat}
-              anchor="center"
-            >
+            <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="center">
               <div
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: 30, height: 30,
                   background: 'linear-gradient(145deg, #d9534f, #a94442)',
                   borderRadius: '50%',
                   border: '3px solid #fff',
@@ -414,11 +502,8 @@ export default function BranchesMap() {
           title="حدد موقعي"
           style={{
             position: 'absolute',
-            bottom: 20,
-            right: 20,
-            zIndex: 1000,
-            width: 44,
-            height: 44,
+            bottom: 20, right: 20, zIndex: 1000,
+            width: 44, height: 44,
             borderRadius: '50%',
             border: 'none',
             background: 'linear-gradient(145deg, #0a1f44, #142b5c)',
@@ -447,21 +532,15 @@ export default function BranchesMap() {
         fontSize: 13,
       }}>
         <div>
-          <span style={{ color: '#0a1f44', fontWeight: 'bold' }}>
-            🏛️ الفروع الرئيسية:
-          </span>{' '}
+          <span style={{ color: '#0a1f44', fontWeight: 'bold' }}>🏛️ الفروع الرئيسية:</span>{' '}
           {validBranches.filter(b => b.type === 'main').length}
         </div>
         <div>
-          <span style={{ color: '#2e7d5b', fontWeight: 'bold' }}>
-            🏬 الفروع الفرعية:
-          </span>{' '}
+          <span style={{ color: '#2e7d5b', fontWeight: 'bold' }}>🏬 الفروع الفرعية:</span>{' '}
           {validBranches.filter(b => b.type === 'sub').length}
         </div>
         <div>
-          <span style={{ color: 'var(--navy)', fontWeight: 'bold' }}>
-            📍 الإجمالي:
-          </span>{' '}
+          <span style={{ color: 'var(--navy)', fontWeight: 'bold' }}>📍 الإجمالي:</span>{' '}
           {validBranches.length}
         </div>
       </div>
