@@ -15,11 +15,29 @@
   font-family: 'Cairo', 'Segoe UI', sans-serif;
 }
 
+/* ✅ الخلفية الجديدة - صورة تقنية */
 body {
-  background: linear-gradient(135deg, #f7f4ef, #e8e4dd);
+  background-image: url('/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   min-height: 100vh;
   direction: rtl;
   color: var(--navy);
+  position: relative;
+}
+
+/* ✅ طبقة شفافة فوق الصورة عشان النص يبان */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(247, 244, 239, 0.85);
+  z-index: -1;
 }
 
 .glass {
@@ -54,6 +72,7 @@ body {
   font-size: 15px;
   outline: none;
   font-family: inherit;
+  color: var(--navy);
 }
 
 .dashboard {
@@ -71,7 +90,8 @@ body {
 .stat-card {
   padding: 28px;
   text-align: center;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
   border-radius: 20px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
@@ -100,6 +120,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
+  box-shadow: 0 4px 15px rgba(10, 31, 68, 0.2);
 }
 
 .navbar-brand {
