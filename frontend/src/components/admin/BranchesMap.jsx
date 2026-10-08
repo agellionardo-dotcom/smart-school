@@ -11,7 +11,7 @@ const DEFAULT_VIEW = {
   zoom: 10,
 };
 
-// ==================== خريطة التايلز (Google Satellite عبر MapLibre) ====================
+// ==================== خريطة التايلز (Google Satellite + Esri Fallback) ====================
 const MAP_STYLES = {
   satellite: {
     name: '🛰️ قمر صناعي',
@@ -26,7 +26,7 @@ const MAP_STYLES = {
         },
       },
       layers: [
-        { id: 'google-satellite-layer', type: 'raster', source: 'google-satellite', minzoom: 0, maxzoom: 19 },
+        { id: 'google-satellite-layer', type: 'raster', source: 'google-satellite', minzoom: 0, maxzoom: 17 },
       ],
     },
   },
@@ -43,7 +43,24 @@ const MAP_STYLES = {
         },
       },
       layers: [
-        { id: 'google-hybrid-layer', type: 'raster', source: 'google-hybrid', minzoom: 0, maxzoom: 19 },
+        { id: 'google-hybrid-layer', type: 'raster', source: 'google-hybrid', minzoom: 0, maxzoom: 17 },
+      ],
+    },
+  },
+  esri: {
+    name: '🌎 Esri',
+    style: {
+      version: 8,
+      sources: {
+        'esri-satellite': {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: '&copy; Esri',
+        },
+      },
+      layers: [
+        { id: 'esri-satellite-layer', type: 'raster', source: 'esri-satellite', minzoom: 0, maxzoom: 19 },
       ],
     },
   },
