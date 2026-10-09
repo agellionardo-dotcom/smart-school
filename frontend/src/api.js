@@ -1,10 +1,9 @@
 import axios from 'axios';
 
 // ============================================
-// ✅ Base URL
-// لاحظ: /api في الآخر عشان نستخدمه في كل الـ requests
+// ✅ Base URL — الرابط الصح (9bdf)
 // ============================================
-const API_URL = 'https://smart-school-production-fb82.up.railway.app/api';
+const API_URL = 'https://smart-school-production-9bdf.up.railway.app/api';
 
 // ============================================
 // ✅ Axios Instance
@@ -14,7 +13,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000, // 15 ثانية
+  timeout: 15000,
 });
 
 // ============================================

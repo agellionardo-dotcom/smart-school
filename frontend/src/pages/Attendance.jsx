@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState, useCallback, useRef } from 'react';
-import api from '../api'; // ✅ استخدام الـ instance مش axios
+import api from '../api';
 import {
   addToQueue,
   cacheData,
@@ -18,7 +18,6 @@ export default function Attendance() {
   const [queueCount, setQueueCount] = useState(0);
   const [online, setOnline] = useState(true);
 
-  // ✅ user ثابت
   const userRef = useRef(JSON.parse(localStorage.getItem('user') || '{}'));
   const user = userRef.current;
 
@@ -63,7 +62,6 @@ export default function Attendance() {
       setOnline(isConn);
 
       if (isConn) {
-        // ✅ api instance بيضيف /api + token تلقائياً
         const { data } = await api.get('/attendance/today');
         setTodayAttendance(data);
         await cacheData('today_attendance', data);

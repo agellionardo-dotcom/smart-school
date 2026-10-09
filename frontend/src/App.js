@@ -13,8 +13,7 @@ import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
 import { startNetworkMonitoring } from './services/networkStatus';
 import { getQueue, removeFromQueue } from './services/offlineStorage';
-import axios from 'axios';
-import { API_URL } from './api';
+import api from './api'; // ✅ api instance مش axios
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -26,34 +25,56 @@ export default function App() {
   // Network Monitoring + Auto Sync (Global)
   // ============================================================
   useEffect(() => {
-    const listener = startNetworkMonitoring(async (isConnected) => {
-      console.log('[Network] Connected:', isConnected);
-      if (isConnected) {
-        // مزامنة الطلبات المؤجلة
-        const queue = await getQueue();
-        if (queue.length > 0) {
-          console.log(`[Sync] Syncing ${queue.length} items...`);
-          const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
-          for (const item of queue) {
-            try {
-              const endpoint = item.type === 'checkin' ? 'checkin' : 'checkout';
-              await axios.post(
-                `${API_URL}/api/attendance/${endpoint}`,
-                { lat: item.lat, lng: item.lng },
-                { headers }
-              );
-              await removeFromQueue(item.id);
-              console.log(`[Sync] ✅ ${item.type}`);
-            } catch (e) {
-              console.warn(`[Sync] ❌ ${item.type}`, e.message);
+    let listenerHandle = null;
+    let isMounted = true;
+
+    const setup = async () => {
+      try {
+        // ✅ await عشان ناخد الـ listener الصح
+        const handle = await startNetworkMonitoring(async (isConnected) => {
+          if (!isMounted) return;
+
+          console.log('[Network] Connected:', isConnected);
+
+          if (isConnected) {
+            const queue = await getQueue();
+            if (queue.length > 0) {
+              console.log(`[Sync] Syncing ${queue.length} items...`);
+
+              for (const item of queue) {
+                try {
+                  const endpoint = item.type === 'checkin' ? 'checkin' : 'checkout';
+
+                  // ✅ api instance — بيضيف /api + التوكن تلقائياً
+                  await api.post(`/attendance/${endpoint}`, {
+                    lat: item.lat,
+                    lng: item.lng,
+                  });
+
+                  await removeFromQueue(item.id);
+                  console.log(`[Sync] ✅ ${item.type}`);
+                } catch (e) {
+                  console.warn(`[Sync] ❌ ${item.type}`, e.message);
+                }
+              }
             }
           }
-        }
+        });
+
+        listenerHandle = handle;
+      } catch (err) {
+        console.warn('Network monitoring setup failed:', err);
       }
-    });
+    };
+
+    setup();
 
     return () => {
-      if (listener && listener.remove) listener.remove();
+      isMounted = false;
+      // ✅ تحقق من نوع remove قبل استدعائها
+      if (listenerHandle && typeof listenerHandle.remove === 'function') {
+        listenerHandle.remove();
+      }
     };
   }, []);
 
