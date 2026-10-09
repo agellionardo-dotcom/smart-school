@@ -1,258 +1,131 @@
-import { toCairo, toCairoTime, toCairoDate } from '../utils/dateHelpers';
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { API_URL } from '../api';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import api from '../api';
+import { toCairoDate } from '../utils/dateHelpers';
 
 export default function EmployeeProfile() {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('personal');
-
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
+  const [msg, setMsg] = useState('');
+  const [tab, setTab] = useState('personal');
 
   useEffect(() => {
-    loadProfile();
+    api.get(`/admin/users/${id}/profile`)
+      .then(r => setProfile(r.data))
+      .catch(err => setMsg('❌ ' + (err.response?.data?.msg || 'فشل التحميل')))
+      .finally(() => setLoading(false));
   }, [id]);
 
-  const loadProfile = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${API_URL}/api/admin/users/${id}/profile`, { headers });
-      setData(res.data);
-    } catch (err) {
-      setError(err.response?.data?.msg || 'فشل تحميل الملف');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (loading) return <div className="dashboard"><p style={{ textAlign: 'center', padding: 40 }}>⏳ جاري التحميل...</p></div>;
+  if (!profile) return <div className="dashboard"><p style={{ textAlign: 'center', padding: 40, color: '#8e2b2b' }}>{msg || 'مفيش بيانات'}</p></div>;
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>جاري التحميل...</div>;
-  if (error) return <div style={{ padding: 40, textAlign: 'center', color: 'red' }}>{error}</div>;
-  if (!data) return null;
-
-  const { user, stats, recentAttendance, recentLeaves } = data;
+  const { user, attendance, leaves, payroll } = profile;
 
   return (
-    <div className="dashboard" style={{ padding: 20 }}>
-      {/* زر الرجوع */}
-      <button
-        className="btn gray"
-        style={{ marginBottom: 20, padding: '8px 16px' }}
-        onClick={() => navigate(-1)}
-      >
-        ← رجوع
-      </button>
+    <div className="dashboard">
+      <h1 style={{ color: 'var(--navy)', marginBottom: 8 }}>👤 {user.name}</h1>
+      <p style={{ color: 'var(--gray)', marginBottom: 20 }}>
+        {user.position || 'موظف'} · {user.branch?.name || '-'}
+      </p>
 
-      {/* بطاقة الموظف */}
-      <div className="glass" style={{ padding: 24, marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <div style={{
-            width: 100, height: 100, borderRadius: '50%',
-            background: 'var(--navy)', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 40, fontWeight: 'bold'
-          }}>
-            {user.name?.charAt(0) || '؟'}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, overflowX: 'auto', paddingBottom: 8 }}>
+        {[
+          { id: 'personal', label: '📋 البيانات الشخصية' },
+          { id: 'job', label: '💼 البيانات الوظيفية' },
+          { id: 'finance', label: '💰 المالية' },
+          { id: 'attendance', label: '📍 الحضور' },
+          { id: 'leaves', label: '🏖️ الإجازات' },
+        ].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            padding: '10px 18px', borderRadius: 10, border: 'none', flex: '0 0 auto',
+            background: tab === t.id ? 'linear-gradient(145deg, #0a1f44, #142b5c)' : '#fff',
+            color: tab === t.id ? '#fff' : 'var(--navy)',
+            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      <div className="glass" style={{ padding: 24 }}>
+        {tab === 'personal' && (
+          <div>
+            <h3 style={{ color: 'var(--navy)', marginBottom: 16 }}>📋 البيانات الشخصية</h3>
+            <p><b>الاسم:</b> {user.name}</p>
+            <p><b>البريد:</b> {user.email}</p>
+            <p><b>الهاتف:</b> {user.phone || '-'}</p>
+            <p><b>الفرع:</b> {user.branch?.name || '-'}</p>
           </div>
-          <div style={{ flex: 1 }}>
-            <h1 style={{ color: 'var(--navy)', marginBottom: 8 }}>{user.name}</h1>
-            <p style={{ color: 'var(--gray)', marginBottom: 4 }}>
-              <b>المسمى:</b> {user.position || 'غير محدد'}
-            </p>
-            <p style={{ color: 'var(--gray)', marginBottom: 4 }}>
-              <b>القسم:</b> {user.department || 'غير محدد'}
-            </p>
-            <p style={{ color: 'var(--gray)' }}>
-              <b>الفرع:</b> {user.branch?.name || 'غير محدد'}
-            </p>
+        )}
+
+        {tab === 'job' && (
+          <div>
+            <h3 style={{ color: 'var(--navy)', marginBottom: 16 }}>💼 البيانات الوظيفية</h3>
+            <p><b>الدور:</b> {user.role}</p>
+            <p><b>القسم:</b> {user.department || '-'}</p>
+            <p><b>المسمى:</b> {user.position || '-'}</p>
+            <p><b>المدير المباشر:</b> {user.manager?.name || '-'}</p>
           </div>
-        </div>
-      </div>
-
-      {/* الإحصائيات */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: 12,
-        marginBottom: 20
-      }}>
-        <StatCard title="أيام الحضور" value={stats.attendance.presentDays} color="#2e7d5b" />
-        <StatCard title="أيام التأخير" value={stats.attendance.lateDays} color="#b8860b" />
-        <StatCard title="أيام الغياب" value={stats.attendance.absentDays} color="#8e2b2b" />
-        <StatCard title="هذا الشهر" value={stats.attendance.thisMonth} color="#2e4373" />
-        <StatCard title="إجازات معلقة" value={stats.leaves.pending} color="#b8860b" />
-        <StatCard title="إجازات مقبولة" value={stats.leaves.approved} color="#2e7d5b" />
-      </div>
-
-      {/* التبويبات */}
-      <div className="glass" style={{ padding: 20 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-          <TabButton active={activeTab === 'personal'} onClick={() => setActiveTab('personal')}>
-            البيانات الشخصية
-          </TabButton>
-          <TabButton active={activeTab === 'job'} onClick={() => setActiveTab('job')}>
-            البيانات الوظيفية
-          </TabButton>
-          <TabButton active={activeTab === 'financial'} onClick={() => setActiveTab('financial')}>
-            البيانات المالية
-          </TabButton>
-          <TabButton active={activeTab === 'attendance'} onClick={() => setActiveTab('attendance')}>
-            سجل الحضور
-          </TabButton>
-          <TabButton active={activeTab === 'leaves'} onClick={() => setActiveTab('leaves')}>
-            الإجازات
-          </TabButton>
-        </div>
-
-        {activeTab === 'personal' && (
-          <InfoGrid items={[
-            { label: 'الاسم', value: user.name },
-            { label: 'البريد الإلكتروني', value: user.email },
-            { label: 'رقم الهاتف', value: user.phone },
-            { label: 'الرقم القومي', value: user.nationalId },
-            { label: 'تاريخ الميلاد', value: user.birthDate ? toCairoDate(user.birthDate) : null },
-            { label: 'العنوان', value: user.address },
-            { label: 'جهة اتصال للطوارئ', value: user.emergencyContact?.name ? `${user.emergencyContact.name} (${user.emergencyContact.phone})` : null },
-          ]} />
         )}
 
-        {activeTab === 'job' && (
-          <InfoGrid items={[
-            { label: 'رقم الموظف', value: user.employeeId },
-            { label: 'المسمى الوظيفي', value: user.position },
-            { label: 'القسم', value: user.department },
-            { label: 'الفرع', value: user.branch?.name },
-            { label: 'المدير المباشر', value: user.managerId?.name },
-            { label: 'الدور', value: user.role },
-            { label: 'تاريخ التعيين', value: user.hireDate ? toCairoDate(user.hireDate) : null },
-            { label: 'نوع العقد', value: user.contractType },
-            { label: 'تاريخ انتهاء العقد', value: user.contractEndDate ? toCairoDate(user.contractEndDate) : null },
-          ]} />
+        {tab === 'finance' && (
+          <div>
+            <h3 style={{ color: 'var(--navy)', marginBottom: 16 }}>💰 البيانات المالية</h3>
+            <p><b>الراتب الأساسي:</b> {user.basicSalary?.toLocaleString('ar-EG') || '-'} ج.م</p>
+            <p><b>البدلات:</b> {user.allowances?.toLocaleString('ar-EG') || '-'} ج.م</p>
+            {payroll && payroll.length > 0 && (
+              <p style={{ marginTop: 12, fontSize: 13, color: 'var(--gray)' }}>
+                آخر راتب: {payroll[0]?.month}/{payroll[0]?.year} — {payroll[0]?.netSalary?.toLocaleString('ar-EG')} ج.م
+              </p>
+            )}
+          </div>
         )}
 
-        {activeTab === 'financial' && (
-          <InfoGrid items={[
-            { label: 'الراتب الأساسي', value: user.salary ? `${user.salary} ج.م` : null },
-            { label: 'الحساب البنكي', value: user.bankAccount },
-            { label: 'الرقم التأميني', value: user.socialInsurance },
-          ]} />
+        {tab === 'attendance' && (
+          <div>
+            <h3 style={{ color: 'var(--navy)', marginBottom: 16 }}>📍 سجل الحضور</h3>
+            {attendance && attendance.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead><tr><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th></tr></thead>
+                  <tbody>
+                    {attendance.slice(0, 30).map(a => (
+                      <tr key={a._id}>
+                        <td>{toCairoDate(a.date)}</td>
+                        <td>{a.checkIn ? new Date(a.checkIn).toLocaleTimeString('ar-EG') : '-'}</td>
+                        <td>{a.checkOut ? new Date(a.checkOut).toLocaleTimeString('ar-EG') : '-'}</td>
+                        <td>{a.status === 'late' ? '⏰ متأخر' : a.status === 'present' ? '✅ حاضر' : '❌ غائب'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p style={{ color: 'var(--gray)' }}>لا توجد سجلات</p>}
+          </div>
         )}
 
-        {activeTab === 'attendance' && (
-          <table>
-            <thead>
-              <tr>
-                <th>التاريخ</th>
-                <th>الحضور</th>
-                <th>الانصراف</th>
-                <th>التأخير</th>
-                <th>الحالة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentAttendance?.map(r => (
-                <tr key={r._id}>
-                  <td>{toCairoDate(r.date)}</td>
-<td>{r.checkIn ? toCairoTime(r.checkIn) : '-'}</td>
-<td>{r.checkOut ? toCairoTime(r.checkOut) : '-'}</td>
-                  <td>{r.lateMinutes} د</td>
-                  <td>{r.status === 'late' ? 'متأخر' : 'في الوقت'}</td>
-                </tr>
-              ))}
-              {(!recentAttendance || recentAttendance.length === 0) && (
-                <tr><td colSpan="5" style={{ textAlign: 'center', color: '#888' }}>لا توجد سجلات</td></tr>
-              )}
-            </tbody>
-          </table>
-        )}
-
-        {activeTab === 'leaves' && (
-          <table>
-            <thead>
-              <tr>
-                <th>النوع</th>
-                <th>من</th>
-                <th>إلى</th>
-                <th>الحالة</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentLeaves?.map(l => (
-                <tr key={l._id}>
-                  <td>{l.type || 'عادية'}</td>
-                  <td>{toCairoDate(l.fromDate)}</td>
-                  <td>{toCairoDate(l.toDate)}</td> 
-                  <td>{l.status === 'approved' ? 'مقبولة' : l.status === 'rejected' ? 'مرفوضة' : 'معلقة'}</td>
-                </tr>
-              ))}
-              {(!recentLeaves || recentLeaves.length === 0) && (
-                <tr><td colSpan="4" style={{ textAlign: 'center', color: '#888' }}>لا توجد إجازات</td></tr>
-              )}
-            </tbody>
-          </table>
+        {tab === 'leaves' && (
+          <div>
+            <h3 style={{ color: 'var(--navy)', marginBottom: 16 }}>🏖️ الإجازات</h3>
+            {leaves && leaves.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead><tr><th>النوع</th><th>من</th><th>إلى</th><th>الحالة</th></tr></thead>
+                  <tbody>
+                    {leaves.map(l => (
+                      <tr key={l._id}>
+                        <td>{l.type}</td>
+                        <td>{toCairoDate(l.startDate)}</td>
+                        <td>{toCairoDate(l.endDate)}</td>
+                        <td>{l.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p style={{ color: 'var(--gray)' }}>لا توجد إجازات</p>}
+          </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function StatCard({ title, value, color }) {
-  return (
-    <div style={{
-      background: color,
-      color: '#fff',
-      padding: 16,
-      borderRadius: 12,
-      textAlign: 'center'
-    }}>
-      <div style={{ fontSize: 28, fontWeight: 'bold' }}>{value || 0}</div>
-      <div style={{ fontSize: 13, marginTop: 4 }}>{title}</div>
-    </div>
-  );
-}
-
-function TabButton({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '8px 16px',
-        borderRadius: 8,
-        border: 'none',
-        cursor: 'pointer',
-        background: active ? 'var(--navy)' : '#e0e0e0',
-        color: active ? '#fff' : '#333',
-        fontWeight: 'bold',
-        fontSize: 13
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function InfoGrid({ items }) {
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-      gap: 12
-    }}>
-      {items.map((item, i) => (
-        <div key={i} style={{
-          padding: 12,
-          background: '#f8f9fa',
-          borderRadius: 8,
-          borderRight: '4px solid var(--navy)'
-        }}>
-          <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{item.label}</div>
-          <div style={{ fontWeight: 'bold', color: 'var(--navy)' }}>{item.value || '—'}</div>
-        </div>
-      ))}
     </div>
   );
 }

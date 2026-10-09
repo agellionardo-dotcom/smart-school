@@ -1,103 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../api';
+import React, { useEffect, useState } from 'react';
+import api, { API_URL } from '../api';
 import { io } from 'socket.io-client';
 
 const EMERGENCY_TYPES = [
   { value: 'fire', label: '🔥 حريق', color: '#d9534f' },
   { value: 'medical', label: '🚑 حالة طبية', color: '#2e7d5b' },
   { value: 'security', label: '🔒 أمني', color: '#0a1f44' },
-  { value: 'evacuation', label: '🚪 إخلاء', color: '#b8860b' },
   { value: 'other', label: '⚠️ أخرى', color: '#5a6478' },
 ];
 
 export default function EmergencyButton() {
+  const [activeEmergency, setActiveEmergency] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [selectedType, setSelectedType] = useState('other');
+  const [selectedType, setSelectedType] = useState('fire');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
-  const [activeEmergency, setActiveEmergency] = useState(null);
   const [msg, setMsg] = useState('');
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // ✅ نجيب الحالة النشطة لو موجودة
-  const loadActive = async () => {
-    try {
-      const { data } = await axios.get(`${API_URL}/api/emergency/active`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const mine = data.find(e => String(e.user?._id) === String(user._id));
-      setActiveEmergency(mine || null);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // ✅ Socket.io للإشعارات
+  // ✅ جلب الحالة النشطة
   useEffect(() => {
     if (!token) return;
+    api.get('/emergency/active')
+      .then(r => setActiveEmergency(r.data))
+      .catch(() => setActiveEmergency(null));
+  }, [token]);
 
-    const socket = io(API_URL.replace('/api', ''), {
-      transports: ['websocket', 'polling'],
+  // ✅ Socket.io
+  useEffect(() => {
+    if (!token) return;
+    const socket = io(API_URL.replace('/api', ''), { transports: ['websocket', 'polling'] });
+    socket.on('connect', () => socket.emit('register', user._id));
+
+    socket.on('emergency:resolved', () => {
+      setActiveEmergency(null);
     });
-
-    socket.on('connect', () => {
-      socket.emit('register', user._id);
-    });
-
-    socket.on('emergency:resolved', (data) => {
-      if (String(data.emergency?.user?._id || data.emergency?.user) === String(user._id)) {
-        setActiveEmergency(null);
-        setMsg('✅ تم إغلاق حالة الطوارئ');
-      }
-    });
-
-    loadActive();
 
     return () => socket.disconnect();
   }, [token]);
 
-  // ✅ إرسال حالة طوارئ
   const sendEmergency = async () => {
     setSending(true);
     setMsg('');
-
-    let location = null;
-    if (navigator.geolocation) {
+    try {
+      let location = null;
       try {
         const pos = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-          });
+          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
         });
-        location = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        };
-      } catch (err) {
-        console.log('Location not available');
-      }
-    }
+        location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      } catch (e) { console.warn('GPS unavailable'); }
 
-    try {
-      const { data } = await axios.post(
-        `${API_URL}/api/emergency`,
-        {
-          type: selectedType,
-          message,
-          location,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const { data } = await api.post('/emergency', {
+        type: selectedType,
+        message,
+        location,
+      });
 
-      setActiveEmergency(data.emergency);
-      setMsg('🚨 تم إرسال حالة الطوارئ للمديرين');
+      setActiveEmergency(data);
       setShowModal(false);
       setMessage('');
-      setSelectedType('other');
+      setMsg('✅ تم إرسال التنبيه');
     } catch (err) {
       setMsg('❌ ' + (err.response?.data?.msg || 'فشل الإرسال'));
     } finally {
@@ -105,238 +70,104 @@ export default function EmergencyButton() {
     }
   };
 
-  // ✅ إلغاء الحالة النشطة
   const cancelEmergency = async () => {
-    if (!activeEmergency) return;
-    if (!window.confirm('هل أنت متأكد من إلغاء حالة الطوارئ؟')) return;
-
+    if (!activeEmergency || !window.confirm('إلغاء التنبيه؟')) return;
     try {
-      await axios.put(
-        `${API_URL}/api/emergency/${activeEmergency._id}/cancel`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/emergency/${activeEmergency._id}/cancel`, {});
       setActiveEmergency(null);
-      setMsg('✅ تم إلغاء الحالة');
+      setMsg('✅ تم الإلغاء');
     } catch (err) {
-      setMsg('❌ فشل الإلغاء');
+      setMsg('❌ ' + (err.response?.data?.msg || 'فشل الإلغاء'));
     }
   };
 
   return (
     <>
-      {/* الحالة النشطة */}
-      {activeEmergency && (
-        <div style={{
-          background: 'linear-gradient(145deg, #d9534f, #a94442)',
-          color: '#fff',
-          padding: '16px 20px',
-          borderRadius: 14,
-          marginBottom: 16,
-          boxShadow: '0 8px 24px rgba(217,83,79,0.4)',
-          animation: 'pulse 2s infinite',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <div>
-              <b style={{ fontSize: 16 }}>🚨 حالة طوارئ نشطة</b>
-              <p style={{ margin: '4px 0 0', fontSize: 13, opacity: 0.9 }}>
-                النوع: {EMERGENCY_TYPES.find(t => t.value === activeEmergency.type)?.label}
-                {' · '}
-                {new Date(activeEmergency.createdAt).toLocaleString('ar-EG')}
-              </p>
-            </div>
-            <button
-              onClick={cancelEmergency}
-              style={{
-                padding: '8px 16px',
-                background: '#fff',
-                color: '#d9534f',
-                border: 'none',
-                borderRadius: 8,
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                fontSize: 13,
-              }}
-            >
-              إلغاء
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* الرسائل */}
-      {msg && (
-        <p style={{
-          padding: 12,
-          background: msg.startsWith('✅') || msg.startsWith('🚨') ? '#d4edda' : '#f8d7da',
-          borderRadius: 8,
-          marginBottom: 16,
-          color: '#000',
-          fontSize: 13,
-        }}>{msg}</p>
-      )}
-
-      {/* زر الطوارئ - تحت اللوجو، أفقي، صغير */}
-      {!activeEmergency && (
+      {activeEmergency ? (
+        <button
+          onClick={cancelEmergency}
+          style={{
+            position: 'fixed', bottom: 80, left: 20, zIndex: 9999,
+            padding: '14px 20px',
+            background: 'linear-gradient(145deg, #d9534f, #a94442)',
+            color: '#fff', border: 'none', borderRadius: 30,
+            fontSize: 14, fontWeight: 'bold', cursor: 'pointer',
+            boxShadow: '0 6px 20px rgba(217,83,79,0.5)',
+            fontFamily: 'inherit',
+            animation: 'pulse 1.5s infinite',
+          }}
+          title="اضغط لإلغاء التنبيه"
+        >
+          🚨 طوارئ نشطة — إلغاء
+        </button>
+      ) : (
         <button
           onClick={() => setShowModal(true)}
-          title="زر الطوارئ"
           style={{
-            position: 'fixed',
-            top: 130,
-            left: 20,
-            zIndex: 9998,
-            padding: '10px 20px',
+            position: 'fixed', bottom: 80, left: 20, zIndex: 9999,
+            width: 56, height: 56, borderRadius: '50%',
             background: 'linear-gradient(145deg, #d9534f, #a94442)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 12,
-            fontSize: 14,
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 4px 16px rgba(217,83,79,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            fontFamily: 'inherit',
-            transition: 'all 0.3s ease',
+            color: '#fff', border: 'none', cursor: 'pointer',
+            fontSize: 24, boxShadow: '0 6px 20px rgba(217,83,79,0.5)',
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.05)';
-            e.currentTarget.style.boxShadow = '0 6px 24px rgba(217,83,79,0.6)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(217,83,79,0.4)';
-          }}
+          title="طوارئ"
         >
-          <span style={{ fontSize: 16 }}>🚨</span>
-          <span>طوارئ</span>
+          🚨
         </button>
       )}
 
-      {/* Modal اختيار النوع */}
       {showModal && (
         <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: 16,
-        }}>
-          <div style={{
-            background: '#fff',
-            borderRadius: 16,
-            padding: 24,
-            width: '100%',
-            maxWidth: 420,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-          }}>
-            <h3 style={{ color: '#d9534f', marginTop: 0, marginBottom: 8, textAlign: 'center' }}>
-              🚨 تسجيل حالة طوارئ
-            </h3>
-            <p style={{ color: '#5a6478', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>
-              سيتم إشعار جميع المديرين فوراً
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10000, padding: 16,
+        }} onClick={() => !sending && setShowModal(false)}>
+          <div className="glass" style={{ padding: 24, maxWidth: 400, width: '100%' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ color: '#8e2b2b', marginBottom: 16 }}>🚨 إرسال تنبيه طوارئ</h3>
+
+            <p style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 12 }}>
+              اختر نوع الطارئ:
             </p>
 
-            <label style={{ fontSize: 13, color: '#0a1f44', fontWeight: 'bold' }}>نوع الطوارئ:</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, margin: '8px 0 16px' }}>
+            <div style={{ display: 'grid', gap: 8, marginBottom: 16 }}>
               {EMERGENCY_TYPES.map(t => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => setSelectedType(t.value)}
+                <button key={t.value} onClick={() => setSelectedType(t.value)}
                   style={{
-                    padding: '10px 8px',
-                    borderRadius: 10,
-                    border: selectedType === t.value ? `2px solid ${t.color}` : '2px solid #e0e6ef',
-                    background: selectedType === t.value ? t.color : '#fff',
-                    color: selectedType === t.value ? '#fff' : '#0a1f44',
-                    fontSize: 12,
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                  }}
-                >
+                    padding: 12, borderRadius: 10, border: 'none',
+                    background: selectedType === t.value ? t.color : '#f5f7fa',
+                    color: selectedType === t.value ? '#fff' : 'var(--navy)',
+                    fontSize: 14, fontWeight: 'bold', cursor: 'pointer',
+                    fontFamily: 'inherit', textAlign: 'right',
+                  }}>
                   {t.label}
                 </button>
               ))}
             </div>
 
-            <label style={{ fontSize: 13, color: '#0a1f44', fontWeight: 'bold' }}>رسالة (اختياري):</label>
-            <textarea
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              placeholder="اكتب تفاصيل إضافية..."
-              rows={3}
-              maxLength={500}
-              style={{
-                width: '100%',
-                padding: 10,
-                borderRadius: 10,
-                border: '2px solid #e0e6ef',
-                fontSize: 13,
-                marginTop: 6,
-                marginBottom: 16,
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                direction: 'rtl',
-              }}
-            />
+            <textarea className="input" placeholder="رسالة (اختياري)"
+              value={message} onChange={e => setMessage(e.target.value)}
+              rows={2} style={{ resize: 'vertical', fontFamily: 'inherit' }} />
+            <br /><br />
+
+            {msg && (
+              <p style={{ padding: 10, background: msg.startsWith('✅') ? '#d4edda' : '#f8d7da', borderRadius: 8, fontSize: 13, color: '#000', marginBottom: 12 }}>
+                {msg}
+              </p>
+            )}
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  background: '#f5f7fa',
-                  color: '#5a6478',
-                  border: 'none',
-                  borderRadius: 10,
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontFamily: 'inherit',
-                }}
-              >
-                إلغاء
+              <button className="btn" onClick={sendEmergency} disabled={sending}
+                style={{ flex: 1, background: 'linear-gradient(145deg, #d9534f, #a94442)' }}>
+                {sending ? '⏳ جاري...' : '🚨 إرسال'}
               </button>
-              <button
-                type="button"
-                onClick={sendEmergency}
-                disabled={sending}
-                style={{
-                  flex: 2,
-                  padding: '12px',
-                  background: 'linear-gradient(145deg, #d9534f, #a94442)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 10,
-                  fontWeight: 'bold',
-                  cursor: sending ? 'wait' : 'pointer',
-                  fontSize: 14,
-                  fontFamily: 'inherit',
-                }}
-              >
-                {sending ? '⏳ جاري الإرسال...' : '🚨 إرسال'}
+              <button className="btn gray" onClick={() => setShowModal(false)} disabled={sending}>
+                إلغاء
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.02); }
-        }
-      `}</style>
     </>
   );
 }

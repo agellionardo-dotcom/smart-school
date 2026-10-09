@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../api';
+import api from '../../api';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -13,13 +12,10 @@ export default function AnalyticsTab() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
 
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
-
   const loadAnalytics = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(`${API_URL}/api/reports/analytics/dashboard`, { headers });
+      const { data } = await api.get('/reports/analytics/dashboard');
       setData(data);
     } catch (err) {
       setMsg('❌ ' + (err.response?.data?.msg || 'فشل التحميل'));
@@ -28,9 +24,7 @@ export default function AnalyticsTab() {
     }
   };
 
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
+  useEffect(() => { loadAnalytics(); }, []);
 
   const formatMoney = (n) => (n || 0).toLocaleString('ar-EG');
 
@@ -51,13 +45,7 @@ export default function AnalyticsTab() {
         </button>
       </div>
 
-      {/* ✅ بطاقات الإحصائيات السريعة */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-        gap: 12,
-        marginBottom: 20,
-      }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 20 }}>
         <div style={{ padding: 16, background: 'linear-gradient(145deg, #3a4a6b, #2a3550)', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
           <div style={{ fontSize: 28, fontWeight: 900 }}>{data.summary.totalEmployees}</div>
           <div style={{ fontSize: 12, opacity: 0.9 }}>👥 إجمالي الموظفين</div>
@@ -80,7 +68,6 @@ export default function AnalyticsTab() {
         </div>
       </div>
 
-      {/* ✅ 1. تكلفة الرواتب (Bar Chart) */}
       <div className="glass" style={{ padding: 20, marginBottom: 20 }}>
         <h4 style={{ color: 'var(--navy)', marginBottom: 16 }}>💰 تكلفة الرواتب (آخر 6 شهور)</h4>
         <ResponsiveContainer width="100%" height={300}>
@@ -96,7 +83,6 @@ export default function AnalyticsTab() {
         </ResponsiveContainer>
       </div>
 
-      {/* ✅ 2. نسب الغياب (Line Chart) */}
       <div className="glass" style={{ padding: 20, marginBottom: 20 }}>
         <h4 style={{ color: 'var(--navy)', marginBottom: 16 }}>📉 نسب الغياب (آخر 30 يوم)</h4>
         <ResponsiveContainer width="100%" height={300}>
@@ -113,21 +99,14 @@ export default function AnalyticsTab() {
         </ResponsiveContainer>
       </div>
 
-      {/* ✅ 3. توزيع التنوع الجندري + الأعمار */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, marginBottom: 20 }}>
         <div className="glass" style={{ padding: 20 }}>
           <h4 style={{ color: 'var(--navy)', marginBottom: 16 }}>👥 التنوع الجندري</h4>
           {data.genderData.some(g => g.value > 0) ? (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
-                <Pie
-                  data={data.genderData.filter(g => g.value > 0)}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}`}
-                >
+                <Pie data={data.genderData.filter(g => g.value > 0)} cx="50%" cy="50%" outerRadius={80} dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}>
                   {data.genderData.filter(g => g.value > 0).map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
@@ -162,7 +141,6 @@ export default function AnalyticsTab() {
         </div>
       </div>
 
-      {/* ✅ 4. توزيع الموظفين حسب الفرع + القسم */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
         <div className="glass" style={{ padding: 20 }}>
           <h4 style={{ color: 'var(--navy)', marginBottom: 16 }}>🏢 توزيع الموظفين حسب الفرع</h4>
@@ -182,14 +160,8 @@ export default function AnalyticsTab() {
           {data.departmentData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
-                <Pie
-                  data={data.departmentData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}`}
-                >
+                <Pie data={data.departmentData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}>
                   {data.departmentData.map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
