@@ -11,9 +11,10 @@ import ScanQr from './pages/ScanQr';
 import AdminDashboard from './pages/AdminDashboard';
 import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
+import AIChat from './components/AIChat'; // ✅ المساعد الذكي
 import { startNetworkMonitoring } from './services/networkStatus';
 import { getQueue, removeFromQueue } from './services/offlineStorage';
-import api from './api'; // ✅ api instance مش axios
+import api from './api';
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -30,7 +31,6 @@ export default function App() {
 
     const setup = async () => {
       try {
-        // ✅ await عشان ناخد الـ listener الصح
         const handle = await startNetworkMonitoring(async (isConnected) => {
           if (!isMounted) return;
 
@@ -45,7 +45,6 @@ export default function App() {
                 try {
                   const endpoint = item.type === 'checkin' ? 'checkin' : 'checkout';
 
-                  // ✅ api instance — بيضيف /api + التوكن تلقائياً
                   await api.post(`/attendance/${endpoint}`, {
                     lat: item.lat,
                     lng: item.lng,
@@ -71,7 +70,6 @@ export default function App() {
 
     return () => {
       isMounted = false;
-      // ✅ تحقق من نوع remove قبل استدعائها
       if (listenerHandle && typeof listenerHandle.remove === 'function') {
         listenerHandle.remove();
       }
@@ -93,6 +91,9 @@ export default function App() {
         <Route path="/sync-queue" element={<PrivateRoute><Navbar /><SyncQueue /></PrivateRoute>} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+
+      {/* ✅ المساعد الذكي — يظهر في كل الصفحات */}
+      <AIChat />
     </BrowserRouter>
   );
 }
