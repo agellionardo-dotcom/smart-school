@@ -8,7 +8,7 @@ import {
   getQueueCount,
 } from '../services/offlineStorage';
 import { isOnline } from '../services/networkStatus';
-
+import { toCairoTime } from '../utils/dateHelpers';
 export default function Attendance() {
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -240,7 +240,7 @@ export default function Attendance() {
           <h3 style={{ color: '#fff' }}>{checkedIn ? '✅' : '📥'}</h3>
           <p style={{ color: '#fff' }}>الحضور</p>
           <p style={{ color: '#fff', fontSize: 12, marginTop: 8 }}>
-            {checkedIn ? `تم التسجيل: ${new Date(checkedIn).toLocaleTimeString('ar-EG')}` : 'لم يتم التسجيل بعد'}
+            {checkedIn ? `تم التسجيل: ${toCairoTime(checkedIn)}` : 'لم يتم التسجيل بعد'}
           </p>
         </div>
 
@@ -248,7 +248,7 @@ export default function Attendance() {
           <h3 style={{ color: '#fff' }}>{checkedOut ? '✅' : '📤'}</h3>
           <p style={{ color: '#fff' }}>الانصراف</p>
           <p style={{ color: '#fff', fontSize: 12, marginTop: 8 }}>
-            {checkedOut ? `تم التسجيل: ${new Date(checkedOut).toLocaleTimeString('ar-EG')}` : 'لم يتم التسجيل بعد'}
+            {checkedOut ? `تم التسجيل: ${toCairoTime(checkedOut)}` : 'لم يتم التسجيل بعد'}
           </p>
         </div>
       </div>

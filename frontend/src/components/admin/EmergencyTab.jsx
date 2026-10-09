@@ -1,3 +1,4 @@
+import { toCairo } from '../../utils/dateHelpers';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../api';
@@ -244,7 +245,7 @@ export default function EmergencyTab() {
                         {e.user?.phone && ` · 📞 ${e.user.phone}`}
                       </p>
                       <p style={{ margin: '4px 0', fontSize: 12, color: '#5a6478' }}>
-                        🕐 {new Date(e.createdAt).toLocaleString('ar-EG')}
+                        🕐 {toCairo(e.createdAt)}
                       </p>
 
                       {e.message && (
@@ -283,7 +284,7 @@ export default function EmergencyTab() {
                       {e.status === 'resolved' && e.resolvedBy && (
                         <p style={{ margin: '8px 0 0', fontSize: 12, color: '#2e7d5b' }}>
                           ✅ أُغلقت بواسطة: {e.resolvedBy.name}
-                          {e.resolvedAt && ` · ${new Date(e.resolvedAt).toLocaleString('ar-EG')}`}
+                          {e.resolvedAt && ` · ${toCairo(e.resolvedAt)}`}
                         </p>
                       )}
 

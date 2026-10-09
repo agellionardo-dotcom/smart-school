@@ -1,3 +1,4 @@
+import { toCairo, toCairoTime, toCairoDate } from '../utils/dateHelpers';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -113,7 +114,7 @@ export default function EmployeeProfile() {
             { label: 'البريد الإلكتروني', value: user.email },
             { label: 'رقم الهاتف', value: user.phone },
             { label: 'الرقم القومي', value: user.nationalId },
-            { label: 'تاريخ الميلاد', value: user.birthDate ? new Date(user.birthDate).toLocaleDateString('ar-EG') : null },
+            { label: 'تاريخ الميلاد', value: user.birthDate ? toCairoDate(user.birthDate) : null },
             { label: 'العنوان', value: user.address },
             { label: 'جهة اتصال للطوارئ', value: user.emergencyContact?.name ? `${user.emergencyContact.name} (${user.emergencyContact.phone})` : null },
           ]} />
@@ -127,9 +128,9 @@ export default function EmployeeProfile() {
             { label: 'الفرع', value: user.branch?.name },
             { label: 'المدير المباشر', value: user.managerId?.name },
             { label: 'الدور', value: user.role },
-            { label: 'تاريخ التعيين', value: user.hireDate ? new Date(user.hireDate).toLocaleDateString('ar-EG') : null },
+            { label: 'تاريخ التعيين', value: user.hireDate ? toCairoDate(user.hireDate) : null },
             { label: 'نوع العقد', value: user.contractType },
-            { label: 'تاريخ انتهاء العقد', value: user.contractEndDate ? new Date(user.contractEndDate).toLocaleDateString('ar-EG') : null },
+            { label: 'تاريخ انتهاء العقد', value: user.contractEndDate ? toCairoDate(user.contractEndDate) : null },
           ]} />
         )}
 
@@ -155,9 +156,9 @@ export default function EmployeeProfile() {
             <tbody>
               {recentAttendance?.map(r => (
                 <tr key={r._id}>
-                  <td>{new Date(r.date).toLocaleDateString('ar-EG')}</td>
-                  <td>{r.checkIn ? new Date(r.checkIn).toLocaleTimeString('ar-EG') : '-'}</td>
-                  <td>{r.checkOut ? new Date(r.checkOut).toLocaleTimeString('ar-EG') : '-'}</td>
+                  <td>{toCairoDate(r.date)}</td>
+<td>{r.checkIn ? toCairoTime(r.checkIn) : '-'}</td>
+<td>{r.checkOut ? toCairoTime(r.checkOut) : '-'}</td>
                   <td>{r.lateMinutes} د</td>
                   <td>{r.status === 'late' ? 'متأخر' : 'في الوقت'}</td>
                 </tr>
@@ -183,8 +184,8 @@ export default function EmployeeProfile() {
               {recentLeaves?.map(l => (
                 <tr key={l._id}>
                   <td>{l.type || 'عادية'}</td>
-                  <td>{new Date(l.fromDate).toLocaleDateString('ar-EG')}</td>
-                  <td>{new Date(l.toDate).toLocaleDateString('ar-EG')}</td>
+                  <td>{toCairoDate(l.fromDate)}</td>
+                  <td>{toCairoDate(l.toDate)}</td> 
                   <td>{l.status === 'approved' ? 'مقبولة' : l.status === 'rejected' ? 'مرفوضة' : 'معلقة'}</td>
                 </tr>
               ))}

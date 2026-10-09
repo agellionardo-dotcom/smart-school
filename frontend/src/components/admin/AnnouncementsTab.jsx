@@ -1,3 +1,4 @@
+import { toCairo, toCairoDate } from '../../utils/dateHelpers';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../api';
@@ -254,8 +255,8 @@ export default function AnnouncementsTab() {
                       <p style={{ color: '#3a4a6b', fontSize: 14, margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{a.content}</p>
 
                       <div style={{ fontSize: 11, color: '#8b95a7' }}>
-                        👤 {a.createdBy?.name} · 🕐 {new Date(a.createdAt).toLocaleString('ar-EG')}
-                        {a.expiresAt && ` · ⏳ ينتهي: ${new Date(a.expiresAt).toLocaleDateString('ar-EG')}`}
+                        👤 {a.createdBy?.name} · 🕐 {toCairo(a.createdAt)}
+                          {a.expiresAt && ` · ⏳ ينتهي: ${toCairoDate(a.expiresAt)}`}
                       </div>
                     </div>
 
