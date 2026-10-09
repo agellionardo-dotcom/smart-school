@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../api';
+import api from '../../api';
 
 export default function QrTab() {
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [qrImage, setQrImage] = useState('');
   const [msg, setMsg] = useState('');
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
+  // ✅ جلب الفروع
   useEffect(() => {
-    axios.get(`${API_URL}/api/admin/branches`, { headers })
+    api.get('/branches')
       .then(r => setBranches(r.data))
-      .catch(() => {});
+      .catch((err) => console.error('loadBranches error:', err));
   }, []);
 
+  // ✅ اختيار فرع
   const selectBranch = async (branch) => {
     setSelectedBranch(branch);
     setQrImage('');
     setMsg('');
 
     try {
-      const { data } = await axios.get(`${API_URL}/api/qr/image/${branch._id}`, { headers });
+      const { data } = await api.get(`/qr/image/${branch._id}`);
       setQrImage(data.qrImage);
       setMsg('');
     } catch (err) {
@@ -30,12 +30,13 @@ export default function QrTab() {
     }
   };
 
+  // ✅ إنشاء QR جديد
   const generateQr = async () => {
     if (!selectedBranch) return;
     try {
       setMsg('⏳ جاري إنشاء QR...');
-      await axios.post(`${API_URL}/api/qr/generate/${selectedBranch._id}`, {}, { headers });
-      const { data } = await axios.get(`${API_URL}/api/qr/image/${selectedBranch._id}`, { headers });
+      await api.post(`/qr/generate/${selectedBranch._id}`, {});
+      const { data } = await api.get(`/qr/image/${selectedBranch._id}`);
       setQrImage(data.qrImage);
       setMsg('✅ تم إنشاء QR بنجاح');
     } catch (err) {
