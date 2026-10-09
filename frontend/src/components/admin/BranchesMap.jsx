@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import Map, { Marker, Popup, Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
+import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api';
+
 // ==================== الإحداثيات الافتراضية (المنيا) ====================
 const DEFAULT_VIEW = {
   longitude: 30.7503,
@@ -120,12 +121,11 @@ export default function BranchesMap() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
-
   // ✅ جلب الفروع
   useEffect(() => {
     api.get('/branches')
-  .then(r => setBranches(r.data))
-      .catch(() => {})
+      .then(r => setBranches(r.data))
+      .catch((err) => console.error('loadBranches error:', err))
       .finally(() => setLoading(false));
   }, []);
 
