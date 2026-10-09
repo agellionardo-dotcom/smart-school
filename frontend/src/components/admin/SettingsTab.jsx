@@ -69,4 +69,23 @@ export default function SettingsTab() {
         <h4 style={{ color: 'var(--navy)', marginTop: 24, marginBottom: 12 }}>📱 الميزات</h4>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <input type="checkbox" checked={settings.enableGeoFence}
-            onChange={e => setSettings({ ...settings, enableGeoFence: e.target
+            onChange={e => setSettings({ ...settings, enableGeoFence: e.target.checked })} />
+          تفعيل التحقق الجغرافي (GPS)
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <input type="checkbox" checked={settings.enableQRCode}
+            onChange={e => setSettings({ ...settings, enableQRCode: e.target.checked })} />
+          تفعيل رمز QR
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input type="checkbox" checked={settings.enableFaceRecognition}
+            onChange={e => setSettings({ ...settings, enableFaceRecognition: e.target.checked })} />
+          تفعيل التعرف على الوجه
+        </label>
+
+        <br /><br />
+        <button className="btn" style={{ width: '100%' }}>💾 حفظ الإعدادات</button>
+      </form>
+    </div>
+  );
+}
