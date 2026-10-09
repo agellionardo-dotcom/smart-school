@@ -1,7 +1,6 @@
 import { toCairo } from '../../utils/dateHelpers';
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../api';
+import api from '../../api';
 
 const ROLES = [
   { value: 'superadmin', label: 'مدير النظام' },
@@ -25,24 +24,27 @@ export default function UsersTab() {
     branch: '', phone: '', department: '', position: ''
   });
 
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
-
+  // ✅ جلب المستخدمين
   const loadUsers = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/admin/users`, { headers });
+      const { data } = await api.get('/admin/users');
       setUsers(data);
     } catch (err) {
+      console.error('loadUsers error:', err);
       setMsg('❌ فشل تحميل المستخدمين');
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ جلب الفروع
   const loadBranches = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/branches`);
+      const { data } = await api.get('/branches');
       setBranches(data);
-    } catch {}
+    } catch (err) {
+      console.error('loadBranches error:', err);
+    }
   };
 
   useEffect(() => {
@@ -56,14 +58,15 @@ export default function UsersTab() {
     setEditUser(null);
   };
 
+  // ✅ إضافة / تعديل مستخدم
   const submit = async (e) => {
     e.preventDefault();
     try {
       if (editUser) {
-        await axios.put(`${API_URL}/api/admin/users/${editUser._id}`, form, { headers });
+        await api.put(`/admin/users/${editUser._id}`, form);
         setMsg('✅ تم تحديث المستخدم');
       } else {
-        await axios.post(`${API_URL}/api/admin/users`, form, { headers });
+        await api.post('/admin/users', form);
         setMsg('✅ تم إنشاء المستخدم');
       }
       resetForm();
@@ -74,10 +77,11 @@ export default function UsersTab() {
     }
   };
 
+  // ✅ حذف مستخدم
   const deleteUser = async (id) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
     try {
-      await axios.delete(`${API_URL}/api/admin/users/${id}`, { headers });
+      await api.delete(`/admin/users/${id}`);
       setMsg('✅ تم الحذف');
       loadUsers();
     } catch (err) {
@@ -122,10 +126,10 @@ export default function UsersTab() {
     );
   };
 
+  // ✅ تحميل ملف (Excel / PDF / قالب)
   const downloadFile = async (endpoint, filename) => {
     try {
-      const response = await axios.get(`${API_URL}${endpoint}`, {
-        headers,
+      const response = await api.get(endpoint, {
         responseType: 'blob'
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -137,10 +141,12 @@ export default function UsersTab() {
       link.remove();
       setMsg('✅ تم تحميل الملف');
     } catch (err) {
+      console.error('download error:', err);
       setMsg('❌ فشل التحميل');
     }
   };
 
+  // ✅ استيراد Excel
   const handleImport = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -150,8 +156,8 @@ export default function UsersTab() {
 
     try {
       setMsg('⏳ جاري استيراد المستخدمين...');
-      const { data } = await axios.post(`${API_URL}/api/reports/users/import`, formData, {
-        headers: { ...headers, 'Content-Type': 'multipart/form-data' }
+      const { data } = await api.post('/reports/users/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
       let msgText = `✅ تم استيراد ${data.success} مستخدم`;
@@ -196,21 +202,21 @@ export default function UsersTab() {
             <button
               className="btn"
               style={{ background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)', padding: '10px', fontSize: 13 }}
-              onClick={() => downloadFile('/api/reports/users/excel', `users_${Date.now()}.xlsx`)}
+              onClick={() => downloadFile('/reports/users/excel', `users_${Date.now()}.xlsx`)}
             >
               📥 Excel المستخدمين
             </button>
             <button
               className="btn"
               style={{ background: 'linear-gradient(145deg, #8e2b2b, #5c1c1c)', padding: '10px', fontSize: 13 }}
-              onClick={() => downloadFile('/api/reports/users/pdf', `users_${Date.now()}.pdf`)}
+              onClick={() => downloadFile('/reports/users/pdf', `users_${Date.now()}.pdf`)}
             >
               📄 PDF المستخدمين
             </button>
             <button
               className="btn"
               style={{ background: 'linear-gradient(145deg, #2e4373, #1a2a52)', padding: '10px', fontSize: 13 }}
-              onClick={() => downloadFile('/api/reports/users/template', 'users_template.xlsx')}
+              onClick={() => downloadFile('/reports/users/template', 'users_template.xlsx')}
             >
               📋 قالب المستخدمين
             </button>
