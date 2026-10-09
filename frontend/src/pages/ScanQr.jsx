@@ -9,7 +9,6 @@ export default function ScanQr() {
   const scannerRef = useRef(null);
   const isMountedRef = useRef(true);
 
-  // ✅ تنظيف الـ scanner عند unmount
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -22,7 +21,6 @@ export default function ScanQr() {
     if (scannerRef.current) {
       try {
         const state = scannerRef.current.getState();
-        // 2 = SCANNING, 3 = PAUSED
         if (state === 2 || state === 3) {
           await scannerRef.current.stop();
         }
@@ -41,7 +39,6 @@ export default function ScanQr() {
     setMsg('');
     setResult(null);
 
-    // ✅ تأكد إن الـ DOM element موجود
     const el = document.getElementById('qr-reader');
     if (!el) {
       setMsg('❌ خطأ في الصفحة، حاول تحديثها');
@@ -58,12 +55,11 @@ export default function ScanQr() {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         async (decodedText) => {
-          // ✅ لما يلاقي QR
           if (!isMountedRef.current) return;
           await stopScanner();
           await handleQrResult(decodedText);
         },
-        () => {} // ignore per-frame errors
+        () => {}
       );
     } catch (err) {
       console.error('Scan start error:', err);
@@ -71,7 +67,6 @@ export default function ScanQr() {
         setScanning(false);
         setMsg('❌ فشل تشغيل الكاميرا: ' + (err.message || 'خطأ'));
       }
-      // ✅ تأكد إن الـ scanner اتنضف
       await stopScanner();
     }
   };
@@ -80,11 +75,19 @@ export default function ScanQr() {
     try {
       setMsg('⏳ جاري التحقق...');
 
+      // ✅ تحليل بيانات QR
       let qrData;
       try {
         qrData = JSON.parse(decodedText);
       } catch {
-        qrData = { token: decodedText };
+        setMsg('❌ رمز QR غير صالح');
+        return;
+      }
+
+      // ✅ التحقق من الحقول المطلوبة
+      if (!qrData.branchId || !qrData.token) {
+        setMsg('❌ رمز QR غير مكتمل — تأكد من مسح الرمز الصحيح');
+        return;
       }
 
       // ✅ الحصول على الموقع
@@ -105,18 +108,21 @@ export default function ScanQr() {
         };
       } catch (geoErr) {
         console.warn('GPS error:', geoErr);
-        // ✅ نكمل بدون موقع — ممكن الـ backend يقبل
+        setMsg('❌ يجب السماح بالوصول للموقع لتسجيل الحضور');
+        return;
       }
 
+      // ✅ إرسال الطلب كامل — branchId + token + lat + lng
       const { data } = await api.post('/qr/check-in', {
-        token: qrData.token || qrData.qrToken || decodedText,
+        branchId: qrData.branchId,
+        token: qrData.token,
         lat: coords.lat,
         lng: coords.lng,
       });
 
       if (!isMountedRef.current) return;
       setResult(data);
-      setMsg('✅ تم تسجيل الحضور بنجاح');
+      setMsg('✅ ' + (data.msg || 'تم تسجيل الحضور بنجاح'));
     } catch (err) {
       console.error('QR check-in error:', err);
       if (!isMountedRef.current) return;
@@ -198,9 +204,9 @@ export default function ScanQr() {
       {result && (
         <div className="glass" style={{ padding: 24, marginTop: 20, textAlign: 'center' }}>
           <h3 style={{ color: '#2e7d5b' }}>✅ تم تسجيل الحضور</h3>
-          {result.branch?.name && <p style={{ marginTop: 8 }}>الفرع: {result.branch.name}</p>}
-          {result.checkIn && (
-            <p>الوقت: {new Date(result.checkIn).toLocaleTimeString('ar-EG')}</p>
+          {result.branch && <p style={{ marginTop: 8 }}>الفرع: {result.branch}</p>}
+          {result.attendance?.checkIn && (
+            <p>الوقت: {new Date(result.attendance.checkIn).toLocaleTimeString('ar-EG')}</p>
           )}
           {result.lateMinutes > 0 && (
             <p style={{ color: '#b8860b' }}>⏰ تأخير: {result.lateMinutes} دقيقة</p>
