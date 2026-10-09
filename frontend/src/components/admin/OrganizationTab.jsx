@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../api';
+import api from '../../api';
 
 export default function OrganizationTab() {
   const [tree, setTree] = useState([]);
@@ -8,11 +7,10 @@ export default function OrganizationTab() {
   const [msg, setMsg] = useState('');
   const [expanded, setExpanded] = useState({});
 
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
-
+  // ✅ جلب الشجرة
   const loadTree = async () => {
     try {
-      const { data } = await axios.get(`${API_URL}/api/admin/organization/tree`, { headers });
+      const { data } = await api.get('/admin/organization/tree');
       setTree(data);
       // افتح كل الفروع في البداية
       const initExpanded = {};
@@ -25,6 +23,7 @@ export default function OrganizationTab() {
       markExpanded(data);
       setExpanded(initExpanded);
     } catch (err) {
+      console.error('loadTree error:', err);
       setMsg('❌ ' + (err.response?.data?.msg || 'فشل تحميل الهيكل التنظيمي'));
     } finally {
       setLoading(false);
