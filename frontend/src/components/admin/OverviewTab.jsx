@@ -12,7 +12,13 @@ export default function OverviewTab() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p style={{ textAlign: 'center' }}>جاري التحميل...</p>;
+  if (loading) {
+    return (
+      <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.7)' }}>
+        ⏳ جاري التحميل...
+      </p>
+    );
+  }
 
   const totals = stats.reduce((acc, b) => ({
     total: acc.total + b.total,
@@ -23,27 +29,81 @@ export default function OverviewTab() {
 
   return (
     <div>
+      {/* ✅ Stat Cards */}
       <div className="grid" style={{ marginBottom: 30 }}>
-        <div className="stat-card"><h3>{totals.total}</h3><p>إجمالي الموظفين</p></div>
-        <div className="stat-card" style={{ background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)' }}><h3>{totals.present}</h3><p>حضور اليوم</p></div>
-        <div className="stat-card" style={{ background: 'linear-gradient(145deg, #b8860b, #8b6508)' }}><h3>{totals.late}</h3><p>تأخير اليوم</p></div>
-        <div className="stat-card" style={{ background: 'linear-gradient(145deg, #8e2b2b, #5c1c1c)' }}><h3>{totals.absent}</h3><p>غياب اليوم</p></div>
+        <div className="stat-card">
+          <h3>{totals.total}</h3>
+          <p>إجمالي الموظفين</p>
+        </div>
+
+        <div className="stat-card stat-card-success">
+          <h3>{totals.present}</h3>
+          <p>حضور اليوم</p>
+        </div>
+
+        <div className="stat-card stat-card-warning">
+          <h3>{totals.late}</h3>
+          <p>تأخير اليوم</p>
+        </div>
+
+        <div className="stat-card stat-card-danger">
+          <h3>{totals.absent}</h3>
+          <p>غياب اليوم</p>
+        </div>
       </div>
 
-      <h3 style={{ color: 'var(--navy)', marginBottom: 16 }}>🏢 الفروع</h3>
+      {/* ✅ Branches Title */}
+      <h3
+        style={{
+          marginBottom: 16,
+          fontSize: 20,
+          fontWeight: 700,
+          color: '#f8fafc',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        🏢 الفروع
+      </h3>
+
+      {/* ✅ Branches Grid */}
       <div className="grid">
         {stats.map(b => (
-          <div key={b._id} className="glass" style={{ padding: 20 }}>
-            <h4 style={{ color: 'var(--navy)', marginBottom: 12 }}>
+          <div key={b._id} className="ss-glass" style={{ padding: 20 }}>
+            <h4
+              style={{
+                color: '#f8fafc',
+                marginBottom: 12,
+                fontSize: 16,
+                fontWeight: 700,
+              }}
+            >
               {b.type === 'main' ? '🏛️' : '🏬'} {b.name}
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 14 }}>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 10,
+                fontSize: 14,
+                color: 'rgba(255,255,255,0.85)',
+              }}
+            >
               <div>👥 <b>{b.total}</b> موظف</div>
-              <div style={{ color: '#2e7d5b' }}>✅ <b>{b.present}</b> حاضر</div>
-              <div style={{ color: '#b8860b' }}>⏰ <b>{b.late}</b> متأخر</div>
-              <div style={{ color: '#8e2b2b' }}>❌ <b>{b.absent}</b> غائب</div>
+              <div style={{ color: '#34d399' }}>✅ <b>{b.present}</b> حاضر</div>
+              <div style={{ color: '#fcd34d' }}>⏰ <b>{b.late}</b> متأخر</div>
+              <div style={{ color: '#fca5a5' }}>❌ <b>{b.absent}</b> غائب</div>
             </div>
-            <p style={{ marginTop: 12, fontSize: 12, color: 'var(--gray)' }}>
+
+            <p
+              style={{
+                marginTop: 12,
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.5)',
+              }}
+            >
               📍 نطاق: {b.radius}م | {b.location.lat.toFixed(3)}, {b.location.lng.toFixed(3)}
             </p>
           </div>

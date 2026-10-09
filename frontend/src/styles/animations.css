@@ -1,0 +1,311 @@
+/* ============================================
+   Smart School — Animations
+   ============================================
+   كل الأنيميشن المستخدمة في التطبيق:
+   - Fluid blobs (خلفية انسيابية)
+   - Floating shapes (عناصر عائمة)
+   - Geometric waves (موجات هندسية)
+   - Glow pulses (نبضات ضوئية)
+   - Slide/Fade transitions
+   ============================================ */
+
+/* ---------- Keyframes ---------- */
+
+@keyframes ss-blob-move-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(40px, -60px) scale(1.15); }
+  66% { transform: translate(-30px, 40px) scale(0.9); }
+}
+
+@keyframes ss-blob-move-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-50px, 30px) scale(0.85); }
+  66% { transform: translate(60px, 50px) scale(1.2); }
+}
+
+@keyframes ss-blob-move-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, 60px) scale(1.1); }
+}
+
+@keyframes ss-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes ss-float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-30px) rotate(5deg); }
+}
+
+@keyframes ss-wave-shift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes ss-glow-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes ss-spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ss-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ss-fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ss-fade-in-down {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ss-slide-in-right {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ss-scale-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ss-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ---------- Animation Utility Classes ---------- */
+
+.ss-anim-fade-in { animation: ss-fade-in 0.5s ease both; }
+.ss-anim-fade-in-up { animation: ss-fade-in-up 0.5s ease both; }
+.ss-anim-fade-in-down { animation: ss-fade-in-down 0.5s ease both; }
+.ss-anim-slide-in-right { animation: ss-slide-in-right 0.5s ease both; }
+.ss-anim-scale-in { animation: ss-scale-in 0.4s var(--ss-transition-spring) both; }
+.ss-anim-float { animation: ss-float 4s ease-in-out infinite; }
+.ss-anim-float-slow { animation: ss-float-slow 6s ease-in-out infinite; }
+.ss-anim-spin-slow { animation: ss-spin-slow 20s linear infinite; }
+.ss-anim-glow { animation: ss-glow-pulse 3s ease-in-out infinite; }
+
+/* ---------- Staggered Delays ---------- */
+.ss-delay-1 { animation-delay: 0.1s; }
+.ss-delay-2 { animation-delay: 0.2s; }
+.ss-delay-3 { animation-delay: 0.3s; }
+.ss-delay-4 { animation-delay: 0.4s; }
+.ss-delay-5 { animation-delay: 0.5s; }
+
+/* ---------- Shimmer (Loading) ---------- */
+
+.ss-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.05) 0%,
+    rgba(255,255,255,0.15) 50%,
+    rgba(255,255,255,0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: ss-shimmer 1.5s infinite;
+}
+
+/* ============================================
+   Background Animation Layers
+   ============================================ */
+
+/* --- Fluid Blobs --- */
+.ss-bg-fluid {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ss-z-bg);
+  overflow: hidden;
+  background: var(--ss-bg-base);
+  pointer-events: none;
+}
+
+.ss-bg-fluid::before,
+.ss-bg-fluid::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.55;
+  will-change: transform;
+}
+
+.ss-bg-fluid::before {
+  width: 60vmax;
+  height: 60vmax;
+  top: -20vmax;
+  right: -20vmax;
+  background: radial-gradient(circle, #a855f7 0%, transparent 70%);
+  animation: ss-blob-move-1 18s ease-in-out infinite;
+}
+
+.ss-bg-fluid::after {
+  width: 50vmax;
+  height: 50vmax;
+  bottom: -15vmax;
+  left: -15vmax;
+  background: radial-gradient(circle, #00e5ff 0%, transparent 70%);
+  animation: ss-blob-move-2 22s ease-in-out infinite;
+}
+
+.ss-bg-fluid .ss-blob-3 {
+  position: absolute;
+  width: 40vmax;
+  height: 40vmax;
+  top: 40%;
+  left: 30%;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.4;
+  background: radial-gradient(circle, #ec4899 0%, transparent 70%);
+  animation: ss-blob-move-3 20s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* --- Glassmorphism Background --- */
+.ss-bg-glass {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ss-z-bg);
+  overflow: hidden;
+  background: linear-gradient(135deg, #0f2138 0%, #1a3050 50%, #0a1628 100%);
+  pointer-events: none;
+}
+
+.ss-bg-glass .ss-glass-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+  will-change: transform;
+}
+
+.ss-bg-glass .ss-orb-1 {
+  width: 40vmax; height: 40vmax;
+  top: -10vmax; left: -10vmax;
+  background: radial-gradient(circle, #00e5ff, transparent 70%);
+  animation: ss-blob-move-1 16s ease-in-out infinite;
+}
+
+.ss-bg-glass .ss-orb-2 {
+  width: 35vmax; height: 35vmax;
+  bottom: -10vmax; right: -10vmax;
+  background: radial-gradient(circle, #a855f7, transparent 70%);
+  animation: ss-blob-move-2 20s ease-in-out infinite;
+}
+
+.ss-bg-glass .ss-orb-3 {
+  width: 25vmax; height: 25vmax;
+  top: 40%; right: 20%;
+  background: radial-gradient(circle, #ec4899, transparent 70%);
+  animation: ss-blob-move-3 24s ease-in-out infinite;
+}
+
+/* --- Pastel & Clay Background --- */
+.ss-bg-pastel {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ss-z-bg);
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a3050 0%, #2d4a73 100%);
+  pointer-events: none;
+}
+
+.ss-bg-pastel .ss-clay-shape {
+  position: absolute;
+  border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+  opacity: 0.35;
+  filter: blur(40px);
+  will-change: transform;
+}
+
+.ss-bg-pastel .ss-clay-1 {
+  width: 30vmax; height: 30vmax;
+  top: 10%; left: 5%;
+  background: linear-gradient(135deg, #a8edea, #fed6e3);
+  animation: ss-float-slow 12s ease-in-out infinite;
+}
+
+.ss-bg-pastel .ss-clay-2 {
+  width: 25vmax; height: 25vmax;
+  bottom: 10%; right: 10%;
+  background: linear-gradient(135deg, #fbc2eb, #a6c1ee);
+  animation: ss-float-slow 15s ease-in-out infinite reverse;
+}
+
+.ss-bg-pastel .ss-clay-3 {
+  width: 20vmax; height: 20vmax;
+  top: 50%; left: 50%;
+  background: linear-gradient(135deg, #fddb92, #d1fdff);
+  animation: ss-float-slow 18s ease-in-out infinite;
+}
+
+/* --- Geometric Waves Background --- */
+.ss-bg-waves {
+  position: fixed;
+  inset: 0;
+  z-index: var(--ss-z-bg);
+  overflow: hidden;
+  background: #0a1628;
+  pointer-events: none;
+}
+
+.ss-bg-waves .ss-wave {
+  position: absolute;
+  left: 0;
+  width: 200%;
+  height: 50vh;
+  opacity: 0.35;
+  will-change: transform;
+}
+
+.ss-bg-waves .ss-wave-1 {
+  top: 0;
+  background: linear-gradient(90deg, transparent, #a855f7, transparent);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  animation: ss-wave-shift 15s linear infinite;
+}
+
+.ss-bg-waves .ss-wave-2 {
+  top: 20%;
+  background: linear-gradient(90deg, transparent, #00e5ff, transparent);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  animation: ss-wave-shift 20s linear infinite reverse;
+}
+
+.ss-bg-waves .ss-wave-3 {
+  top: 45%;
+  background: linear-gradient(90deg, transparent, #ec4899, transparent);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  animation: ss-wave-shift 25s linear infinite;
+}
+
+.ss-bg-waves .ss-wave-4 {
+  top: 65%;
+  background: linear-gradient(90deg, transparent, #fb923c, transparent);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  animation: ss-wave-shift 18s linear infinite reverse;
+}
+
+/* ============================================
+   Reduced Motion (Accessibility)
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

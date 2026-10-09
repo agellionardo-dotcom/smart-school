@@ -1,0 +1,215 @@
+/* ============================================
+   Smart School — Glass / Clay / Pastel Effects
+   ============================================
+   كلاسات جاهزة لتأثيرات:
+   - Glassmorphism (زجاجي)
+   - Clay (صلصال)
+   - Pastel soft (باستيل)
+   ============================================ */
+
+/* ---------- Glass Card ---------- */
+.ss-glass {
+  background: var(--ss-bg-glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--ss-border-glass);
+  border-radius: var(--ss-radius-lg);
+  box-shadow: var(--ss-shadow-lg), inset 0 1px 0 rgba(255,255,255,0.15);
+  transition: all var(--ss-transition-base);
+}
+
+.ss-glass:hover {
+  background: var(--ss-bg-glass-hover);
+  border-color: var(--ss-border-glass-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--ss-shadow-xl), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.ss-glass-strong {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.ss-glass-subtle {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- Glass Navbar ---------- */
+.ss-glass-navbar {
+  background: rgba(15, 33, 56, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* ---------- Clay Card (Pastel) ---------- */
+.ss-clay {
+  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240,245,255,0.9));
+  border-radius: var(--ss-radius-xl);
+  box-shadow:
+    0 10px 30px rgba(30, 58, 95, 0.15),
+    inset 0 -4px 8px rgba(30, 58, 95, 0.06),
+    inset 0 4px 8px rgba(255, 255, 255, 0.9);
+  border: none;
+  color: var(--ss-text-on-light);
+  transition: all var(--ss-transition-spring);
+}
+
+.ss-clay:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow:
+    0 16px 40px rgba(30, 58, 95, 0.22),
+    inset 0 -4px 8px rgba(30, 58, 95, 0.06),
+    inset 0 4px 8px rgba(255, 255, 255, 0.9);
+}
+
+/* ---------- Neon Border ---------- */
+.ss-neon-border {
+  position: relative;
+  border-radius: var(--ss-radius-lg);
+}
+
+.ss-neon-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: var(--ss-grad-primary);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ---------- Glow ---------- */
+.ss-glow-cyan { box-shadow: var(--ss-shadow-glow-cyan); }
+.ss-glow-purple { box-shadow: var(--ss-shadow-glow-purple); }
+.ss-glow-pink { box-shadow: var(--ss-shadow-glow-pink); }
+
+/* ---------- Gradient Border Card ---------- */
+.ss-gradient-card {
+  position: relative;
+  background: rgba(15, 33, 56, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--ss-radius-lg);
+  padding: 2px;
+}
+
+.ss-gradient-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: var(--ss-grad-primary);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ---------- Button Base ---------- */
+.ss-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ss-space-sm);
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--ss-radius-md);
+  font-family: inherit;
+  font-size: var(--ss-font-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--ss-transition-base);
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ss-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ss-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* ---------- Input Base ---------- */
+.ss-input {
+  width: 100%;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--ss-radius-md);
+  color: var(--ss-text-primary);
+  font-family: inherit;
+  font-size: var(--ss-font-md);
+  transition: all var(--ss-transition-base);
+  outline: none;
+}
+
+.ss-input::placeholder {
+  color: var(--ss-text-muted);
+}
+
+.ss-input:focus {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--ss-cyan);
+  box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.15);
+}
+
+/* ---------- Badge ---------- */
+.ss-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: var(--ss-radius-full);
+  font-size: var(--ss-font-xs);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.ss-badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16,185,129,0.3); }
+.ss-badge-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239,68,68,0.3); }
+.ss-badge-warning { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+.ss-badge-info { background: rgba(0, 229, 255, 0.2); color: #22d3ee; border-color: rgba(0,229,255,0.3); }
+
+/* ---------- Divider ---------- */
+.ss-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  margin: var(--ss-space-md) 0;
+  border: none;
+}
+
+/* ---------- Ripple / Hover Effect ---------- */
+.ss-hover-lift {
+  transition: transform var(--ss-transition-base), box-shadow var(--ss-transition-base);
+}
+
+.ss-hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--ss-shadow-lg);
+}
+
+/* ---------- Skeleton Loader ---------- */
+.ss-skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: ss-shimmer 1.5s infinite;
+  border-radius: var(--ss-radius-sm);
+}

@@ -8,6 +8,7 @@ import {
 } from '../services/offlineStorage';
 import { isOnline } from '../services/networkStatus';
 import { toCairoTime } from '../utils/dateHelpers';
+import { GlassCard, GradientButton } from '../components/ui';
 
 export default function Attendance() {
   const [todayAttendance, setTodayAttendance] = useState(null);
@@ -17,6 +18,7 @@ export default function Attendance() {
   const [msgType, setMsgType] = useState('info');
   const [queueCount, setQueueCount] = useState(0);
   const [online, setOnline] = useState(true);
+  const [detectedBranch, setDetectedBranch] = useState(null); // ✅ جديد
 
   const userRef = useRef(JSON.parse(localStorage.getItem('user') || '{}'));
   const user = userRef.current;
@@ -64,6 +66,12 @@ export default function Attendance() {
       if (isConn) {
         const { data } = await api.get('/attendance/today');
         setTodayAttendance(data);
+        if (data.branch) {
+          setDetectedBranch({
+            name: data.branch.name,
+            type: data.branch.type,
+          });
+        }
         await cacheData('today_attendance', data);
       } else {
         const cached = await getCachedData('today_attendance', 1440);
@@ -119,6 +127,7 @@ export default function Attendance() {
   // ============================================
   const handleCheckIn = useCallback(async () => {
     setActionLoading(true);
+    setDetectedBranch(null);
     try {
       let location = null;
       try {
@@ -136,7 +145,18 @@ export default function Attendance() {
           lng: location?.lng,
         });
         setTodayAttendance(data);
-        showMsg('✅ تم تسجيل الحضور', 'success');
+
+        // ✅ عرض معلومات الفرع المكتشف
+        if (data.detectedBranch) {
+          setDetectedBranch(data.detectedBranch);
+          showMsg(
+            `✅ تم التسجيل من ${data.detectedBranch.name} (${data.detectedBranch.distance} متر)`,
+            'success'
+          );
+        } else {
+          showMsg('✅ تم تسجيل الحضور', 'success');
+        }
+
         await cacheData('today_attendance', data);
       } else {
         await addToQueue({
@@ -182,7 +202,17 @@ export default function Attendance() {
           lng: location?.lng,
         });
         setTodayAttendance(data);
-        showMsg('✅ تم تسجيل الانصراف', 'success');
+
+        if (data.detectedBranch) {
+          setDetectedBranch(data.detectedBranch);
+          showMsg(
+            `✅ تم الانصراف من ${data.detectedBranch.name}`,
+            'success'
+          );
+        } else {
+          showMsg('✅ تم تسجيل الانصراف', 'success');
+        }
+
         await cacheData('today_attendance', data);
       } else {
         await addToQueue({
@@ -212,7 +242,11 @@ export default function Attendance() {
   if (loading) {
     return (
       <div className="dashboard">
-        <p style={{ textAlign: 'center', padding: 40 }}>⏳ جاري التحميل...</p>
+        <GlassCard padding="lg">
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+            ⏳ جاري التحميل...
+          </p>
+        </GlassCard>
       </div>
     );
   }
@@ -225,35 +259,58 @@ export default function Attendance() {
   // ============================================
   return (
     <div className="dashboard">
-      <h1 style={{ color: 'var(--navy)', marginBottom: 8 }}>📍 الحضور والانصراف</h1>
-      <p style={{ color: 'var(--gray)', marginBottom: 20 }}>
-        الفرع: {user.branch?.name || 'غير محدد'}
-      </p>
+      {/* ✅ Header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1
+          style={{
+            marginBottom: 8,
+            fontSize: 28,
+            fontWeight: 800,
+            background: 'linear-gradient(135deg, #00e5ff, #a855f7)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            display: 'inline-block',
+          }}
+        >
+          📍 الحضور والانصراف
+        </h1>
+        <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, fontSize: 14 }}>
+          الفرع: {user.branch?.name || 'غير محدد'}
+        </p>
+      </div>
 
-      {/* حالة الشبكة */}
+      {/* ✅ حالة الشبكة */}
       <div
+        className="ss-glass"
         style={{
-          padding: 12,
-          borderRadius: 10,
+          padding: '12px 16px',
           marginBottom: 16,
-          background: online ? '#d4edda' : '#fff3cd',
-          color: '#000',
-          fontSize: 13,
-          fontWeight: 'bold',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          borderRight: online ? '3px solid #10b981' : '3px solid #fbbf24',
         }}
       >
-        <span>{online ? '🌐 متصل بالإنترنت' : '📴 غير متصل — وضع أوفلاين'}</span>
+        <span
+          style={{
+            color: online ? '#34d399' : '#fcd34d',
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          {online ? '🌐 متصل بالإنترنت' : '📴 غير متصل — وضع أوفلاين'}
+        </span>
         {queueCount > 0 && (
           <span
             style={{
-              background: '#b8860b',
+              background: 'linear-gradient(135deg, #fb923c, #ef4444)',
               color: '#fff',
               padding: '3px 10px',
               borderRadius: 10,
               fontSize: 11,
+              fontWeight: 700,
+              boxShadow: '0 2px 8px rgba(251,146,60,0.4)',
             }}
           >
             ⏳ {queueCount} طلب معلق
@@ -261,96 +318,220 @@ export default function Attendance() {
         )}
       </div>
 
-      {/* رسالة */}
+      {/* ✅ رسالة */}
       {msg && (
-        <p
+        <div
           style={{
-            padding: 12,
+            padding: '12px 16px',
+            borderRadius: 12,
+            marginBottom: 16,
+            fontSize: 13,
+            fontWeight: 600,
+            direction: 'rtl',
+            textAlign: 'right',
             background:
               msgType === 'success'
-                ? '#d4edda'
+                ? 'rgba(16, 185, 129, 0.15)'
                 : msgType === 'error'
-                ? '#f8d7da'
+                ? 'rgba(239, 68, 68, 0.15)'
                 : msgType === 'warning'
-                ? '#fff3cd'
-                : '#d1ecf1',
-            borderRadius: 8,
-            marginBottom: 16,
-            color: '#000',
-            fontSize: 13,
+                ? 'rgba(251, 191, 36, 0.15)'
+                : 'rgba(0, 229, 255, 0.15)',
+            color:
+              msgType === 'success'
+                ? '#34d399'
+                : msgType === 'error'
+                ? '#fca5a5'
+                : msgType === 'warning'
+                ? '#fcd34d'
+                : '#67e8f9',
+            border: `1px solid ${
+              msgType === 'success'
+                ? 'rgba(16, 185, 129, 0.3)'
+                : msgType === 'error'
+                ? 'rgba(239, 68, 68, 0.3)'
+                : msgType === 'warning'
+                ? 'rgba(251, 191, 36, 0.3)'
+                : 'rgba(0, 229, 255, 0.3)'
+            }`,
+            animation: 'ssFadeIn 0.3s ease',
           }}
         >
           {msg}
-        </p>
+        </div>
       )}
 
-      {/* بطاقات */}
-      <div className="grid">
+      {/* ✅ الفرع المكتشف */}
+      {detectedBranch && (
         <div
-          className="stat-card"
+          className="ss-glass"
           style={{
-            background: checkedIn
-              ? 'linear-gradient(145deg, #2e7d5b, #1e5a40)'
-              : 'linear-gradient(145deg, #d4b876, #c9a961)',
+            padding: '12px 16px',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderRight: '3px solid #00e5ff',
+            background:
+              'linear-gradient(90deg, rgba(0, 229, 255, 0.08), transparent)',
           }}
         >
-          <h3 style={{ color: '#fff' }}>{checkedIn ? '✅' : '📥'}</h3>
-          <p style={{ color: '#fff' }}>الحضور</p>
-          <p style={{ color: '#fff', fontSize: 12, marginTop: 8 }}>
-            {checkedIn ? `تم التسجيل: ${toCairoTime(checkedIn)}` : 'لم يتم التسجيل بعد'}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>
+              {detectedBranch.type === 'main' ? '🏛️' : '🏬'}
+            </span>
+            <div>
+              <div
+                style={{
+                  color: '#67e8f9',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  marginBottom: 2,
+                }}
+              >
+                ✅ تم اكتشاف الفرع
+              </div>
+              <div
+                style={{
+                  color: '#f8fafc',
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                {detectedBranch.name}
+              </div>
+            </div>
+          </div>
+          {detectedBranch.distance != null && (
+            <div
+              style={{
+                background: 'rgba(0, 229, 255, 0.15)',
+                color: '#67e8f9',
+                padding: '4px 10px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              📏 {detectedBranch.distance} متر
+            </div>
+          )}
         </div>
+      )}
 
-        <div
-          className="stat-card"
-          style={{
-            background: checkedOut
-              ? 'linear-gradient(145deg, #3a4a6b, #2a3550)'
-              : 'linear-gradient(145deg, #d4b876, #c9a961)',
-          }}
-        >
-          <h3 style={{ color: '#fff' }}>{checkedOut ? '✅' : '📤'}</h3>
-          <p style={{ color: '#fff' }}>الانصراف</p>
-          <p style={{ color: '#fff', fontSize: 12, marginTop: 8 }}>
-            {checkedOut ? `تم التسجيل: ${toCairoTime(checkedOut)}` : 'لم يتم التسجيل بعد'}
-          </p>
-        </div>
+      {/* ✅ بطاقات */}
+      <div className="grid">
+        <GlassCard padding="lg">
+          <div style={{ textAlign: 'center' }}>
+            <div
+              style={{
+                fontSize: 48,
+                marginBottom: 12,
+                filter: checkedIn ? 'none' : 'grayscale(0.5)',
+              }}
+            >
+              {checkedIn ? '✅' : '📥'}
+            </div>
+            <p
+              style={{
+                color: checkedIn ? '#34d399' : 'rgba(255,255,255,0.85)',
+                fontWeight: 800,
+                margin: 0,
+                fontSize: 18,
+              }}
+            >
+              الحضور
+            </p>
+            <p
+              style={{
+                color: 'rgba(255,255,255,0.55)',
+                marginTop: 8,
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            >
+              {checkedIn
+                ? `تم التسجيل: ${toCairoTime(checkedIn)}`
+                : 'لم يتم التسجيل بعد'}
+            </p>
+          </div>
+        </GlassCard>
+
+        <GlassCard padding="lg" variant={checkedOut ? 'neon' : 'glass'}>
+          <div style={{ textAlign: 'center' }}>
+            <div
+              style={{
+                fontSize: 48,
+                marginBottom: 12,
+                filter: checkedOut ? 'none' : 'grayscale(0.5)',
+              }}
+            >
+              {checkedOut ? '✅' : '📤'}
+            </div>
+            <p
+              style={{
+                color: checkedOut ? '#a78bfa' : 'rgba(255,255,255,0.85)',
+                fontWeight: 800,
+                margin: 0,
+                fontSize: 18,
+              }}
+            >
+              الانصراف
+            </p>
+            <p
+              style={{
+                color: 'rgba(255,255,255,0.55)',
+                marginTop: 8,
+                fontSize: 13,
+                fontWeight: 500,
+              }}
+            >
+              {checkedOut
+                ? `تم التسجيل: ${toCairoTime(checkedOut)}`
+                : 'لم يتم التسجيل بعد'}
+            </p>
+          </div>
+        </GlassCard>
       </div>
 
-      {/* أزرار */}
-      <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
-        <button
-          className="btn"
+      {/* ✅ أزرار */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 14,
+          marginTop: 24,
+          flexWrap: 'wrap',
+        }}
+      >
+        <GradientButton
+          variant={checkedIn ? 'ghost' : 'success'}
+          size="lg"
+          fullWidth
           onClick={handleCheckIn}
           disabled={actionLoading || checkedIn}
-          style={{
-            flex: 1,
-            minWidth: 150,
-            background: checkedIn
-              ? '#8b95a7'
-              : 'linear-gradient(145deg, #2e7d5b, #1e5a40)',
-            opacity: checkedIn ? 0.6 : 1,
-          }}
+          style={{ flex: 1, minWidth: 150 }}
         >
-          {actionLoading ? '⏳' : checkedIn ? '✅ تم الحضور' : '📥 تسجيل الحضور'}
-        </button>
+          {actionLoading
+            ? '⏳'
+            : checkedIn
+            ? '✅ تم الحضور'
+            : '📥 تسجيل الحضور'}
+        </GradientButton>
 
-        <button
-          className="btn"
+        <GradientButton
+          variant={checkedOut || !checkedIn ? 'ghost' : 'navy'}
+          size="lg"
+          fullWidth
           onClick={handleCheckOut}
           disabled={actionLoading || !checkedIn || checkedOut}
-          style={{
-            flex: 1,
-            minWidth: 150,
-            background:
-              checkedOut || !checkedIn
-                ? '#8b95a7'
-                : 'linear-gradient(145deg, #3a4a6b, #2a3550)',
-            opacity: checkedOut || !checkedIn ? 0.6 : 1,
-          }}
+          style={{ flex: 1, minWidth: 150 }}
         >
-          {actionLoading ? '⏳' : checkedOut ? '✅ تم الانصراف' : '📤 تسجيل الانصراف'}
-        </button>
+          {actionLoading
+            ? '⏳'
+            : checkedOut
+            ? '✅ تم الانصراف'
+            : '📤 تسجيل الانصراف'}
+        </GradientButton>
       </div>
     </div>
   );

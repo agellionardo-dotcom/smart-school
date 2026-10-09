@@ -64,99 +64,199 @@ export default function AttendanceReportTab() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
-        <h3 style={{ color: 'var(--navy)', margin: 0 }}>📊 التقارير المتقدمة</h3>
+      {/* ✅ Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <h3
+          style={{
+            margin: 0,
+            fontSize: 20,
+            fontWeight: 700,
+            color: '#f8fafc',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          📊 التقارير المتقدمة
+        </h3>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn" onClick={() => exportReport('excel')}
-            style={{ padding: '10px 20px', fontSize: 13, background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)' }}>
+          <button
+            className="btn green"
+            onClick={() => exportReport('excel')}
+            style={{ padding: '10px 20px', fontSize: 13 }}
+          >
             📥 Excel
           </button>
-          <button className="btn" onClick={() => exportReport('pdf')}
-            style={{ padding: '10px 20px', fontSize: 13, background: 'linear-gradient(145deg, #8e2b2b, #5c1c1c)' }}>
+          <button
+            className="btn danger"
+            onClick={() => exportReport('pdf')}
+            style={{ padding: '10px 20px', fontSize: 13 }}
+          >
             📄 PDF
           </button>
         </div>
       </div>
 
+      {/* ✅ Sub Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button onClick={() => setSubTab('attendance')} style={{
-          padding: '10px 20px', borderRadius: 10, border: 'none',
-          background: subTab === 'attendance' ? 'linear-gradient(145deg, #0a1f44, #142b5c)' : '#fff',
-          color: subTab === 'attendance' ? '#fff' : 'var(--navy)',
-          fontSize: 13, fontWeight: 'bold', cursor: 'pointer',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'inherit',
-        }}>📊 الحضور الشهري</button>
-        <button onClick={() => setSubTab('absence-late')} style={{
-          padding: '10px 20px', borderRadius: 10, border: 'none',
-          background: subTab === 'absence-late' ? 'linear-gradient(145deg, #8e2b2b, #5c1c1c)' : '#fff',
-          color: subTab === 'absence-late' ? '#fff' : 'var(--navy)',
-          fontSize: 13, fontWeight: 'bold', cursor: 'pointer',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'inherit',
-        }}>📉 الغياب والتأخير</button>
+        <button
+          onClick={() => setSubTab('attendance')}
+          className={`admin-tab ${subTab === 'attendance' ? 'active' : ''}`}
+          style={{ padding: '10px 20px', fontSize: 13 }}
+        >
+          📊 الحضور الشهري
+        </button>
+        <button
+          onClick={() => setSubTab('absence-late')}
+          className={`admin-tab ${subTab === 'absence-late' ? 'active' : ''}`}
+          style={{ padding: '10px 20px', fontSize: 13 }}
+        >
+          📉 الغياب والتأخير
+        </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: '#fff', padding: 12, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <select className="input" value={month} onChange={e => setMonth(parseInt(e.target.value))}
-          style={{ width: 140, padding: '10px 14px' }}>
-          {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+      {/* ✅ Filters */}
+      <div
+        className="ss-glass-subtle"
+        style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 16,
+          flexWrap: 'wrap',
+          padding: 12,
+          borderRadius: 12,
+        }}
+      >
+        <select
+          className="input"
+          value={month}
+          onChange={e => setMonth(parseInt(e.target.value))}
+          style={{ width: 140, padding: '10px 14px' }}
+        >
+          {MONTHS.map((m, i) => (
+            <option key={i} value={i + 1}>{m}</option>
+          ))}
         </select>
-        <select className="input" value={year} onChange={e => setYear(parseInt(e.target.value))}
-          style={{ width: 100, padding: '10px 14px' }}>
-          {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+        <select
+          className="input"
+          value={year}
+          onChange={e => setYear(parseInt(e.target.value))}
+          style={{ width: 100, padding: '10px 14px' }}
+        >
+          {[2024, 2025, 2026, 2027].map(y => (
+            <option key={y} value={y}>{y}</option>
+          ))}
         </select>
-        <button className="btn gray" onClick={loadData} style={{ padding: '10px 20px', fontSize: 13 }}>🔄 تحديث</button>
+        <button
+          className="btn gray"
+          onClick={loadData}
+          style={{ padding: '10px 20px', fontSize: 13 }}
+        >
+          🔄 تحديث
+        </button>
       </div>
 
+      {/* ✅ Stats */}
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
-          <div style={{ padding: 16, background: '#0a1f44', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
-            <div style={{ fontSize: 24, fontWeight: 900 }}>{stats.totalEmployees}</div>
-            <div style={{ fontSize: 12 }}>👥 الموظفين</div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          <div className="payroll-stat payroll-stat-info">
+            <div className="payroll-stat-value">{stats.totalEmployees}</div>
+            <div className="payroll-stat-label">👥 الموظفين</div>
           </div>
+
           {subTab === 'attendance' && (
             <>
-              <div style={{ padding: 16, background: '#2e7d5b', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 900 }}>{stats.totalPresent}</div>
-                <div style={{ fontSize: 12 }}>✅ أيام الحضور</div>
+              <div className="payroll-stat payroll-stat-success">
+                <div className="payroll-stat-value">{stats.totalPresent}</div>
+                <div className="payroll-stat-label">✅ أيام الحضور</div>
               </div>
-              <div style={{ padding: 16, background: '#6b8cae', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 900 }}>{stats.avgAttendance}%</div>
-                <div style={{ fontSize: 12 }}>📈 متوسط الحضور</div>
+              <div className="payroll-stat payroll-stat-primary">
+                <div className="payroll-stat-value">{stats.avgAttendance}%</div>
+                <div className="payroll-stat-label">📈 متوسط الحضور</div>
               </div>
             </>
           )}
+
           {subTab === 'absence-late' && (
             <>
-              <div style={{ padding: 16, background: '#8e2b2b', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 900 }}>{stats.totalAbsent}</div>
-                <div style={{ fontSize: 12 }}>❌ أيام الغياب</div>
+              <div className="payroll-stat payroll-stat-danger">
+                <div className="payroll-stat-value">{stats.totalAbsent}</div>
+                <div className="payroll-stat-label">❌ أيام الغياب</div>
               </div>
-              <div style={{ padding: 16, background: '#b8860b', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 900 }}>{stats.totalLate}</div>
-                <div style={{ fontSize: 12 }}>⏰ أيام التأخير</div>
+              <div className="payroll-stat payroll-stat-warning">
+                <div className="payroll-stat-value">{stats.totalLate}</div>
+                <div className="payroll-stat-label">⏰ أيام التأخير</div>
               </div>
-              <div style={{ padding: 16, background: '#5a6478', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
-                <div style={{ fontSize: 20, fontWeight: 900 }}>{stats.totalLateMinutes} د</div>
-                <div style={{ fontSize: 12 }}>⏱️ دقائق التأخير</div>
+              <div className="payroll-stat payroll-stat-info">
+                <div className="payroll-stat-value">{stats.totalLateMinutes} د</div>
+                <div className="payroll-stat-label">⏱️ دقائق التأخير</div>
               </div>
             </>
           )}
         </div>
       )}
 
+      {/* ✅ Message */}
       {msg && (
-        <p style={{
-          padding: 12,
-          background: msg.startsWith('✅') ? '#d4edda' : msg.startsWith('⏳') ? '#fff3cd' : '#f8d7da',
-          borderRadius: 8, marginBottom: 16, color: '#000', fontSize: 13,
-        }}>{msg}</p>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 12,
+            marginBottom: 16,
+            fontSize: 13,
+            fontWeight: 600,
+            direction: 'rtl',
+            textAlign: 'right',
+            background: msg.startsWith('✅')
+              ? 'rgba(16, 185, 129, 0.15)'
+              : msg.startsWith('⏳')
+              ? 'rgba(251, 191, 36, 0.15)'
+              : 'rgba(239, 68, 68, 0.15)',
+            color: msg.startsWith('✅')
+              ? '#34d399'
+              : msg.startsWith('⏳')
+              ? '#fcd34d'
+              : '#fca5a5',
+            border: `1px solid ${
+              msg.startsWith('✅')
+                ? 'rgba(16, 185, 129, 0.3)'
+                : msg.startsWith('⏳')
+                ? 'rgba(251, 191, 36, 0.3)'
+                : 'rgba(239, 68, 68, 0.3)'
+            }`,
+            animation: 'ssFadeIn 0.3s ease',
+          }}
+        >
+          {msg}
+        </div>
       )}
 
-      <div className="glass" style={{ padding: 20 }}>
+      {/* ✅ Table */}
+      <div className="ss-glass" style={{ padding: 20 }}>
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--gray)' }}>⏳ جاري التحميل...</p>
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+            ⏳ جاري التحميل...
+          </p>
         ) : data.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--gray)' }}>لا توجد بيانات لهذا الشهر</p>
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+            لا توجد بيانات لهذا الشهر
+          </p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             {subTab === 'attendance' ? (
@@ -170,18 +270,36 @@ export default function AttendanceReportTab() {
                 <tbody>
                   {data.map(r => (
                     <tr key={r.user._id}>
-                      <td><b>{r.user.name}</b>{r.user.position && <div style={{ fontSize: 11, color: '#5a6478' }}>{r.user.position}</div>}</td>
-                      <td style={{ fontSize: 13 }}>{r.branch?.name || '-'}</td>
-                      <td style={{ color: '#2e7d5b', fontWeight: 'bold' }}>{r.presentDays}</td>
-                      <td style={{ color: '#b8860b', fontWeight: 'bold' }}>{r.lateDays}</td>
-                      <td style={{ color: '#8e2b2b', fontWeight: 'bold' }}>{r.absentDays}</td>
+                      <td>
+                        <b>{r.user.name}</b>
+                        {r.user.position && (
+                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+                            {r.user.position}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                        {r.branch?.name || '-'}
+                      </td>
+                      <td style={{ color: '#34d399', fontWeight: 'bold' }}>{r.presentDays}</td>
+                      <td style={{ color: '#fcd34d', fontWeight: 'bold' }}>{r.lateDays}</td>
+                      <td style={{ color: '#fca5a5', fontWeight: 'bold' }}>{r.absentDays}</td>
                       <td>{r.totalLateMinutes} د</td>
                       <td>{r.totalWorkHours} س</td>
                       <td>
-                        <span style={{
-                          background: r.attendanceRate >= 90 ? '#2e7d5b' : r.attendanceRate >= 70 ? '#b8860b' : '#8e2b2b',
-                          color: '#fff', padding: '4px 10px', borderRadius: 10, fontSize: 12, fontWeight: 'bold',
-                        }}>{r.attendanceRate}%</span>
+                        <span
+                          className="payroll-status"
+                          style={{
+                            background:
+                              r.attendanceRate >= 90
+                                ? 'linear-gradient(135deg, #10b981, #059669)'
+                                : r.attendanceRate >= 70
+                                ? 'linear-gradient(135deg, #fbbf24, #d97706)'
+                                : 'linear-gradient(135deg, #ef4444, #b91c1c)',
+                          }}
+                        >
+                          {r.attendanceRate}%
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -198,20 +316,57 @@ export default function AttendanceReportTab() {
                 <tbody>
                   {data.map(r => {
                     const score = r.absentDays * 100 + r.totalLateMinutes;
-                    const status = score === 0 ? { label: '✅ ممتاز', color: '#2e7d5b' } :
-                                   score < 100 ? { label: '🟡 مقبول', color: '#b8860b' } :
-                                   score < 300 ? { label: '🟠 يحتاج متابعة', color: '#d97706' } :
-                                   { label: '🔴 يحتاج تحذير', color: '#8e2b2b' };
+                    const status =
+                      score === 0
+                        ? { label: '✅ ممتاز', gradient: 'linear-gradient(135deg, #10b981, #059669)' }
+                        : score < 100
+                        ? { label: '🟡 مقبول', gradient: 'linear-gradient(135deg, #fbbf24, #d97706)' }
+                        : score < 300
+                        ? { label: '🟠 يحتاج متابعة', gradient: 'linear-gradient(135deg, #fb923c, #ea580c)' }
+                        : { label: '🔴 يحتاج تحذير', gradient: 'linear-gradient(135deg, #ef4444, #b91c1c)' };
+
                     return (
                       <tr key={r.user._id}>
-                        <td><b>{r.user.name}</b>{r.user.position && <div style={{ fontSize: 11, color: '#5a6478' }}>{r.user.position}</div>}</td>
-                        <td style={{ fontSize: 13 }}>{r.branch?.name || '-'}</td>
-                        <td><span style={{ color: r.absentDays > 0 ? '#8e2b2b' : '#2e7d5b', fontWeight: 'bold', fontSize: 14 }}>{r.absentDays}</span></td>
-                        <td><span style={{ color: r.lateDays > 0 ? '#b8860b' : '#2e7d5b', fontWeight: 'bold', fontSize: 14 }}>{r.lateDays}</span></td>
+                        <td>
+                          <b>{r.user.name}</b>
+                          {r.user.position && (
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+                              {r.user.position}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                          {r.branch?.name || '-'}
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              color: r.absentDays > 0 ? '#fca5a5' : '#34d399',
+                              fontWeight: 'bold',
+                              fontSize: 14,
+                            }}
+                          >
+                            {r.absentDays}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              color: r.lateDays > 0 ? '#fcd34d' : '#34d399',
+                              fontWeight: 'bold',
+                              fontSize: 14,
+                            }}
+                          >
+                            {r.lateDays}
+                          </span>
+                        </td>
                         <td>{r.totalLateMinutes} د</td>
                         <td>{r.avgLateMinutes} د</td>
                         <td>
-                          <span style={{ background: status.color, color: '#fff', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 'bold' }}>
+                          <span
+                            className="payroll-status"
+                            style={{ background: status.gradient }}
+                          >
                             {status.label}
                           </span>
                         </td>

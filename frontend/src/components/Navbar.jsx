@@ -10,7 +10,6 @@ export default function Navbar() {
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // ✅ تحميل عدد الطلبات المعلقة
   useEffect(() => {
     const loadCount = async () => {
       try {
@@ -22,7 +21,7 @@ export default function Navbar() {
     };
 
     loadCount();
-    const interval = setInterval(loadCount, 5000); // كل 5 ثواني
+    const interval = setInterval(loadCount, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -43,10 +42,9 @@ export default function Navbar() {
     manager: 'مدير فرع',
     hr: 'موارد بشرية',
     employee: 'موظف',
-    viewer: 'مشاهد'
+    viewer: 'مشاهد',
   };
 
-  // ✅ تبويبات لوحة الإدارة
   const adminTabs = [
     { id: 'overview',      label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr'] },
     { id: 'analytics',     label: '📈 التحليلات',      roles: ['superadmin', 'manager', 'hr'] },
@@ -62,39 +60,41 @@ export default function Navbar() {
     { id: 'settings',      label: '⚙️ الإعدادات',      roles: ['superadmin'] },
   ];
 
-  const allowedAdminTabs = adminTabs.filter(t => t.roles.includes(user.role));
+  const allowedAdminTabs = adminTabs.filter((t) => t.roles.includes(user.role));
 
   return (
     <>
-      {/* Navbar */}
-      <nav className="navbar">
+      {/* ============ Navbar (Glass) ============ */}
+      <nav className="ss-navbar">
         <button
-          className="navbar-toggle"
+          className="ss-navbar-toggle"
           onClick={() => setDrawerOpen(true)}
           aria-label="فتح القائمة"
         >
           ☰
         </button>
-        <div className="navbar-brand">
+        <div className="ss-navbar-brand">
           <img
             src="/logo.png"
             alt="SMART"
+            className="ss-navbar-logo"
             onError={(e) => { e.target.style.display = 'none'; }}
           />
-          <h2>Smart School</h2>
+          <h2 className="ss-navbar-title">Smart School</h2>
         </div>
       </nav>
 
-      {/* Drawer */}
+      {/* ============ Drawer ============ */}
       {drawerOpen && (
         <>
-          <div className="drawer-overlay" onClick={closeDrawer}></div>
-          <aside className="drawer">
+          <div className="ss-drawer-overlay" onClick={closeDrawer}></div>
+          <aside className="ss-drawer">
             {/* Header */}
-            <div className="drawer-header">
+            <div className="ss-drawer-header">
               <img
                 src="/logo.png"
                 alt="SMART"
+                className="ss-drawer-logo"
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
               <h3>Smart School</h3>
@@ -102,134 +102,91 @@ export default function Navbar() {
             </div>
 
             {/* User Info */}
-            <div className="drawer-user">
-              <div className="drawer-user-name">👤 {user.name}</div>
-              <div className="drawer-user-role">
+            <div className="ss-drawer-user">
+              <div className="ss-drawer-user-name">👤 {user.name}</div>
+              <div className="ss-drawer-user-role">
                 {roleLabels[user.role] || user.role}
               </div>
             </div>
 
             {/* Menu */}
-            <div className="drawer-menu">
+            <div className="ss-drawer-menu">
               <Link
                 to="/dashboard"
-                className={`drawer-link ${isActive('/dashboard') ? 'active' : ''}`}
+                className={`ss-drawer-link ${isActive('/dashboard') ? 'active' : ''}`}
                 onClick={closeDrawer}
               >
-                <span className="icon">🏠</span>
+                <span className="ss-icon">🏠</span>
                 <span>الرئيسية</span>
               </Link>
 
               <Link
                 to="/attendance"
-                className={`drawer-link ${isActive('/attendance') ? 'active' : ''}`}
+                className={`ss-drawer-link ${isActive('/attendance') ? 'active' : ''}`}
                 onClick={closeDrawer}
               >
-                <span className="icon">📍</span>
+                <span className="ss-icon">📍</span>
                 <span>الحضور والانصراف</span>
               </Link>
 
               <Link
                 to="/leaves"
-                className={`drawer-link ${isActive('/leaves') ? 'active' : ''}`}
+                className={`ss-drawer-link ${isActive('/leaves') ? 'active' : ''}`}
                 onClick={closeDrawer}
               >
-                <span className="icon">📝</span>
+                <span className="ss-icon">📝</span>
                 <span>الإجازات</span>
               </Link>
 
-              {/* ✅ رابط المزامنة مع العداد */}
               <Link
                 to="/sync-queue"
-                className={`drawer-link ${isActive('/sync-queue') ? 'active' : ''}`}
+                className={`ss-drawer-link ${isActive('/sync-queue') ? 'active' : ''}`}
                 onClick={closeDrawer}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span className="icon">🔄</span>
+                  <span className="ss-icon">🔄</span>
                   <span>المزامنة</span>
                 </div>
                 {queueCount > 0 && (
-                  <span style={{
-                    background: '#b8860b',
-                    color: '#fff',
-                    padding: '2px 10px',
-                    borderRadius: 10,
-                    fontSize: 11,
-                    fontWeight: 'bold',
-                    minWidth: 20,
-                    textAlign: 'center',
-                  }}>
-                    {queueCount}
-                  </span>
+                  <span className="ss-badge-count">{queueCount}</span>
                 )}
               </Link>
 
               {canAccessAdmin && (
                 <>
-                  <div className="drawer-divider"></div>
+                  <div className="ss-drawer-divider"></div>
 
-                  {/* ✅ لوحة الإدارة - قائمة فرعية */}
                   <div>
                     <button
                       onClick={() => setAdminOpen(!adminOpen)}
-                      className={`drawer-link admin-link ${isActive('/admin') ? 'active' : ''}`}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        width: '100%',
-                        cursor: 'pointer',
-                      }}
+                      className={`ss-drawer-link ss-admin-link ${isActive('/admin') ? 'active' : ''}`}
+                      style={{ width: '100%', cursor: 'pointer' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <span className="icon">👑</span>
+                        <span className="ss-icon">👑</span>
                         <span>لوحة الإدارة</span>
                       </div>
-                      <span style={{
-                        fontSize: 10,
-                        transition: 'transform 0.2s',
-                        transform: adminOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-                        display: 'inline-block',
-                      }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          transition: 'transform 0.2s',
+                          transform: adminOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+                          display: 'inline-block',
+                        }}
+                      >
                         ▶
                       </span>
                     </button>
 
                     {adminOpen && (
-                      <div style={{
-                        background: 'rgba(0,0,0,0.15)',
-                        padding: '4px 0',
-                        borderTop: '1px solid rgba(255,255,255,0.1)',
-                      }}>
-                        {allowedAdminTabs.map(t => (
+                      <div className="ss-admin-submenu">
+                        {allowedAdminTabs.map((t) => (
                           <Link
                             key={t.id}
                             to={`/admin?tab=${t.id}`}
                             onClick={closeDrawer}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              padding: '10px 24px 10px 50px',
-                              color: '#fff',
-                              textDecoration: 'none',
-                              fontSize: 13,
-                              opacity: 0.85,
-                              transition: 'all 0.2s',
-                              borderRight: '3px solid transparent',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                              e.currentTarget.style.opacity = '1';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'transparent';
-                              e.currentTarget.style.opacity = '0.85';
-                            }}
+                            className="ss-admin-sublink"
                           >
                             {t.label}
                           </Link>
@@ -240,27 +197,263 @@ export default function Navbar() {
                 </>
               )}
 
-              <div className="drawer-divider"></div>
+              <div className="ss-drawer-divider"></div>
 
-              <button
-                className="drawer-link"
-                onClick={logout}
-                style={{ color: '#FF9090' }}
-              >
-                <span className="icon">🚪</span>
+              <button className="ss-drawer-link ss-logout-btn" onClick={logout}>
+                <span className="ss-icon">🚪</span>
                 <span>تسجيل الخروج</span>
               </button>
             </div>
 
-            {/* Footer */}
-            <div className="drawer-footer">
+            <div className="ss-drawer-footer">
               © 2026 SMART For Computer & Electronics
               <br />
-              v2.0
+              v2.5
             </div>
           </aside>
         </>
       )}
+
+      {/* ============ Styles ============ */}
+      <style>{`
+        /* ---------- Navbar ---------- */
+        .ss-navbar {
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 12px 20px;
+          background: rgba(10, 22, 40, 0.75);
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .ss-navbar-toggle {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: #fff;
+          width: 42px;
+          height: 42px;
+          border-radius: 12px;
+          cursor: pointer;
+          font-size: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        }
+        .ss-navbar-toggle:hover {
+          background: rgba(0, 229, 255, 0.15);
+          border-color: rgba(0, 229, 255, 0.4);
+        }
+
+        .ss-navbar-brand {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .ss-navbar-logo {
+          width: 42px;
+          height: 42px;
+          object-fit: contain;
+          border-radius: 10px;
+        }
+        .ss-navbar-title {
+          margin: 0;
+          color: #fff;
+          font-size: 20px;
+          font-weight: 700;
+          background: linear-gradient(135deg, #00e5ff, #a855f7);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        /* ---------- Drawer Overlay ---------- */
+        .ss-drawer-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(4px);
+          z-index: 998;
+          animation: ssFadeIn 0.2s ease;
+        }
+
+        @keyframes ssFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        /* ---------- Drawer ---------- */
+        .ss-drawer {
+          position: fixed;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: min(340px, 88vw);
+          z-index: 999;
+          background: rgba(15, 33, 56, 0.92);
+          backdrop-filter: blur(24px) saturate(180%);
+          -webkit-backdrop-filter: blur(24px) saturate(180%);
+          border-left: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
+          display: flex;
+          flex-direction: column;
+          animation: ssSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          overflow-y: auto;
+        }
+
+        @keyframes ssSlideIn {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+
+        .ss-drawer-header {
+          padding: 24px 20px;
+          text-align: center;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(168, 85, 247, 0.08));
+        }
+        .ss-drawer-logo {
+          width: 70px;
+          height: 70px;
+          object-fit: contain;
+          margin-bottom: 12px;
+          border-radius: 14px;
+        }
+        .ss-drawer-header h3 {
+          margin: 0;
+          color: #fff;
+          font-size: 18px;
+          font-weight: 700;
+        }
+        .ss-drawer-header p {
+          margin: 4px 0 0;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 12px;
+        }
+
+        .ss-drawer-user {
+          padding: 16px 20px;
+          background: rgba(0, 0, 0, 0.15);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          text-align: center;
+        }
+        .ss-drawer-user-name {
+          color: #fff;
+          font-size: 15px;
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+        .ss-drawer-user-role {
+          color: #67e8f9;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .ss-drawer-menu {
+          flex: 1;
+          padding: 12px 0;
+          overflow-y: auto;
+        }
+
+        .ss-drawer-link {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 14px 20px;
+          color: rgba(255, 255, 255, 0.85);
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.2s;
+          border-right: 3px solid transparent;
+          background: transparent;
+          border-top: none;
+          border-bottom: none;
+          border-left: none;
+          font-family: inherit;
+          text-align: right;
+          width: 100%;
+        }
+        .ss-drawer-link:hover {
+          background: rgba(255, 255, 255, 0.06);
+          color: #fff;
+        }
+        .ss-drawer-link.active {
+          background: linear-gradient(90deg, rgba(0, 229, 255, 0.15), transparent);
+          border-right-color: #00e5ff;
+          color: #fff;
+        }
+
+        .ss-icon {
+          font-size: 18px;
+          width: 24px;
+          text-align: center;
+          flex-shrink: 0;
+        }
+
+        .ss-badge-count {
+          background: linear-gradient(135deg, #fb923c, #ef4444);
+          color: #fff;
+          padding: 3px 10px;
+          border-radius: 10px;
+          font-size: 11px;
+          font-weight: 700;
+          min-width: 22px;
+          text-align: center;
+          box-shadow: 0 2px 8px rgba(251, 146, 60, 0.4);
+        }
+
+        .ss-drawer-divider {
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          margin: 8px 0;
+        }
+
+        .ss-admin-submenu {
+          background: rgba(0, 0, 0, 0.2);
+          padding: 4px 0;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          animation: ssFadeIn 0.2s ease;
+        }
+        .ss-admin-sublink {
+          display: block;
+          padding: 10px 24px 10px 50px;
+          color: rgba(255, 255, 255, 0.75);
+          text-decoration: none;
+          font-size: 13px;
+          transition: all 0.2s;
+          border-right: 2px solid transparent;
+        }
+        .ss-admin-sublink:hover {
+          background: rgba(0, 229, 255, 0.08);
+          color: #67e8f9;
+          border-right-color: #00e5ff;
+        }
+
+        .ss-logout-btn {
+          color: #fca5a5 !important;
+          cursor: pointer;
+        }
+        .ss-logout-btn:hover {
+          background: rgba(239, 68, 68, 0.12) !important;
+          color: #fecaca !important;
+        }
+
+        .ss-drawer-footer {
+          padding: 16px 20px;
+          text-align: center;
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 11px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          line-height: 1.6;
+        }
+      `}</style>
     </>
   );
 }

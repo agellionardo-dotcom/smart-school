@@ -7,8 +7,10 @@ export default function AIChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const suggestionsLoadedRef = useRef(false); // ✅ يمنع infinite loop
 
   // ✅ تحميل المحادثة من localStorage
   useEffect(() => {
@@ -21,7 +23,8 @@ export default function AIChat() {
       setMessages([
         {
           role: 'model',
-          content: 'أهلاً! 👋 أنا مساعد Smart School الذكي. اسألني عن أي حاجة تخص حضورك، إجازاتك، أو أي بيانات في النظام.',
+          content:
+            'أهلاً! 👋 أنا مساعد Smart School الذكي. اسألني عن أي حاجة تخص حضورك، إجازاتك، أو أي بيانات في النظام.',
           timestamp: new Date().toISOString(),
         },
       ]);
@@ -40,13 +43,20 @@ export default function AIChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  // ✅ تحميل الاقتراحات لما يفتح
+  // ✅ تحميل الاقتراحات مرة واحدة لما يفتح
+  // ✅ استخدمنا useRef عشان نتجنب infinite loop
   useEffect(() => {
-    if (isOpen && suggestions.length === 0) {
-      api.get('/ai/suggestions')
-        .then(r => setSuggestions(r.data.suggestions || []))
-        .catch(() => {});
-    }
+    if (!isOpen) return;
+    if (suggestionsLoadedRef.current) return;
+    suggestionsLoadedRef.current = true;
+
+    api
+      .get('/ai/suggestions')
+      .then((r) => setSuggestions(r.data.suggestions || []))
+      .catch(() => {
+        // لو فشل، نسمح بإعادة المحاولة في المرة الجاية
+        suggestionsLoadedRef.current = false;
+      });
   }, [isOpen]);
 
   // ✅ إرسال الرسالة
@@ -55,7 +65,11 @@ export default function AIChat() {
     if (!messageText || loading) return;
 
     setInput('');
-    const userMsg = { role: 'user', content: messageText, timestamp: new Date().toISOString() };
+    const userMsg = {
+      role: 'user',
+      content: messageText,
+      timestamp: new Date().toISOString(),
+    };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
     setLoading(true);
@@ -64,9 +78,9 @@ export default function AIChat() {
       // ✅ نبني history نظيف
       let history = newMessages
         .slice(-10, -1)
-        .filter(m => !m.isError)
-        .filter(m => m.content && m.content.trim())
-        .map(m => ({
+        .filter((m) => !m.isError)
+        .filter((m) => m.content && m.content.trim())
+        .map((m) => ({
           role: m.role,
           content: m.content,
         }));
@@ -92,7 +106,7 @@ export default function AIChat() {
         history,
       });
 
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
           role: 'model',
@@ -101,7 +115,7 @@ export default function AIChat() {
         },
       ]);
     } catch (err) {
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
           role: 'model',
@@ -138,142 +152,57 @@ export default function AIChat() {
 
   return (
     <>
+      {/* ✅ زر عائم — Glassmorphism */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          style={{
-            position: 'fixed',
-            bottom: 20,
-            right: 20,
-            zIndex: 9999,
-            width: 60,
-            height: 60,
-            borderRadius: '50%',
-            border: 'none',
-            background: 'linear-gradient(145deg, #0a1f44, #142b5c)',
-            color: '#fff',
-            fontSize: 28,
-            cursor: 'pointer',
-            boxShadow: '0 6px 20px rgba(10,31,68,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            animation: 'aiPulse 2s infinite',
-          }}
+          className="ai-fab"
           title="المساعد الذكي"
         >
-          🤖
+          <span className="ai-fab-emoji">🤖</span>
+          <span className="ai-fab-glow" />
         </button>
       )}
 
+      {/* ✅ نافذة الدردشة — Glass */}
       {isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 20,
-            right: 20,
-            zIndex: 9999,
-            width: 'min(400px, calc(100vw - 40px))',
-            height: 'min(600px, calc(100vh - 40px))',
-            background: '#fff',
-            borderRadius: 16,
-            boxShadow: '0 10px 40px rgba(10,31,68,0.3)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            direction: 'rtl',
-          }}
-        >
-          <div
-            style={{
-              padding: '14px 16px',
-              background: 'linear-gradient(145deg, #0a1f44, #142b5c)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 24 }}>🤖</span>
+        <div className="ai-window">
+          {/* Header */}
+          <div className="ai-header">
+            <div className="ai-header-left">
+              <span className="ai-header-emoji">🤖</span>
               <div>
-                <div style={{ fontWeight: 'bold', fontSize: 15 }}>المساعد الذكي</div>
-                <div style={{ fontSize: 11, opacity: 0.8 }}>Smart School AI</div>
+                <div className="ai-header-title">المساعد الذكي</div>
+                <div className="ai-header-sub">Smart School AI</div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                onClick={clearChat}
-                title="مسح المحادثة"
-                style={{
-                  background: 'rgba(255,255,255,0.15)',
-                  border: 'none',
-                  color: '#fff',
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  fontSize: 14,
-                }}
-              >
+            <div className="ai-header-right">
+              <button onClick={clearChat} title="مسح المحادثة" className="ai-icon-btn">
                 🗑️
               </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                title="إغلاق"
-                style={{
-                  background: 'rgba(255,255,255,0.15)',
-                  border: 'none',
-                  color: '#fff',
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  fontSize: 16,
-                }}
-              >
+              <button onClick={() => setIsOpen(false)} title="إغلاق" className="ai-icon-btn">
                 ✕
               </button>
             </div>
           </div>
 
-          <div
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: 16,
-              background: '#f5f7fa',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
+          {/* Messages */}
+          <div className="ai-messages">
             {messages.map((msg, i) => (
               <div
                 key={i}
-                style={{
-                  alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
-                  maxWidth: '85%',
-                }}
+                className={`ai-bubble-wrap ${
+                  msg.role === 'user' ? 'ai-bubble-user-wrap' : 'ai-bubble-model-wrap'
+                }`}
               >
                 <div
-                  style={{
-                    padding: '10px 14px',
-                    borderRadius: 14,
-                    background:
-                      msg.role === 'user'
-                        ? 'linear-gradient(145deg, #0a1f44, #142b5c)'
-                        : msg.isError
-                        ? '#f8d7da'
-                        : '#fff',
-                    color: msg.role === 'user' ? '#fff' : '#0a1f44',
-                    fontSize: 14,
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                    borderBottomRightRadius: msg.role === 'user' ? 14 : 4,
-                    borderBottomLeftRadius: msg.role === 'user' ? 4 : 14,
-                  }}
+                  className={`ai-bubble ${
+                    msg.role === 'user'
+                      ? 'ai-bubble-user'
+                      : msg.isError
+                      ? 'ai-bubble-error'
+                      : 'ai-bubble-model'
+                  }`}
                 >
                   {msg.content}
                 </div>
@@ -281,18 +210,8 @@ export default function AIChat() {
             ))}
 
             {loading && (
-              <div style={{ alignSelf: 'flex-end', maxWidth: '85%' }}>
-                <div
-                  style={{
-                    padding: '12px 18px',
-                    borderRadius: 14,
-                    background: '#fff',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                    display: 'flex',
-                    gap: 4,
-                    alignItems: 'center',
-                  }}
-                >
+              <div className="ai-bubble-wrap ai-bubble-model-wrap">
+                <div className="ai-bubble ai-bubble-model ai-bubble-typing">
                   <span className="typing-dot"></span>
                   <span className="typing-dot"></span>
                   <span className="typing-dot"></span>
@@ -303,35 +222,15 @@ export default function AIChat() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Suggestions */}
           {messages.length <= 1 && suggestions.length > 0 && (
-            <div
-              style={{
-                padding: '8px 12px',
-                background: '#fff',
-                borderTop: '1px solid #e0e6ef',
-                display: 'flex',
-                gap: 6,
-                overflowX: 'auto',
-                flexWrap: 'nowrap',
-              }}
-            >
+            <div className="ai-suggestions">
               {suggestions.map((s, i) => (
                 <button
                   key={i}
                   onClick={() => sendMessage(s)}
                   disabled={loading}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 20,
-                    border: '1px solid #0a1f44',
-                    background: '#fff',
-                    color: '#0a1f44',
-                    fontSize: 12,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    fontFamily: 'inherit',
-                    flex: '0 0 auto',
-                  }}
+                  className="ai-suggestion-chip"
                 >
                   {s}
                 </button>
@@ -339,56 +238,22 @@ export default function AIChat() {
             </div>
           )}
 
-          <div
-            style={{
-              padding: 12,
-              background: '#fff',
-              borderTop: '1px solid #e0e6ef',
-              display: 'flex',
-              gap: 8,
-              alignItems: 'flex-end',
-            }}
-          >
+          {/* Input */}
+          <div className="ai-input-bar">
             <textarea
               ref={inputRef}
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="اكتب سؤالك..."
               rows={1}
               disabled={loading}
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                borderRadius: 12,
-                border: '1px solid #e0e6ef',
-                fontSize: 14,
-                fontFamily: 'inherit',
-                resize: 'none',
-                outline: 'none',
-                maxHeight: 100,
-                direction: 'rtl',
-                color: '#0a1f44',
-              }}
+              className="ai-textarea"
             />
             <button
               onClick={() => sendMessage()}
               disabled={loading || !input.trim()}
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 12,
-                border: 'none',
-                background: loading || !input.trim()
-                  ? '#8b95a7'
-                  : 'linear-gradient(145deg, #0a1f44, #142b5c)',
-                color: '#fff',
-                fontSize: 18,
-                cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              className="ai-send-btn"
             >
               {loading ? '⏳' : '📤'}
             </button>
@@ -396,15 +261,174 @@ export default function AIChat() {
         </div>
       )}
 
+      {/* ✅ Styles */}
       <style>{`
-        @keyframes aiPulse {
-          0%, 100% { box-shadow: 0 6px 20px rgba(10,31,68,0.5); }
-          50% { box-shadow: 0 6px 30px rgba(10,31,68,0.9); }
+        /* ============ FAB ============ */
+        .ai-fab {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          z-index: 9999;
+          width: 62px;
+          height: 62px;
+          border-radius: 50%;
+          border: 1px solid rgba(255,255,255,0.2);
+          background: linear-gradient(135deg, #00e5ff 0%, #a855f7 100%);
+          color: #fff;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 32px rgba(0,229,255,0.4), 0 4px 16px rgba(168,85,247,0.3);
+          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          animation: aiPulse 2.5s ease-in-out infinite;
         }
+        .ai-fab:hover { transform: scale(1.1) rotate(5deg); }
+        .ai-fab:active { transform: scale(0.95); }
+        .ai-fab-emoji { font-size: 28px; position: relative; z-index: 2; }
+        .ai-fab-glow {
+          position: absolute;
+          inset: -4px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(0,229,255,0.6), transparent 70%);
+          z-index: 1;
+          animation: aiGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes aiPulse {
+          0%, 100% { box-shadow: 0 8px 32px rgba(0,229,255,0.4), 0 4px 16px rgba(168,85,247,0.3); }
+          50% { box-shadow: 0 8px 44px rgba(0,229,255,0.7), 0 4px 24px rgba(168,85,247,0.5); }
+        }
+        @keyframes aiGlow {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.9; transform: scale(1.15); }
+        }
+
+        /* ============ Window ============ */
+        .ai-window {
+          position: fixed;
+          bottom: 20px;
+          right: 20px;
+          z-index: 9999;
+          width: min(420px, calc(100vw - 40px));
+          height: min(620px, calc(100vh - 40px));
+          background: rgba(15, 33, 56, 0.85);
+          backdrop-filter: blur(24px) saturate(180%);
+          -webkit-backdrop-filter: blur(24px) saturate(180%);
+          border: 1px solid rgba(255,255,255,0.15);
+          border-radius: 20px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          direction: rtl;
+          animation: aiWindowIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes aiWindowIn {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ============ Header ============ */
+        .ai-header {
+          padding: 14px 16px;
+          background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(168,85,247,0.15));
+          border-bottom: 1px solid rgba(255,255,255,0.1);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          color: #fff;
+        }
+        .ai-header-left { display: flex; align-items: center; gap: 10px; }
+        .ai-header-emoji { font-size: 24px; }
+        .ai-header-title { font-weight: 700; font-size: 15px; color: #fff; }
+        .ai-header-sub { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+        .ai-header-right { display: flex; gap: 6px; }
+        .ai-icon-btn {
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.15);
+          color: #fff;
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .ai-icon-btn:hover {
+          background: rgba(255,255,255,0.2);
+          border-color: rgba(255,255,255,0.3);
+        }
+
+        /* ============ Messages ============ */
+        .ai-messages {
+          flex: 1;
+          overflow-y: auto;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          background: transparent;
+        }
+        .ai-messages::-webkit-scrollbar { width: 6px; }
+        .ai-messages::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.15);
+          border-radius: 3px;
+        }
+
+        .ai-bubble-wrap {
+          display: flex;
+          max-width: 85%;
+          animation: aiBubbleIn 0.3s ease;
+        }
+        .ai-bubble-user-wrap { align-self: flex-start; }
+        .ai-bubble-model-wrap { align-self: flex-end; }
+        @keyframes aiBubbleIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ai-bubble {
+          padding: 10px 14px;
+          border-radius: 16px;
+          font-size: 14px;
+          line-height: 1.6;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .ai-bubble-user {
+          background: linear-gradient(135deg, #00e5ff, #a855f7);
+          color: #fff;
+          border-bottom-left-radius: 4px;
+          box-shadow: 0 4px 12px rgba(0,229,255,0.25);
+        }
+        .ai-bubble-model {
+          background: rgba(255,255,255,0.1);
+          color: #f8fafc;
+          border: 1px solid rgba(255,255,255,0.12);
+          border-bottom-right-radius: 4px;
+          backdrop-filter: blur(10px);
+        }
+        .ai-bubble-error {
+          background: rgba(239,68,68,0.2);
+          color: #fca5a5;
+          border: 1px solid rgba(239,68,68,0.3);
+          border-bottom-right-radius: 4px;
+        }
+        .ai-bubble-typing {
+          display: flex;
+          gap: 5px;
+          align-items: center;
+          padding: 12px 16px;
+        }
+
         .typing-dot {
-          width: 8px;
-          height: 8px;
-          background: #0a1f44;
+          width: 7px;
+          height: 7px;
+          background: #00e5ff;
           border-radius: 50%;
           animation: typingBounce 1.4s infinite;
         }
@@ -413,6 +437,112 @@ export default function AIChat() {
         @keyframes typingBounce {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
           30% { transform: translateY(-8px); opacity: 1; }
+        }
+
+        /* ============ Suggestions ============ */
+        .ai-suggestions {
+          padding: 10px 12px;
+          background: rgba(0,0,0,0.15);
+          border-top: 1px solid rgba(255,255,255,0.08);
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          flex-wrap: nowrap;
+        }
+        .ai-suggestions::-webkit-scrollbar { height: 4px; }
+        .ai-suggestions::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.15);
+          border-radius: 2px;
+        }
+        .ai-suggestion-chip {
+          padding: 7px 14px;
+          border-radius: 20px;
+          border: 1px solid rgba(0,229,255,0.4);
+          background: rgba(0,229,255,0.08);
+          color: #67e8f9;
+          font-size: 12px;
+          cursor: pointer;
+          white-space: nowrap;
+          font-family: inherit;
+          flex: 0 0 auto;
+          transition: all 0.2s;
+        }
+        .ai-suggestion-chip:hover:not(:disabled) {
+          background: rgba(0,229,255,0.18);
+          border-color: rgba(0,229,255,0.7);
+          transform: translateY(-1px);
+        }
+        .ai-suggestion-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ============ Input ============ */
+        .ai-input-bar {
+          padding: 12px;
+          background: rgba(0,0,0,0.2);
+          border-top: 1px solid rgba(255,255,255,0.08);
+          display: flex;
+          gap: 8px;
+          align-items: flex-end;
+        }
+        .ai-textarea {
+          flex: 1;
+          padding: 11px 14px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.15);
+          background: rgba(255,255,255,0.06);
+          color: #f8fafc;
+          font-size: 14px;
+          font-family: inherit;
+          resize: none;
+          outline: none;
+          max-height: 100px;
+          direction: rtl;
+          transition: all 0.2s;
+        }
+        .ai-textarea::placeholder { color: rgba(255,255,255,0.4); }
+        .ai-textarea:focus {
+          background: rgba(255,255,255,0.1);
+          border-color: rgba(0,229,255,0.5);
+          box-shadow: 0 0 0 3px rgba(0,229,255,0.12);
+        }
+        .ai-textarea:disabled { opacity: 0.6; }
+
+        .ai-send-btn {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          border: none;
+          background: linear-gradient(135deg, #00e5ff, #a855f7);
+          color: #fff;
+          font-size: 18px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+          box-shadow: 0 4px 12px rgba(0,229,255,0.3);
+          flex: 0 0 auto;
+        }
+        .ai-send-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(0,229,255,0.5);
+        }
+        .ai-send-btn:disabled {
+          background: rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.3);
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+
+        /* ============ Mobile ============ */
+        @media (max-width: 480px) {
+          .ai-window {
+            bottom: 0;
+            right: 0;
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+          }
+          .ai-fab { bottom: 16px; right: 16px; }
         }
       `}</style>
     </>

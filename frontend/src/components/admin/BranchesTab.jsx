@@ -91,7 +91,6 @@ export default function BranchesTab() {
   const [msg, setMsg] = useState('');
   const mapRef = useRef(null);
 
-  // ✅ جلب الفروع — api instance بيضيف التوكن والـ /api تلقائياً
   const loadBranches = async () => {
     try {
       const { data } = await api.get('/branches');
@@ -103,7 +102,6 @@ export default function BranchesTab() {
 
   useEffect(() => { loadBranches(); }, []);
 
-  // ✅ تحريك الخريطة لما الإحداثيات تتغير
   useEffect(() => {
     if (mapRef.current && form.lat && form.lng && showMapPicker) {
       const lat = parseFloat(form.lat);
@@ -188,8 +186,30 @@ export default function BranchesTab() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 style={{ color: 'var(--navy)' }}>🏢 الفروع ({branches.length})</h3>
+      {/* ✅ Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <h3
+          style={{
+            margin: 0,
+            fontSize: 20,
+            fontWeight: 700,
+            color: '#f8fafc',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          🏢 الفروع ({branches.length})
+        </h3>
         <button
           className="btn"
           onClick={() => { setShowForm(!showForm); resetForm(); }}
@@ -198,29 +218,65 @@ export default function BranchesTab() {
         </button>
       </div>
 
+      {/* ✅ Message */}
       {msg && (
-        <p style={{
-          padding: 12,
-          background: msg.startsWith('✅') ? '#d4edda' : '#f8d7da',
-          borderRadius: 8,
-          marginBottom: 16,
-          color: '#000'
-        }}>{msg}</p>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 12,
+            marginBottom: 16,
+            fontSize: 13,
+            fontWeight: 600,
+            direction: 'rtl',
+            textAlign: 'right',
+            background: msg.startsWith('✅')
+              ? 'rgba(16, 185, 129, 0.15)'
+              : 'rgba(239, 68, 68, 0.15)',
+            color: msg.startsWith('✅') ? '#34d399' : '#fca5a5',
+            border: `1px solid ${
+              msg.startsWith('✅')
+                ? 'rgba(16, 185, 129, 0.3)'
+                : 'rgba(239, 68, 68, 0.3)'
+            }`,
+            animation: 'ssFadeIn 0.3s ease',
+          }}
+        >
+          {msg}
+        </div>
       )}
 
+      {/* ✅ Form */}
       {showForm && (
-        <div className="glass" style={{ padding: 24, marginBottom: 20 }}>
-          <h4 style={{ color: 'var(--navy)', marginBottom: 16 }}>
+        <div className="ss-glass" style={{ padding: 24, marginBottom: 20 }}>
+          <h4
+            style={{
+              color: '#f8fafc',
+              marginBottom: 16,
+              fontSize: 17,
+              fontWeight: 700,
+            }}
+          >
             {editBranch ? '✏️ تعديل فرع' : '➕ إضافة فرع جديد'}
           </h4>
+
           <form onSubmit={submit}>
-            <input className="input" placeholder="اسم الفرع *" value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })} required />
+            <input
+              className="input"
+              placeholder="اسم الفرع *"
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+              required
+            />
             <br /><br />
 
-            <label>نوع الفرع *</label>
-            <select className="input" value={form.type}
-              onChange={e => setForm({ ...form, type: e.target.value })}>
+            <label style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600 }}>
+              نوع الفرع *
+            </label>
+            <select
+              className="input"
+              value={form.type}
+              onChange={e => setForm({ ...form, type: e.target.value })}
+            >
               <option value="main">فرع رئيسي</option>
               <option value="sub">فرع فرعي</option>
             </select>
@@ -228,9 +284,15 @@ export default function BranchesTab() {
 
             {form.type === 'sub' && (
               <>
-                <label>الفرع الرئيسي *</label>
-                <select className="input" value={form.parent}
-                  onChange={e => setForm({ ...form, parent: e.target.value })} required>
+                <label style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600 }}>
+                  الفرع الرئيسي *
+                </label>
+                <select
+                  className="input"
+                  value={form.parent}
+                  onChange={e => setForm({ ...form, parent: e.target.value })}
+                  required
+                >
                   <option value="">اختر الفرع الرئيسي</option>
                   {mainBranches
                     .filter(b => !editBranch || b._id !== editBranch._id)
@@ -240,14 +302,33 @@ export default function BranchesTab() {
               </>
             )}
 
-            <label>نطاق التسجيل (متر) *</label>
-            <input className="input" type="number" min="1" max="500"
+            <label style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600 }}>
+              نطاق التسجيل (متر) *
+            </label>
+            <input
+              className="input"
+              type="number"
+              min="1"
+              max="500"
               value={form.radius}
-              onChange={e => setForm({ ...form, radius: e.target.value })} required />
+              onChange={e => setForm({ ...form, radius: e.target.value })}
+              required
+            />
             <br /><br />
 
-            <label style={{ fontWeight: 'bold', color: 'var(--navy)' }}>📍 الموقع الجغرافي *</label>
+            <label
+              style={{
+                fontWeight: 700,
+                color: '#67e8f9',
+                fontSize: 14,
+                display: 'inline-block',
+                marginBottom: 8,
+              }}
+            >
+              📍 الموقع الجغرافي *
+            </label>
             <br /><br />
+
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
                 type="button"
@@ -259,8 +340,8 @@ export default function BranchesTab() {
               </button>
               <button
                 type="button"
-                className="btn"
-                style={{ padding: '10px 16px', fontSize: 13, background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)', flex: 1, minWidth: 150 }}
+                className="btn green"
+                style={{ padding: '10px 16px', fontSize: 13, flex: 1, minWidth: 150 }}
                 onClick={() => {
                   if (!navigator.geolocation) {
                     alert('❌ المتصفح لا يدعم تحديد الموقع');
@@ -286,56 +367,55 @@ export default function BranchesTab() {
 
             <br />
 
-            <input className="input" type="number" step="any" placeholder="خط العرض (lat)"
+            <input
+              className="input"
+              type="number"
+              step="any"
+              placeholder="خط العرض (lat)"
               value={form.lat}
-              onChange={e => setForm({ ...form, lat: e.target.value })} required />
+              onChange={e => setForm({ ...form, lat: e.target.value })}
+              required
+            />
             <br /><br />
 
-            <input className="input" type="number" step="any" placeholder="خط الطول (lng)"
+            <input
+              className="input"
+              type="number"
+              step="any"
+              placeholder="خط الطول (lng)"
               value={form.lng}
-              onChange={e => setForm({ ...form, lng: e.target.value })} required />
+              onChange={e => setForm({ ...form, lng: e.target.value })}
+              required
+            />
 
             {showMapPicker && (
               <div style={{ marginTop: 16 }}>
-                <div style={{
-                  display: 'flex',
-                  gap: 6,
-                  flexWrap: 'wrap',
-                  marginBottom: 12
-                }}>
+                {/* ✅ Map Style Buttons */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
                   {Object.entries(MAP_STYLES).map(([key, layer]) => (
                     <button
                       key={key}
                       type="button"
                       onClick={() => setMapType(key)}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: 10,
-                        border: 'none',
-                        background: mapType === key
-                          ? 'linear-gradient(145deg, #0a1f44, #142b5c)'
-                          : '#fff',
-                        color: mapType === key ? '#fff' : 'var(--navy)',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                        fontFamily: 'inherit'
-                      }}
+                      className={`admin-tab ${mapType === key ? 'active' : ''}`}
+                      style={{ fontSize: 12, padding: '8px 14px' }}
                     >
                       {layer.name}
                     </button>
                   ))}
                 </div>
 
-                <div style={{
-                  height: 'clamp(300px, 50vh, 450px)',
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  border: '3px solid #0a1f44',
-                  boxShadow: '0 8px 24px rgba(10,31,68,0.15)',
-                  position: 'relative'
-                }}>
+                {/* ✅ Map */}
+                <div
+                  style={{
+                    height: 'clamp(300px, 50vh, 450px)',
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    border: '2px solid rgba(0, 229, 255, 0.3)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px rgba(0, 229, 255, 0.15)',
+                    position: 'relative',
+                  }}
+                >
                   <Map
                     ref={mapRef}
                     initialViewState={{
@@ -369,19 +449,21 @@ export default function BranchesTab() {
                           });
                         }}
                       >
-                        <div style={{
-                          width: 36,
-                          height: 36,
-                          background: 'linear-gradient(145deg, #e74c3c, #c0392b)',
-                          borderRadius: '50% 50% 50% 0',
-                          transform: 'rotate(-45deg)',
-                          boxShadow: '0 4px 12px rgba(231,76,60,0.6)',
-                          border: '3px solid #fff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'grab',
-                        }}>
+                        <div
+                          style={{
+                            width: 36,
+                            height: 36,
+                            background: 'linear-gradient(145deg, #00e5ff, #a855f7)',
+                            borderRadius: '50% 50% 50% 0',
+                            transform: 'rotate(-45deg)',
+                            boxShadow: '0 4px 16px rgba(0, 229, 255, 0.6)',
+                            border: '3px solid #fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'grab',
+                          }}
+                        >
                           <span style={{ transform: 'rotate(45deg)', fontSize: 16 }}>📍</span>
                         </div>
                       </Marker>
@@ -389,18 +471,30 @@ export default function BranchesTab() {
                   </Map>
                 </div>
 
-                <div style={{
-                  marginTop: 12,
-                  padding: 12,
-                  background: '#f5f7fa',
-                  borderRadius: 12,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 8
-                }}>
-                  <div style={{ display: 'flex', gap: 16, fontSize: 13, fontFamily: 'monospace', direction: 'ltr' }}>
+                {/* ✅ Coordinates Display */}
+                <div
+                  className="ss-glass-subtle"
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 12,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 16,
+                      fontSize: 13,
+                      fontFamily: 'monospace',
+                      direction: 'ltr',
+                      color: '#f8fafc',
+                    }}
+                  >
                     <div><b>Lat:</b> {form.lat || '—'}</div>
                     <div><b>Lng:</b> {form.lng || '—'}</div>
                   </div>
@@ -414,15 +508,19 @@ export default function BranchesTab() {
                   </button>
                 </div>
 
-                <div style={{
-                  marginTop: 8,
-                  padding: 10,
-                  background: '#fff3cd',
-                  borderRadius: 8,
-                  fontSize: 12,
-                  color: '#8b6508',
-                  fontWeight: 600
-                }}>
+                {/* ✅ Tip */}
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: '10px 14px',
+                    background: 'rgba(251, 191, 36, 0.12)',
+                    border: '1px solid rgba(251, 191, 36, 0.3)',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    color: '#fcd34d',
+                    fontWeight: 600,
+                  }}
+                >
                   💡 <b>نصيحة:</b> اضغط على الخريطة لاختيار الموقع، أو اسحب العلامة 📍 لتعديله بدقة.
                 </div>
               </div>
@@ -430,12 +528,20 @@ export default function BranchesTab() {
 
             <br />
 
-            <input className="input" placeholder="العنوان (اختياري)" value={form.address}
-              onChange={e => setForm({ ...form, address: e.target.value })} />
+            <input
+              className="input"
+              placeholder="العنوان (اختياري)"
+              value={form.address}
+              onChange={e => setForm({ ...form, address: e.target.value })}
+            />
             <br /><br />
 
-            <input className="input" placeholder="رقم الهاتف (اختياري)" value={form.phone}
-              onChange={e => setForm({ ...form, phone: e.target.value })} />
+            <input
+              className="input"
+              placeholder="رقم الهاتف (اختياري)"
+              value={form.phone}
+              onChange={e => setForm({ ...form, phone: e.target.value })}
+            />
             <br /><br />
 
             <button className="btn" style={{ width: '100%' }}>
@@ -445,25 +551,63 @@ export default function BranchesTab() {
         </div>
       )}
 
+      {/* ✅ Branches Grid */}
       <div className="grid">
         {branches.map(b => (
-          <div key={b._id} className="glass" style={{ padding: 20 }}>
-            <h4 style={{ color: 'var(--navy)', marginBottom: 8 }}>
+          <div key={b._id} className="ss-glass" style={{ padding: 20 }}>
+            <h4
+              style={{
+                color: '#f8fafc',
+                marginBottom: 10,
+                fontSize: 16,
+                fontWeight: 700,
+              }}
+            >
               {b.type === 'main' ? '🏛️' : '🏬'} {b.name}
             </h4>
-            <p style={{ fontSize: 13, color: 'var(--gray)', marginBottom: 8 }}>
+
+            <p
+              style={{
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.65)',
+                marginBottom: 8,
+                margin: '0 0 8px 0',
+              }}
+            >
               النوع: {b.type === 'main' ? 'رئيسي' : 'فرعي'} | نطاق: {b.radius}م
             </p>
+
             {b.manager && (
-              <p style={{ fontSize: 13 }}>👤 المدير: {b.manager.name}</p>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: '4px 0' }}>
+                👤 المدير: {b.manager.name}
+              </p>
             )}
-            <p style={{ fontSize: 12, color: 'var(--gray)', marginTop: 8 }}>
+
+            <p
+              style={{
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.5)',
+                marginTop: 8,
+                fontFamily: 'monospace',
+                direction: 'ltr',
+                textAlign: 'right',
+              }}
+            >
               📍 {b.location?.lat?.toFixed(4)}, {b.location?.lng?.toFixed(4)}
             </p>
-            {b.phone && <p style={{ fontSize: 12 }}>📞 {b.phone}</p>}
-            {b.address && <p style={{ fontSize: 12 }}>🏠 {b.address}</p>}
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            {b.phone && (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: '4px 0' }}>
+                📞 {b.phone}
+              </p>
+            )}
+            {b.address && (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: '4px 0' }}>
+                🏠 {b.address}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button
                 className="btn gray"
                 style={{ padding: '6px 14px', fontSize: 12, flex: 1 }}
@@ -472,8 +616,8 @@ export default function BranchesTab() {
                 ✏️ تعديل
               </button>
               <button
-                className="btn"
-                style={{ padding: '6px 14px', fontSize: 12, background: '#8e2b2b', flex: 1 }}
+                className="btn danger"
+                style={{ padding: '6px 14px', fontSize: 12, flex: 1 }}
                 onClick={() => deleteBranch(b._id)}
               >
                 🗑️ حذف

@@ -10,6 +10,14 @@ const ROLES = [
   { value: 'viewer',     label: 'مشاهد' },
 ];
 
+const ROLE_GRADIENTS = {
+  superadmin: 'linear-gradient(135deg, #00e5ff, #a855f7)',
+  manager:    'linear-gradient(135deg, #3b82f6, #1e40af)',
+  hr:         'linear-gradient(135deg, #a855f7, #7e22ce)',
+  employee:   'linear-gradient(135deg, #10b981, #059669)',
+  viewer:     'linear-gradient(135deg, #94a3b8, #64748b)',
+};
+
 export default function UsersTab() {
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -24,7 +32,6 @@ export default function UsersTab() {
     branch: '', phone: '', department: '', position: ''
   });
 
-  // ✅ جلب المستخدمين
   const loadUsers = async () => {
     try {
       const { data } = await api.get('/admin/users');
@@ -37,7 +44,6 @@ export default function UsersTab() {
     }
   };
 
-  // ✅ جلب الفروع
   const loadBranches = async () => {
     try {
       const { data } = await api.get('/branches');
@@ -53,12 +59,13 @@ export default function UsersTab() {
   }, []);
 
   const resetForm = () => {
-    setForm({ name: '', email: '', password: '', role: 'employee',
-      branch: '', phone: '', department: '', position: '' });
+    setForm({
+      name: '', email: '', password: '', role: 'employee',
+      branch: '', phone: '', department: '', position: ''
+    });
     setEditUser(null);
   };
 
-  // ✅ إضافة / تعديل مستخدم
   const submit = async (e) => {
     e.preventDefault();
     try {
@@ -77,7 +84,6 @@ export default function UsersTab() {
     }
   };
 
-  // ✅ حذف مستخدم
   const deleteUser = async (id) => {
     if (!window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
     try {
@@ -106,27 +112,17 @@ export default function UsersTab() {
   };
 
   const roleBadge = (role) => {
-    const colors = {
-      superadmin: '#0a1f44',
-      manager:    '#2e4373',
-      hr:         '#5a6478',
-      employee:   '#2e7d5b',
-      viewer:     '#8b95a7'
-    };
     const label = ROLES.find(r => r.value === role)?.label || role;
     return (
-      <span style={{
-        background: colors[role] || '#8b95a7',
-        color: '#fff',
-        padding: '4px 12px',
-        borderRadius: 12,
-        fontSize: 12,
-        fontWeight: 'bold'
-      }}>{label}</span>
+      <span
+        className="payroll-status"
+        style={{ background: ROLE_GRADIENTS[role] || ROLE_GRADIENTS.viewer }}
+      >
+        {label}
+      </span>
     );
   };
 
-  // ✅ تحميل ملف (Excel / PDF / قالب)
   const downloadFile = async (endpoint, filename) => {
     try {
       const response = await api.get(endpoint, {
@@ -146,7 +142,6 @@ export default function UsersTab() {
     }
   };
 
-  // ✅ استيراد Excel
   const handleImport = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -178,16 +173,17 @@ export default function UsersTab() {
 
   return (
     <div>
-      {/* قسم التقارير والاستيراد */}
-      <div style={{
-        background: '#fff',
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 20,
-        boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <b style={{ color: 'var(--navy)', fontSize: 15 }}>📊 التقارير والاستيراد</b>
+      {/* ✅ Reports Section */}
+      <div className="ss-glass" style={{ padding: 16, marginBottom: 20 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: showReports ? 12 : 0,
+          }}
+        >
+          <b style={{ color: '#f8fafc', fontSize: 15 }}>📊 التقارير والاستيراد</b>
           <button
             className="btn gray"
             style={{ padding: '6px 12px', fontSize: 12 }}
@@ -198,24 +194,30 @@ export default function UsersTab() {
         </div>
 
         {showReports && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: 8,
+            }}
+          >
             <button
-              className="btn"
-              style={{ background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)', padding: '10px', fontSize: 13 }}
+              className="btn green"
+              style={{ padding: '10px', fontSize: 13 }}
               onClick={() => downloadFile('/reports/users/excel', `users_${Date.now()}.xlsx`)}
             >
               📥 Excel المستخدمين
             </button>
             <button
-              className="btn"
-              style={{ background: 'linear-gradient(145deg, #8e2b2b, #5c1c1c)', padding: '10px', fontSize: 13 }}
+              className="btn danger"
+              style={{ padding: '10px', fontSize: 13 }}
               onClick={() => downloadFile('/reports/users/pdf', `users_${Date.now()}.pdf`)}
             >
               📄 PDF المستخدمين
             </button>
             <button
-              className="btn"
-              style={{ background: 'linear-gradient(145deg, #2e4373, #1a2a52)', padding: '10px', fontSize: 13 }}
+              className="btn gray"
+              style={{ padding: '10px', fontSize: 13 }}
               onClick={() => downloadFile('/reports/users/template', 'users_template.xlsx')}
             >
               📋 قالب المستخدمين
@@ -223,12 +225,12 @@ export default function UsersTab() {
             <label
               className="btn"
               style={{
-                background: 'linear-gradient(145deg, #b8860b, #8b6508)',
+                background: 'linear-gradient(135deg, #fbbf24, #d97706)',
                 padding: '10px',
                 fontSize: 13,
                 cursor: 'pointer',
                 textAlign: 'center',
-                display: 'block'
+                display: 'block',
               }}
             >
               📤 استيراد Excel
@@ -243,9 +245,30 @@ export default function UsersTab() {
         )}
       </div>
 
-      {/* عنوان المستخدمين */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h3 style={{ color: 'var(--navy)' }}>👥 قائمة المستخدمين ({users.length})</h3>
+      {/* ✅ Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <h3
+          style={{
+            margin: 0,
+            fontSize: 20,
+            fontWeight: 700,
+            color: '#f8fafc',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          👥 قائمة المستخدمين ({users.length})
+        </h3>
         <button
           className="btn"
           onClick={() => { setShowForm(!showForm); resetForm(); }}
@@ -254,53 +277,120 @@ export default function UsersTab() {
         </button>
       </div>
 
+      {/* ✅ Message */}
       {msg && (
-        <p style={{
-          padding: 12,
-          background: msg.startsWith('✅') ? '#d4edda' : '#f8d7da',
-          borderRadius: 8,
-          marginBottom: 16,
-          color: '#000'
-        }}>{msg}</p>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 12,
+            marginBottom: 16,
+            fontSize: 13,
+            fontWeight: 600,
+            direction: 'rtl',
+            textAlign: 'right',
+            background: msg.startsWith('✅')
+              ? 'rgba(16, 185, 129, 0.15)'
+              : msg.startsWith('⏳')
+              ? 'rgba(251, 191, 36, 0.15)'
+              : 'rgba(239, 68, 68, 0.15)',
+            color: msg.startsWith('✅')
+              ? '#34d399'
+              : msg.startsWith('⏳')
+              ? '#fcd34d'
+              : '#fca5a5',
+            border: `1px solid ${
+              msg.startsWith('✅')
+                ? 'rgba(16, 185, 129, 0.3)'
+                : msg.startsWith('⏳')
+                ? 'rgba(251, 191, 36, 0.3)'
+                : 'rgba(239, 68, 68, 0.3)'
+            }`,
+            animation: 'ssFadeIn 0.3s ease',
+          }}
+        >
+          {msg}
+        </div>
       )}
 
+      {/* ✅ Form */}
       {showForm && (
-        <div className="glass" style={{ padding: 24, marginBottom: 20 }}>
-          <h4 style={{ color: 'var(--navy)', marginBottom: 16 }}>
+        <div className="ss-glass" style={{ padding: 24, marginBottom: 20 }}>
+          <h4
+            style={{
+              color: '#f8fafc',
+              marginBottom: 16,
+              fontSize: 17,
+              fontWeight: 700,
+            }}
+          >
             {editUser ? '✏️ تعديل مستخدم' : '➕ إضافة مستخدم جديد'}
           </h4>
           <form onSubmit={submit}>
-            <input className="input" placeholder="الاسم الكامل *" value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })} required />
+            <input
+              className="input"
+              placeholder="الاسم الكامل *"
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+              required
+            />
             <br /><br />
-            <input className="input" type="email" placeholder="البريد الإلكتروني *" value={form.email}
-              onChange={e => setForm({ ...form, email: e.target.value })} required />
+            <input
+              className="input"
+              type="email"
+              placeholder="البريد الإلكتروني *"
+              value={form.email}
+              onChange={e => setForm({ ...form, email: e.target.value })}
+              required
+            />
             <br /><br />
-            <input className="input" type="password"
+            <input
+              className="input"
+              type="password"
               placeholder={editUser ? 'كلمة المرور الجديدة (اتركها فارغة إذا لم ترد تغييرها)' : 'كلمة المرور *'}
               value={form.password}
               onChange={e => setForm({ ...form, password: e.target.value })}
-              required={!editUser} />
+              required={!editUser}
+            />
             <br /><br />
-            <select className="input" value={form.role}
-              onChange={e => setForm({ ...form, role: e.target.value })} required>
+            <select
+              className="input"
+              value={form.role}
+              onChange={e => setForm({ ...form, role: e.target.value })}
+              required
+            >
               {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
             <br /><br />
-            <select className="input" value={form.branch}
-              onChange={e => setForm({ ...form, branch: e.target.value })} required>
+            <select
+              className="input"
+              value={form.branch}
+              onChange={e => setForm({ ...form, branch: e.target.value })}
+              required
+            >
               <option value="">اختر الفرع *</option>
               {branches.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
             </select>
             <br /><br />
-            <input className="input" placeholder="رقم الهاتف" value={form.phone}
-              onChange={e => setForm({ ...form, phone: e.target.value })} />
+            <input
+              className="input"
+              placeholder="رقم الهاتف"
+              value={form.phone}
+              onChange={e => setForm({ ...form, phone: e.target.value })}
+            />
             <br /><br />
-            <input className="input" placeholder="القسم" value={form.department}
-              onChange={e => setForm({ ...form, department: e.target.value })} />
+            <input
+              className="input"
+              placeholder="القسم"
+              value={form.department}
+              onChange={e => setForm({ ...form, department: e.target.value })}
+            />
             <br /><br />
-            <input className="input" placeholder="المسمى الوظيفي" value={form.position}
-              onChange={e => setForm({ ...form, position: e.target.value })} />
+            <input
+              className="input"
+              placeholder="المسمى الوظيفي"
+              value={form.position}
+              onChange={e => setForm({ ...form, position: e.target.value })}
+            />
             <br /><br />
             <button className="btn" style={{ width: '100%' }}>
               {editUser ? '💾 حفظ التعديلات' : '➕ إنشاء المستخدم'}
@@ -309,12 +399,16 @@ export default function UsersTab() {
         </div>
       )}
 
-      {/* جدول المستخدمين */}
-      <div className="glass" style={{ padding: 20 }}>
+      {/* ✅ Table */}
+      <div className="ss-glass" style={{ padding: 20 }}>
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--gray)' }}>جاري التحميل...</p>
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+            ⏳ جاري التحميل...
+          </p>
         ) : users.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--gray)' }}>لا يوجد مستخدمون</p>
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+            لا يوجد مستخدمون
+          </p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table>
@@ -332,22 +426,38 @@ export default function UsersTab() {
                 {users.map(u => (
                   <tr key={u._id}>
                     <td><b>{u.name}</b></td>
-                    <td style={{ fontSize: 13 }}>{u.email}</td>
+                    <td style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                      {u.email}
+                    </td>
                     <td>{roleBadge(u.role)}</td>
-                    <td>{u.branch?.name || '-'}</td>
-                    <td>{u.phone || '-'}</td>
+                    <td style={{ color: 'rgba(255,255,255,0.75)' }}>
+                      {u.branch?.name || '-'}
+                    </td>
+                    <td style={{ color: 'rgba(255,255,255,0.75)' }}>
+                      {u.phone || '-'}
+                    </td>
                     <td>
-                      <button className="btn"
-                        style={{ padding: '6px 10px', fontSize: 12, background: '#2e4373', marginLeft: 4 }}
-                        onClick={() => window.location.href = `/employee/${u._id}`}>
+                      <button
+                        className="btn"
+                        style={{ padding: '6px 10px', fontSize: 12, marginLeft: 4 }}
+                        onClick={() => window.location.href = `/employee/${u._id}`}
+                      >
                         👁️ عرض الملف
                       </button>
-                      <button className="btn gray"
+                      <button
+                        className="btn gray"
                         style={{ padding: '6px 10px', fontSize: 12, marginLeft: 4 }}
-                        onClick={() => startEdit(u)}>✏️ تعديل</button>
-                      <button className="btn"
-                        style={{ padding: '6px 10px', fontSize: 12, background: '#8e2b2b', marginLeft: 4 }}
-                        onClick={() => deleteUser(u._id)}>🗑️ حذف</button>
+                        onClick={() => startEdit(u)}
+                      >
+                        ✏️ تعديل
+                      </button>
+                      <button
+                        className="btn danger"
+                        style={{ padding: '6px 10px', fontSize: 12, marginLeft: 4 }}
+                        onClick={() => deleteUser(u._id)}
+                      >
+                        🗑️ حذف
+                      </button>
                     </td>
                   </tr>
                 ))}

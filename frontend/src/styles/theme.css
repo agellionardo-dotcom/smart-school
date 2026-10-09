@@ -1,0 +1,203 @@
+/* ============================================
+   Smart School — Design System Theme
+   ============================================
+   نظام التصميم الموحد — ألوان، مسافات، ظلال،
+   وكل الـ tokens المستخدمة في التطبيق.
+   ============================================ */
+
+:root {
+  /* ---------- الألوان الأساسية (الهوية) ---------- */
+  --ss-navy-900: #0a1628;
+  --ss-navy-800: #0f2138;
+  --ss-navy-700: #1a3050;
+  --ss-navy-600: #1e3a5f;   /* اللون الحالي في الـ Navbar */
+  --ss-navy-500: #2d4a73;
+  --ss-navy-400: #4a6b95;
+  --ss-navy-300: #7a94b8;
+
+  /* ---------- ألوان النيون (Accents) ---------- */
+  --ss-cyan: #00e5ff;
+  --ss-purple: #a855f7;
+  --ss-pink: #ec4899;
+  --ss-orange: #fb923c;
+  --ss-green: #10b981;
+  --ss-yellow: #fbbf24;
+  --ss-red: #ef4444;
+
+  /* ---------- تدرجات (Gradients) ---------- */
+  --ss-grad-fluid: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  --ss-grad-glass: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+  --ss-grad-pastel: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  --ss-grad-waves: linear-gradient(135deg, #a855f7 0%, #ec4899 35%, #00e5ff 70%, #fb923c 100%);
+  --ss-grad-navy: linear-gradient(135deg, #1e3a5f 0%, #2d4a73 100%);
+  --ss-grad-primary: linear-gradient(135deg, #00e5ff 0%, #a855f7 100%);
+  --ss-grad-success: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  --ss-grad-danger: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  --ss-grad-warning: linear-gradient(135deg, #fbbf24 0%, #fb923c 100%);
+
+  /* ---------- الخلفيات (Backgrounds) ---------- */
+  --ss-bg-base: #0a1628;
+  --ss-bg-surface: rgba(255, 255, 255, 0.06);
+  --ss-bg-surface-strong: rgba(255, 255, 255, 0.12);
+  --ss-bg-glass: rgba(255, 255, 255, 0.08);
+  --ss-bg-glass-hover: rgba(255, 255, 255, 0.14);
+
+  /* ---------- النصوص (Text) ---------- */
+  --ss-text-primary: #f8fafc;
+  --ss-text-secondary: #cbd5e1;
+  --ss-text-muted: #94a3b8;
+  --ss-text-dark: #1e293b;
+  --ss-text-on-light: #0a1628;
+
+  /* ---------- الحدود (Borders) ---------- */
+  --ss-border-glass: rgba(255, 255, 255, 0.18);
+  --ss-border-glass-strong: rgba(255, 255, 255, 0.3);
+  --ss-border-subtle: rgba(255, 255, 255, 0.08);
+
+  /* ---------- الظلال (Shadows) ---------- */
+  --ss-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --ss-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.18);
+  --ss-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.24);
+  --ss-shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.32);
+  --ss-shadow-glow-cyan: 0 0 24px rgba(0, 229, 255, 0.4);
+  --ss-shadow-glow-purple: 0 0 24px rgba(168, 85, 247, 0.4);
+  --ss-shadow-glow-pink: 0 0 24px rgba(236, 72, 153, 0.4);
+
+  /* ---------- الحواف (Border Radius) ---------- */
+  --ss-radius-xs: 6px;
+  --ss-radius-sm: 10px;
+  --ss-radius-md: 16px;
+  --ss-radius-lg: 24px;
+  --ss-radius-xl: 32px;
+  --ss-radius-full: 9999px;
+
+  /* ---------- المسافات (Spacing) ---------- */
+  --ss-space-xs: 4px;
+  --ss-space-sm: 8px;
+  --ss-space-md: 16px;
+  --ss-space-lg: 24px;
+  --ss-space-xl: 32px;
+  --ss-space-2xl: 48px;
+
+  /* ---------- الخطوط (Typography) ---------- */
+  --ss-font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ss-font-xs: 12px;
+  --ss-font-sm: 14px;
+  --ss-font-md: 16px;
+  --ss-font-lg: 18px;
+  --ss-font-xl: 22px;
+  --ss-font-2xl: 28px;
+  --ss-font-3xl: 36px;
+
+  /* ---------- الانتقالات (Transitions) ---------- */
+  --ss-transition-fast: 0.15s ease;
+  --ss-transition-base: 0.3s ease;
+  --ss-transition-slow: 0.5s ease;
+  --ss-transition-spring: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---------- Z-Index ---------- */
+  --ss-z-bg: -1;
+  --ss-z-base: 1;
+  --ss-z-navbar: 100;
+  --ss-z-modal: 1000;
+  --ss-z-toast: 2000;
+}
+
+/* ============================================
+   Reset & Base
+   ============================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--ss-font-family);
+  background: var(--ss-bg-base);
+  color: var(--ss-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Scrollbar أنيق */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ss-navy-400);
+  border-radius: var(--ss-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ss-cyan);
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.ss-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--ss-space-md);
+}
+
+.ss-flex { display: flex; }
+.ss-flex-center { display: flex; align-items: center; justify-content: center; }
+.ss-flex-between { display: flex; align-items: center; justify-content: space-between; }
+.ss-flex-col { display: flex; flex-direction: column; }
+.ss-gap-sm { gap: var(--ss-space-sm); }
+.ss-gap-md { gap: var(--ss-space-md); }
+.ss-gap-lg { gap: var(--ss-space-lg); }
+
+.ss-text-center { text-align: center; }
+.ss-text-sm { font-size: var(--ss-font-sm); }
+.ss-text-lg { font-size: var(--ss-font-lg); }
+.ss-text-muted { color: var(--ss-text-muted); }
+
+.ss-mt-sm { margin-top: var(--ss-space-sm); }
+.ss-mt-md { margin-top: var(--ss-space-md); }
+.ss-mt-lg { margin-top: var(--ss-space-lg); }
+.ss-mb-md { margin-bottom: var(--ss-space-md); }
+
+/* Gradient Text */
+.ss-gradient-text {
+  background: var(--ss-grad-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  font-weight: 700;
+}
+
+/* ============================================
+   RTL Support (العربية)
+   ============================================ */
+
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="ltr"] {
+  text-align: left;
+}

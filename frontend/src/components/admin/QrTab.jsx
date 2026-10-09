@@ -7,14 +7,12 @@ export default function QrTab() {
   const [qrImage, setQrImage] = useState('');
   const [msg, setMsg] = useState('');
 
-  // ✅ جلب الفروع
   useEffect(() => {
     api.get('/branches')
       .then(r => setBranches(r.data))
       .catch((err) => console.error('loadBranches error:', err));
   }, []);
 
-  // ✅ اختيار فرع
   const selectBranch = async (branch) => {
     setSelectedBranch(branch);
     setQrImage('');
@@ -30,7 +28,6 @@ export default function QrTab() {
     }
   };
 
-  // ✅ إنشاء QR جديد
   const generateQr = async () => {
     if (!selectedBranch) return;
     try {
@@ -60,10 +57,11 @@ export default function QrTab() {
         <head>
           <title>QR - ${selectedBranch.name}</title>
           <style>
-            body { font-family: Arial; text-align: center; padding: 40px; }
-            h1 { color: #0a1f44; }
-            img { border: 3px solid #0a1f44; border-radius: 12px; padding: 20px; }
-            p { color: #5a6478; margin-top: 20px; }
+            body { font-family: Arial; text-align: center; padding: 40px; background: #0a1628; color: #fff; }
+            h1 { color: #00e5ff; }
+            h2 { color: #f8fafc; }
+            img { border: 3px solid #00e5ff; border-radius: 12px; padding: 20px; background: #fff; }
+            p { color: rgba(255,255,255,0.7); margin-top: 20px; }
           </style>
         </head>
         <body>
@@ -80,51 +78,87 @@ export default function QrTab() {
 
   return (
     <div>
-      <h3 style={{ color: 'var(--navy)', marginBottom: 16 }}>📱 QR Code للحضور</h3>
+      {/* ✅ Header */}
+      <div style={{ marginBottom: 16 }}>
+        <h3
+          style={{
+            margin: 0,
+            fontSize: 20,
+            fontWeight: 700,
+            color: '#f8fafc',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 8,
+          }}
+        >
+          📱 QR Code للحضور
+        </h3>
+        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, margin: 0 }}>
+          اختر فرعاً لعرض رمز QR الخاص به:
+        </p>
+      </div>
 
-      <p style={{ color: 'var(--gray)', fontSize: 13, marginBottom: 12 }}>
-        اختر فرعاً لعرض رمز QR الخاص به:
-      </p>
-
+      {/* ✅ Branch Buttons */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
         {branches.map(b => (
           <button
             key={b._id}
             onClick={() => selectBranch(b)}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 10,
-              border: 'none',
-              background: selectedBranch?._id === b._id
-                ? 'linear-gradient(145deg, #0a1f44, #142b5c)'
-                : '#8b95a7',
-              color: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              fontFamily: 'inherit'
-            }}
+            className={`admin-tab ${selectedBranch?._id === b._id ? 'active' : ''}`}
+            style={{ padding: '10px 16px', fontSize: 13 }}
           >
             {b.type === 'main' ? '🏛️' : '🏬'} {b.name}
           </button>
         ))}
       </div>
 
+      {/* ✅ QR Card */}
       {selectedBranch && (
-        <div className="glass" style={{ padding: 24, textAlign: 'center' }}>
-          <h4 style={{ color: 'var(--navy)', marginBottom: 16 }}>
+        <div className="ss-glass" style={{ padding: 24, textAlign: 'center' }}>
+          <h4
+            style={{
+              color: '#f8fafc',
+              marginBottom: 16,
+              fontSize: 17,
+              fontWeight: 700,
+            }}
+          >
             {selectedBranch.type === 'main' ? '🏛️' : '🏬'} {selectedBranch.name}
           </h4>
 
           {msg && (
-            <p style={{
-              padding: 12,
-              background: msg.startsWith('✅') ? '#d4edda' : msg.startsWith('⏳') ? '#fff3cd' : '#f8d7da',
-              borderRadius: 8,
-              marginBottom: 16,
-              color: '#000'
-            }}>{msg}</p>
+            <div
+              style={{
+                padding: '12px 16px',
+                borderRadius: 12,
+                marginBottom: 16,
+                fontSize: 13,
+                fontWeight: 600,
+                direction: 'rtl',
+                textAlign: 'right',
+                background: msg.startsWith('✅')
+                  ? 'rgba(16, 185, 129, 0.15)'
+                  : msg.startsWith('⏳')
+                  ? 'rgba(251, 191, 36, 0.15)'
+                  : 'rgba(239, 68, 68, 0.15)',
+                color: msg.startsWith('✅')
+                  ? '#34d399'
+                  : msg.startsWith('⏳')
+                  ? '#fcd34d'
+                  : '#fca5a5',
+                border: `1px solid ${
+                  msg.startsWith('✅')
+                    ? 'rgba(16, 185, 129, 0.3)'
+                    : msg.startsWith('⏳')
+                    ? 'rgba(251, 191, 36, 0.3)'
+                    : 'rgba(239, 68, 68, 0.3)'
+                }`,
+                animation: 'ssFadeIn 0.3s ease',
+              }}
+            >
+              {msg}
+            </div>
           )}
 
           {qrImage ? (
@@ -133,25 +167,46 @@ export default function QrTab() {
                 src={qrImage}
                 alt="QR Code"
                 style={{
-                  border: '3px solid #0a1f44',
-                  borderRadius: 12,
+                  border: '3px solid rgba(0, 229, 255, 0.5)',
+                  borderRadius: 16,
                   padding: 16,
                   background: '#fff',
                   maxWidth: '100%',
-                  maxHeight: 400
+                  maxHeight: 400,
+                  boxShadow: '0 8px 32px rgba(0, 229, 255, 0.3)',
                 }}
               />
 
-              <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button className="btn" style={{ padding: '10px 20px', fontSize: 13 }} onClick={downloadQr}>
+              <div
+                style={{
+                  marginTop: 20,
+                  display: 'flex',
+                  gap: 8,
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <button
+                  className="btn"
+                  style={{ padding: '10px 20px', fontSize: 13 }}
+                  onClick={downloadQr}
+                >
                   📥 تحميل
                 </button>
-                <button className="btn gray" style={{ padding: '10px 20px', fontSize: 13 }} onClick={printQr}>
+                <button
+                  className="btn gray"
+                  style={{ padding: '10px 20px', fontSize: 13 }}
+                  onClick={printQr}
+                >
                   🖨️ طباعة
                 </button>
                 <button
                   className="btn"
-                  style={{ padding: '10px 20px', fontSize: 13, background: '#b8860b' }}
+                  style={{
+                    padding: '10px 20px',
+                    fontSize: 13,
+                    background: 'linear-gradient(135deg, #fbbf24, #d97706)',
+                  }}
                   onClick={() => {
                     if (window.confirm('تجديد QR سيُبطل الرمز القديم. متابعة؟')) {
                       generateQr();

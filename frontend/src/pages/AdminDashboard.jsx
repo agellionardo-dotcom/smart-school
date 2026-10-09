@@ -18,7 +18,6 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState(searchParams.get('tab') || 'overview');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // ✅ تحديث التبويب لما الـ URL يتغير
   useEffect(() => {
     const urlTab = searchParams.get('tab');
     if (urlTab && urlTab !== tab) {
@@ -26,7 +25,6 @@ export default function AdminDashboard() {
     }
   }, [searchParams]);
 
-  // ✅ تحديث الـ URL لما التبويب يتغير
   const handleTabChange = (newTab) => {
     setTab(newTab);
     setSearchParams({ tab: newTab });
@@ -49,7 +47,6 @@ export default function AdminDashboard() {
 
   const allowed = tabs.filter(t => t.roles.includes(user.role));
 
-  // ✅ لو التبويب الحالي مش مسموح، نرجع لـ overview
   useEffect(() => {
     if (allowed.length > 0 && !allowed.find(t => t.id === tab)) {
       handleTabChange('overview');
@@ -58,40 +55,42 @@ export default function AdminDashboard() {
 
   return (
     <div className="dashboard">
-      <h1 style={{ color: 'var(--navy)', marginBottom: 4, fontSize: 24 }}>
-        👑 لوحة الإدارة
-      </h1>
-      <p style={{ color: 'var(--gray)', marginBottom: 20, fontSize: 14 }}>
-        مرحباً، {user.name}
-      </p>
+      {/* ✅ Header */}
+      <div style={{ marginBottom: 20 }}>
+        <h1
+          style={{
+            marginBottom: 4,
+            fontSize: 26,
+            fontWeight: 800,
+            background: 'linear-gradient(135deg, #00e5ff, #a855f7)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            display: 'inline-block',
+          }}
+        >
+          👑 لوحة الإدارة
+        </h1>
+        <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, fontSize: 14 }}>
+          مرحباً، {user.name}
+        </p>
+      </div>
 
-      <div style={{
-        display: 'flex',
-        gap: 8,
-        overflowX: 'auto',
-        paddingBottom: 8,
-        marginBottom: 20,
-      }}>
+      {/* ✅ Tabs */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          overflowX: 'auto',
+          paddingBottom: 8,
+          marginBottom: 20,
+        }}
+      >
         {allowed.map(t => (
           <button
             key={t.id}
             onClick={() => handleTabChange(t.id)}
-            style={{
-              flex: '0 0 auto',
-              padding: '10px 18px',
-              borderRadius: 10,
-              border: 'none',
-              background: tab === t.id
-                ? 'linear-gradient(145deg, #0a1f44, #142b5c)'
-                : '#fff',
-              color: tab === t.id ? '#fff' : 'var(--navy)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              fontFamily: 'inherit',
-              whiteSpace: 'nowrap'
-            }}
+            className={`admin-tab ${tab === t.id ? 'active' : ''}`}
           >
             {t.label}
           </button>

@@ -11,7 +11,8 @@ import ScanQr from './pages/ScanQr';
 import AdminDashboard from './pages/AdminDashboard';
 import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
-import AIChat from './components/AIChat'; // ✅ المساعد الذكي
+import AIChat from './components/AIChat';
+import { AnimatedBackground } from './components/ui'; // ✅ جديد
 import { startNetworkMonitoring } from './services/networkStatus';
 import { getQueue, removeFromQueue } from './services/offlineStorage';
 import api from './api';
@@ -78,22 +79,28 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
-        <Route path="/dashboard" element={<PrivateRoute><Navbar /><Dashboard /></PrivateRoute>} />
-        <Route path="/attendance" element={<PrivateRoute><Navbar /><Attendance /></PrivateRoute>} />
-        <Route path="/leaves" element={<PrivateRoute><Navbar /><Leaves /></PrivateRoute>} />
-        <Route path="/scan-qr" element={<PrivateRoute><Navbar /><ScanQr /></PrivateRoute>} />
-        <Route path="/admin" element={<PrivateRoute><Navbar /><AdminDashboard /></PrivateRoute>} />
-        <Route path="/employee/:id" element={<PrivateRoute><Navbar /><EmployeeProfile /></PrivateRoute>} />
-        <Route path="/sync-queue" element={<PrivateRoute><Navbar /><SyncQueue /></PrivateRoute>} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+      {/* ✅ الخلفية المتحركة — تظهر في كل التطبيق */}
+      <AnimatedBackground variant="fluid" />
 
-      {/* ✅ المساعد الذكي — يظهر في كل الصفحات */}
-      <AIChat />
+      {/* ✅ كل المحتوى فوق الخلفية */}
+      <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/dashboard" element={<PrivateRoute><Navbar /><Dashboard /></PrivateRoute>} />
+          <Route path="/attendance" element={<PrivateRoute><Navbar /><Attendance /></PrivateRoute>} />
+          <Route path="/leaves" element={<PrivateRoute><Navbar /><Leaves /></PrivateRoute>} />
+          <Route path="/scan-qr" element={<PrivateRoute><Navbar /><ScanQr /></PrivateRoute>} />
+          <Route path="/admin" element={<PrivateRoute><Navbar /><AdminDashboard /></PrivateRoute>} />
+          <Route path="/employee/:id" element={<PrivateRoute><Navbar /><EmployeeProfile /></PrivateRoute>} />
+          <Route path="/sync-queue" element={<PrivateRoute><Navbar /><SyncQueue /></PrivateRoute>} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+
+        {/* ✅ المساعد الذكي */}
+        <AIChat />
+      </div>
     </BrowserRouter>
   );
 }
