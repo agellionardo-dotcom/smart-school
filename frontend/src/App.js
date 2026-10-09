@@ -12,7 +12,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
 import AIChat from './components/AIChat';
-import { AnimatedBackground } from './components/ui'; // ✅ جديد
+import NotificationPermission from './components/NotificationPermission'; // ✅ جديد
+import { AnimatedBackground } from './components/ui';
 import { startNetworkMonitoring } from './services/networkStatus';
 import { getQueue, removeFromQueue } from './services/offlineStorage';
 import api from './api';
@@ -79,7 +80,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      {/* ✅ الخلفية المتحركة — تظهر في كل التطبيق */}
+      {/* ✅ الخلفية المتحركة */}
       <AnimatedBackground variant="fluid" />
 
       {/* ✅ كل المحتوى فوق الخلفية */}
@@ -100,6 +101,9 @@ export default function App() {
 
         {/* ✅ المساعد الذكي */}
         <AIChat />
+
+        {/* ✅ إشعارات Push */}
+        <NotificationPermission />
       </div>
     </BrowserRouter>
   );

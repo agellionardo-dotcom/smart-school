@@ -42,53 +42,180 @@ export default function ResetPassword() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: 'linear-gradient(135deg, #0a1f44 0%, #142b5c 100%)',
-      padding: 16,
-    }}>
-      <div className="glass" style={{ padding: 40, maxWidth: 440, width: '100%', textAlign: 'center' }}>
-        <h1 style={{ color: 'var(--navy)', marginBottom: 8 }}>🔐 إعادة تعيين كلمة المرور</h1>
+    <div className="reset-page">
+      <div className="reset-card">
+        <h1 className="reset-title">🔐 إعادة تعيين كلمة المرور</h1>
 
         {valid === false && (
-          <p style={{ padding: 12, background: '#f8d7da', borderRadius: 8, color: '#000', marginTop: 16 }}>
+          <div className="reset-alert reset-alert-error">
             ❌ الرابط غير صالح أو منتهي الصلاحية
-          </p>
+          </div>
         )}
 
         {valid === true && (
           <>
-            <p style={{ color: 'var(--gray)', marginBottom: 30, fontSize: 14 }}>
-              أدخل كلمة المرور الجديدة
-            </p>
+            <p className="reset-subtitle">أدخل كلمة المرور الجديدة</p>
+
             <form onSubmit={submit}>
-              <input className="input" type="password" placeholder="كلمة المرور الجديدة"
-                value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
-              <br /><br />
-              <input className="input" type="password" placeholder="تأكيد كلمة المرور"
-                value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={6} />
-              <br /><br />
-              <button className="btn" style={{ width: '100%' }} disabled={loading}>
-                {loading ? '⏳ جاري...' : '💾 حفظ كلمة المرور'}
+              <div className="reset-field">
+                <span className="reset-icon">🔒</span>
+                <input
+                  className="login-input"
+                  type="password"
+                  placeholder="كلمة المرور الجديدة"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div className="reset-field">
+                <span className="reset-icon">🔒</span>
+                <input
+                  className="login-input"
+                  type="password"
+                  placeholder="تأكيد كلمة المرور"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <button className="login-btn" type="submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <span className="login-spinner" />
+                    جاري...
+                  </>
+                ) : (
+                  <>💾 حفظ كلمة المرور</>
+                )}
               </button>
             </form>
           </>
         )}
 
         {msg && (
-          <p style={{
-            marginTop: 16, padding: 12,
-            background: msg.startsWith('✅') ? '#d4edda' : '#f8d7da',
-            borderRadius: 8, fontSize: 13, color: '#000'
-          }}>{msg}</p>
+          <div
+            className={`reset-alert ${
+              msg.startsWith('✅') ? 'reset-alert-success' : 'reset-alert-error'
+            }`}
+          >
+            {msg}
+          </div>
         )}
 
-        <div style={{ marginTop: 20 }}>
-          <Link to="/" style={{ color: 'var(--navy)', fontSize: 14, fontWeight: 'bold', textDecoration: 'none' }}>
+        <div className="reset-footer">
+          <Link to="/" className="reset-link">
             ← الرجوع لتسجيل الدخول
           </Link>
         </div>
       </div>
+
+      <style>{`
+        .reset-page {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          position: relative;
+          z-index: 2;
+        }
+
+        .reset-card {
+          width: 100%;
+          max-width: 440px;
+          padding: 40px 32px;
+          background: rgba(15, 33, 56, 0.75);
+          backdrop-filter: blur(24px) saturate(180%);
+          -webkit-backdrop-filter: blur(24px) saturate(180%);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 28px;
+          box-shadow:
+            0 20px 60px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.15);
+          text-align: center;
+          animation: loginCardIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .reset-title {
+          margin: 0 0 8px;
+          font-size: 24px;
+          font-weight: 800;
+          background: linear-gradient(135deg, #00e5ff, #a855f7);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .reset-subtitle {
+          margin: 0 0 24px;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .reset-field {
+          position: relative;
+          display: flex;
+          align-items: center;
+          margin-bottom: 14px;
+        }
+
+        .reset-icon {
+          position: absolute;
+          right: 16px;
+          font-size: 18px;
+          z-index: 2;
+          pointer-events: none;
+          opacity: 0.6;
+        }
+
+        .reset-alert {
+          padding: 12px 16px;
+          border-radius: 12px;
+          margin: 14px 0;
+          font-size: 13px;
+          font-weight: 500;
+          text-align: right;
+          direction: rtl;
+          animation: loginAlertIn 0.3s ease;
+        }
+
+        .reset-alert-success {
+          background: rgba(16, 185, 129, 0.15);
+          color: #34d399;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .reset-alert-error {
+          background: rgba(239, 68, 68, 0.15);
+          color: #fca5a5;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .reset-footer {
+          margin-top: 24px;
+          padding-top: 20px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .reset-link {
+          color: #67e8f9;
+          font-size: 14px;
+          font-weight: 600;
+          text-decoration: none;
+          transition: all 0.2s;
+        }
+
+        .reset-link:hover {
+          color: #00e5ff;
+          text-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
+        }
+      `}</style>
     </div>
   );
 }

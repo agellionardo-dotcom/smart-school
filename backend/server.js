@@ -52,8 +52,9 @@ app.use('/api/qr', require('./routes/qr'));
 app.use('/api/emergency', require('./routes/emergency'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/announcements', require('./routes/announcements'));
-// ✅ ضيف السطر ده مع باقي الـ routes
-app.use('/api/ai', require('./routes/ai'));
+app.use('/api/ai', require('./routes/ai')); // ✅ المساعد الذكي
+app.use('/api/notifications', require('./routes/notifications')); // ✅ الإشعارات (جديد)
+
 // ✅ 6. تشغيل السيرفر (في النهاية)
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {

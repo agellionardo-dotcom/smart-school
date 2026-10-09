@@ -10,7 +10,7 @@ const userSchema = new mongoose.Schema({
     enum: ['superadmin', 'manager', 'hr', 'employee', 'viewer'],
     default: 'employee'
   },
-  
+
   // ===== البيانات الوظيفية =====
   employeeId: { type: String, unique: true, sparse: true },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
@@ -18,19 +18,19 @@ const userSchema = new mongoose.Schema({
   position: { type: String },
   managerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   hireDate: { type: Date, default: Date.now },
-  contractType: { 
-    type: String, 
+  contractType: {
+    type: String,
     enum: ['full-time', 'part-time', 'contract', 'intern'],
     default: 'full-time'
   },
   contractEndDate: { type: Date },
   active: { type: Boolean, default: true },
-  
+
   // ===== البيانات المالية =====
   salary: { type: Number, default: 0 },
   bankAccount: { type: String },
   socialInsurance: { type: String },
-  
+
   // ===== البيانات الشخصية =====
   phone: { type: String },
   gender: {
@@ -46,16 +46,38 @@ const userSchema = new mongoose.Schema({
     phone: { type: String },
     relation: { type: String }
   },
-  qualifications: [{ 
+  qualifications: [{
     degree: String,
     institution: String,
     year: Number
   }],
-  
+
   // ===== الصورة والبصمة =====
   profileImage: { type: String },
   faceDescriptor: [{ type: Number }],
-  
+
+  // ===== الإشعارات (Push Notifications) =====
+  fcmTokens: [{
+    token: { type: String, required: true },
+    platform: {
+      type: String,
+      enum: ['web', 'android', 'ios'],
+      default: 'web'
+    },
+    addedAt: { type: Date, default: Date.now },
+    lastUsedAt: { type: Date, default: Date.now }
+  }],
+
+  // ===== إعدادات الإشعارات =====
+  notificationPrefs: {
+    attendanceReminder: { type: Boolean, default: true },
+    lateAlert: { type: Boolean, default: true },
+    leaveUpdate: { type: Boolean, default: true },
+    announcements: { type: Boolean, default: true },
+    emergencies: { type: Boolean, default: true },
+    payroll: { type: Boolean, default: true }
+  },
+
   // ===== بيانات النظام =====
   lastLogin: { type: Date },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

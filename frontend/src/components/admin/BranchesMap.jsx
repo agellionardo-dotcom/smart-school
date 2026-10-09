@@ -3,14 +3,12 @@ import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api';
 
-// ==================== الإحداثيات الافتراضية (المنيا) ====================
 const DEFAULT_VIEW = {
   longitude: 30.7503,
   latitude: 28.1099,
   zoom: 10,
 };
 
-// ==================== خريطة التايلز (Google Satellite + Esri Fallback) ====================
 const MAP_STYLES = {
   satellite: {
     name: '🛰️ قمر صناعي',
@@ -106,7 +104,6 @@ const MAP_STYLES = {
   },
 };
 
-// ==================== المكوّن الرئيسي ====================
 export default function BranchesMap() {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -117,11 +114,9 @@ export default function BranchesMap() {
   const mapRef = useRef(null);
   const hasFitted = useRef(false);
 
-  // ✅ حالة البحث
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // ✅ جلب الفروع
   useEffect(() => {
     api.get('/branches')
       .then(r => setBranches(r.data))
@@ -129,7 +124,6 @@ export default function BranchesMap() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ✅ ضبط الخريطة على الفروع
   useEffect(() => {
     if (hasFitted.current) return;
     if (!branches || branches.length === 0) return;
@@ -156,38 +150,38 @@ export default function BranchesMap() {
     return () => clearTimeout(timer);
   }, [branches]);
 
-  // ✅ تحديد موقع المستخدم
   const handleLocateMe = useCallback(() => {
     if (!navigator.geolocation) {
       alert('المتصفح لا يدعم تحديد الموقع');
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
         setViewState({ longitude, latitude, zoom: 16 });
         setUserLocation({ lat: latitude, lng: longitude, accuracy });
       },
-      (err) => {
-        alert('فشل تحديد الموقع: ' + err.message);
-      },
+      (err) => alert('فشل تحديد الموقع: ' + err.message),
       { enableHighAccuracy: true, timeout: 10000 }
     );
   }, []);
 
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray)' }}>
-        <p>⏳ جاري تحميل الخريطة...</p>
+      <div className="ss-glass" style={{ padding: 40, textAlign: 'center' }}>
+        <p style={{ color: 'rgba(255,255,255,0.6)', margin: 0 }}>
+          ⏳ جاري تحميل الخريطة...
+        </p>
       </div>
     );
   }
 
   if (branches.length === 0) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: 'var(--gray)' }}>
-        <p>لا توجد فروع لعرضها على الخريطة</p>
+      <div className="ss-glass" style={{ padding: 40, textAlign: 'center' }}>
+        <p style={{ color: 'rgba(255,255,255,0.6)', margin: 0 }}>
+          لا توجد فروع لعرضها على الخريطة
+        </p>
       </div>
     );
   }
@@ -198,7 +192,6 @@ export default function BranchesMap() {
     return lat && lng && lat >= 22 && lat <= 32 && lng >= 24 && lng <= 37;
   });
 
-  // ✅ فلترة الفروع حسب البحث
   const filteredBranches = searchQuery.trim()
     ? validBranches.filter(b => {
         const q = searchQuery.trim().toLowerCase();
@@ -210,7 +203,6 @@ export default function BranchesMap() {
       })
     : [];
 
-  // ✅ عند اختيار فرع من البحث
   const selectBranch = (branch) => {
     if (mapRef.current) {
       mapRef.current.flyTo({
@@ -226,16 +218,36 @@ export default function BranchesMap() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={{ color: 'var(--navy)', margin: 0 }}>
+      {/* ✅ Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+          flexWrap: 'wrap',
+          gap: 8,
+        }}
+      >
+        <h3
+          style={{
+            margin: 0,
+            fontSize: 20,
+            fontWeight: 700,
+            color: '#f8fafc',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
           🗺️ خريطة الفروع ({validBranches.length})
         </h3>
-        <span style={{ fontSize: 12, color: 'var(--gray)' }}>
+        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
           اسحب للتنقل · عجلة الفأرة للتكبير
         </span>
       </div>
 
-      {/* ✅ مربع البحث مع Autocomplete */}
+      {/* ✅ Search */}
       <div style={{ position: 'relative', marginBottom: 12 }}>
         <input
           type="text"
@@ -247,27 +259,24 @@ export default function BranchesMap() {
           onFocus={() => searchQuery && setShowDropdown(true)}
           onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
           placeholder="🔍 ابحث عن فرع بالاسم أو العنوان أو الهاتف..."
+          className="input"
           style={{
-            width: '100%',
             padding: '12px 44px 12px 16px',
-            borderRadius: 12,
-            border: '2px solid var(--border)',
-            background: '#fff',
             fontSize: 14,
-            fontFamily: 'inherit',
-            outline: 'none',
-            color: 'var(--navy)',
             fontWeight: 600,
           }}
         />
-        <span style={{
-          position: 'absolute',
-          left: 14,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          fontSize: 18,
-          pointerEvents: 'none',
-        }}>
+        <span
+          style={{
+            position: 'absolute',
+            left: 14,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: 18,
+            pointerEvents: 'none',
+            opacity: 0.6,
+          }}
+        >
           🔍
         </span>
         {searchQuery && (
@@ -285,7 +294,7 @@ export default function BranchesMap() {
               border: 'none',
               fontSize: 18,
               cursor: 'pointer',
-              color: '#8b95a7',
+              color: 'rgba(255,255,255,0.5)',
             }}
             title="مسح البحث"
           >
@@ -293,24 +302,34 @@ export default function BranchesMap() {
           </button>
         )}
 
-        {/* ✅ القائمة المنسدلة */}
+        {/* ✅ Dropdown */}
         {showDropdown && searchQuery && (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            right: 0,
-            left: 0,
-            background: '#fff',
-            borderRadius: 12,
-            boxShadow: '0 8px 24px rgba(10,31,68,0.15)',
-            marginTop: 6,
-            maxHeight: 300,
-            overflowY: 'auto',
-            zIndex: 1000,
-            border: '1px solid var(--border)',
-          }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              left: 0,
+              background: 'rgba(15, 33, 56, 0.98)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: 12,
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+              marginTop: 6,
+              maxHeight: 300,
+              overflowY: 'auto',
+              zIndex: 1000,
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+            }}
+          >
             {filteredBranches.length === 0 ? (
-              <div style={{ padding: 16, textAlign: 'center', color: '#5a6478', fontSize: 13 }}>
+              <div
+                style={{
+                  padding: 16,
+                  textAlign: 'center',
+                  color: 'rgba(255,255,255,0.5)',
+                  fontSize: 13,
+                }}
+              >
                 ❌ لا توجد نتائج مطابقة
               </div>
             ) : (
@@ -323,44 +342,48 @@ export default function BranchesMap() {
                   }}
                   style={{
                     padding: '12px 16px',
-                    borderBottom: '1px solid #f0f3f7',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                     cursor: 'pointer',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     transition: 'background 0.2s',
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f5f7fa'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div>
-                    <div style={{
-                      color: 'var(--navy)',
-                      fontWeight: 700,
-                      fontSize: 14,
-                      marginBottom: 2,
-                    }}>
+                    <div
+                      style={{
+                        color: '#f8fafc',
+                        fontWeight: 700,
+                        fontSize: 14,
+                        marginBottom: 2,
+                      }}
+                    >
                       {b.type === 'main' ? '🏛️' : '🏬'} {b.name}
                     </div>
                     {b.address && (
-                      <div style={{ fontSize: 11, color: '#5a6478' }}>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
                         📍 {b.address}
                       </div>
                     )}
                     {b.phone && (
-                      <div style={{ fontSize: 11, color: '#5a6478' }}>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
                         📞 {b.phone}
                       </div>
                     )}
                   </div>
-                  <span style={{
-                    background: b.type === 'main' ? '#0a1f44' : '#2e7d5b',
-                    color: '#fff',
-                    padding: '3px 10px',
-                    borderRadius: 10,
-                    fontSize: 10,
-                    fontWeight: 'bold',
-                  }}>
+                  <span
+                    className="payroll-status"
+                    style={{
+                      background:
+                        b.type === 'main'
+                          ? 'linear-gradient(135deg, #00e5ff, #a855f7)'
+                          : 'linear-gradient(135deg, #10b981, #059669)',
+                      fontSize: 10,
+                    }}
+                  >
                     {b.type === 'main' ? 'رئيسي' : 'فرعي'}
                   </span>
                 </div>
@@ -370,41 +393,31 @@ export default function BranchesMap() {
         )}
       </div>
 
-      {/* أزرار الطبقات */}
+      {/* ✅ Map Style Buttons */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         {Object.entries(MAP_STYLES).map(([key, layer]) => (
           <button
             key={key}
             onClick={() => setMapStyle(key)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 10,
-              border: 'none',
-              background: mapStyle === key
-                ? 'linear-gradient(145deg, #0a1f44, #142b5c)'
-                : '#fff',
-              color: mapStyle === key ? '#fff' : 'var(--navy)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              fontFamily: 'inherit',
-            }}
+            className={`admin-tab ${mapStyle === key ? 'active' : ''}`}
+            style={{ fontSize: 13 }}
           >
             {layer.name}
           </button>
         ))}
       </div>
 
-      {/* الخريطة */}
-      <div style={{
-        height: 'clamp(400px, 65vh, 600px)',
-        borderRadius: 20,
-        overflow: 'hidden',
-        boxShadow: '0 15px 40px rgba(10,31,68,0.3)',
-        border: '3px solid #fff',
-        position: 'relative',
-      }}>
+      {/* ✅ Map */}
+      <div
+        style={{
+          height: 'clamp(400px, 65vh, 600px)',
+          borderRadius: 20,
+          overflow: 'hidden',
+          boxShadow: '0 15px 40px rgba(0, 0, 0, 0.4), 0 0 32px rgba(0, 229, 255, 0.1)',
+          border: '2px solid rgba(0, 229, 255, 0.3)',
+          position: 'relative',
+        }}
+      >
         <Map
           ref={mapRef}
           {...viewState}
@@ -415,7 +428,6 @@ export default function BranchesMap() {
         >
           <NavigationControl position="top-left" />
 
-          {/* علامات الفروع */}
           {validBranches.map(b => (
             <Marker
               key={b._id}
@@ -431,12 +443,13 @@ export default function BranchesMap() {
                 style={{
                   width: b.type === 'main' ? 44 : 38,
                   height: b.type === 'main' ? 44 : 38,
-                  background: b.type === 'main'
-                    ? 'linear-gradient(145deg, #0a1f44, #142b5c)'
-                    : 'linear-gradient(145deg, #2e7d5b, #1e5a40)',
+                  background:
+                    b.type === 'main'
+                      ? 'linear-gradient(135deg, #00e5ff, #a855f7)'
+                      : 'linear-gradient(135deg, #10b981, #059669)',
                   borderRadius: '50% 50% 50% 0',
                   transform: 'rotate(-45deg)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
                   border: '3px solid #fff',
                   display: 'flex',
                   alignItems: 'center',
@@ -444,14 +457,18 @@ export default function BranchesMap() {
                   cursor: 'pointer',
                 }}
               >
-                <span style={{ transform: 'rotate(45deg)', fontSize: b.type === 'main' ? 20 : 16 }}>
+                <span
+                  style={{
+                    transform: 'rotate(45deg)',
+                    fontSize: b.type === 'main' ? 20 : 16,
+                  }}
+                >
                   {b.type === 'main' ? '🏛️' : '🏬'}
                 </span>
               </div>
             </Marker>
           ))}
 
-          {/* Popup */}
           {popupInfo && (
             <Popup
               longitude={popupInfo.location.lng}
@@ -488,16 +505,16 @@ export default function BranchesMap() {
             </Popup>
           )}
 
-          {/* موقع المستخدم */}
           {userLocation && (
             <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="center">
               <div
                 style={{
-                  width: 30, height: 30,
-                  background: 'linear-gradient(145deg, #d9534f, #a94442)',
+                  width: 30,
+                  height: 30,
+                  background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
                   borderRadius: '50%',
                   border: '3px solid #fff',
-                  boxShadow: '0 4px 12px rgba(217,83,79,0.6)',
+                  boxShadow: '0 4px 16px rgba(239, 68, 68, 0.6)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -510,21 +527,23 @@ export default function BranchesMap() {
           )}
         </Map>
 
-        {/* زر تحديد الموقع */}
         <button
           onClick={handleLocateMe}
           title="حدد موقعي"
           style={{
             position: 'absolute',
-            bottom: 20, right: 20, zIndex: 1000,
-            width: 44, height: 44,
+            bottom: 20,
+            right: 20,
+            zIndex: 1000,
+            width: 44,
+            height: 44,
             borderRadius: '50%',
             border: 'none',
-            background: 'linear-gradient(145deg, #0a1f44, #142b5c)',
+            background: 'linear-gradient(135deg, #00e5ff, #a855f7)',
             color: '#fff',
             fontSize: 20,
             cursor: 'pointer',
-            boxShadow: '0 6px 16px rgba(10,31,68,0.4)',
+            boxShadow: '0 6px 24px rgba(0, 229, 255, 0.5)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -534,28 +553,34 @@ export default function BranchesMap() {
         </button>
       </div>
 
-      {/* الإحصائيات */}
-      <div style={{
-        marginTop: 16,
-        padding: 16,
-        background: '#f5f7fa',
-        borderRadius: 12,
-        display: 'flex',
-        gap: 20,
-        flexWrap: 'wrap',
-        fontSize: 13,
-      }}>
+      {/* ✅ Stats */}
+      <div
+        className="ss-glass-subtle"
+        style={{
+          marginTop: 16,
+          padding: 16,
+          borderRadius: 12,
+          display: 'flex',
+          gap: 20,
+          flexWrap: 'wrap',
+          fontSize: 13,
+        }}
+      >
         <div>
-          <span style={{ color: '#0a1f44', fontWeight: 'bold' }}>🏛️ الفروع الرئيسية:</span>{' '}
-          {validBranches.filter(b => b.type === 'main').length}
+          <span style={{ color: '#67e8f9', fontWeight: 700 }}>🏛️ الفروع الرئيسية:</span>{' '}
+          <span style={{ color: '#f8fafc' }}>
+            {validBranches.filter(b => b.type === 'main').length}
+          </span>
         </div>
         <div>
-          <span style={{ color: '#2e7d5b', fontWeight: 'bold' }}>🏬 الفروع الفرعية:</span>{' '}
-          {validBranches.filter(b => b.type === 'sub').length}
+          <span style={{ color: '#34d399', fontWeight: 700 }}>🏬 الفروع الفرعية:</span>{' '}
+          <span style={{ color: '#f8fafc' }}>
+            {validBranches.filter(b => b.type === 'sub').length}
+          </span>
         </div>
         <div>
-          <span style={{ color: 'var(--navy)', fontWeight: 'bold' }}>📍 الإجمالي:</span>{' '}
-          {validBranches.length}
+          <span style={{ color: '#a78bfa', fontWeight: 700 }}>📍 الإجمالي:</span>{' '}
+          <span style={{ color: '#f8fafc' }}>{validBranches.length}</span>
         </div>
       </div>
     </div>

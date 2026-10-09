@@ -4,47 +4,45 @@ import api, { API_URL } from '../../api';
 import { io } from 'socket.io-client';
 
 const EMERGENCY_TYPES = {
-  fire: { label: '🔥 حريق', color: '#d9534f' },
-  medical: { label: '🚑 حالة طبية', color: '#2e7d5b' },
-  security: { label: '🔒 أمني', color: '#0a1f44' },
-  evacuation: { label: '🚪 إخلاء', color: '#b8860b' },
-  other: { label: '⚠️ أخرى', color: '#5a6478' },
+  fire:       { label: '🔥 حريق',      gradient: 'linear-gradient(135deg, #ef4444, #b91c1c)' },
+  medical:    { label: '🚑 حالة طبية', gradient: 'linear-gradient(135deg, #10b981, #059669)' },
+  security:   { label: '🔒 أمني',       gradient: 'linear-gradient(135deg, #3b82f6, #1e40af)' },
+  evacuation: { label: '🚪 إخلاء',      gradient: 'linear-gradient(135deg, #fbbf24, #d97706)' },
+  other:      { label: '⚠️ أخرى',       gradient: 'linear-gradient(135deg, #94a3b8, #64748b)' },
 };
 
 export default function EmergencyTab() {
   const [emergencies, setEmergencies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
+  const [msgType, setMsgType] = useState('info');
   const [filter, setFilter] = useState('active');
 
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // ✅ دالة تشغيل صوت التنبيه
+  const showMsg = (text, type = 'info') => {
+    setMsg(text);
+    setMsgType(type);
+  };
+
   const playAlertSound = () => {
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
       const playTone = (frequency, startTime, duration) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-
         oscillator.frequency.value = frequency;
         oscillator.type = 'sine';
-
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
         gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
-
         oscillator.start(startTime);
         oscillator.stop(startTime + duration);
       };
-
       const now = audioContext.currentTime;
-
       playTone(800, now, 0.3);
       playTone(600, now + 0.3, 0.3);
       playTone(800, now + 0.6, 0.3);
@@ -53,17 +51,14 @@ export default function EmergencyTab() {
     }
   };
 
-  // ✅ جلب حالات الطوارئ
   const loadEmergencies = async () => {
     try {
       setLoading(true);
-      const url = filter === 'all'
-        ? '/emergency'
-        : `/emergency?status=${filter}`;
+      const url = filter === 'all' ? '/emergency' : `/emergency?status=${filter}`;
       const { data } = await api.get(url);
       setEmergencies(data);
     } catch (err) {
-      setMsg('❌ ' + (err.response?.data?.msg || 'فشل تحميل الحالات'));
+      showMsg('❌ ' + (err.response?.data?.msg || 'فشل تحميل الحالات'), 'error');
     } finally {
       setLoading(false);
     }
@@ -73,71 +68,71 @@ export default function EmergencyTab() {
     loadEmergencies();
   }, [filter]);
 
-  // ✅ Socket.io للإشعارات الفورية
   useEffect(() => {
     if (!token) return;
-
     const socket = io(API_URL.replace('/api', ''), {
       transports: ['websocket', 'polling'],
     });
-
-    socket.on('connect', () => {
-      socket.emit('register', user._id);
-    });
-
+    socket.on('connect', () => socket.emit('register', user._id));
     socket.on('emergency:new', (data) => {
-      setMsg(`🚨 حالة طوارئ جديدة: ${data.emergency?.user?.name || 'موظف'}`);
-
-      // ✅ تشغيل الصوت
+      showMsg(`🚨 حالة طوارئ جديدة: ${data.emergency?.user?.name || 'موظف'}`, 'warning');
       playAlertSound();
-
-      // ✅ اهتزاز (لو موبايل)
-      if (navigator.vibrate) {
-        navigator.vibrate([500, 200, 500, 200, 500]);
-      }
-
+      if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
       loadEmergencies();
     });
-
-    socket.on('emergency:resolved', () => {
-      loadEmergencies();
-    });
-
+    socket.on('emergency:resolved', () => loadEmergencies());
     return () => socket.disconnect();
   }, [token]);
 
-  // ✅ إغلاق حالة طوارئ
   const resolveEmergency = async (id) => {
     const notes = window.prompt('ملاحظات (اختياري):');
     if (notes === null) return;
-
     try {
       await api.put(`/emergency/${id}/resolve`, { notes: notes || '' });
-      setMsg('✅ تم إغلاق الحالة');
+      showMsg('✅ تم إغلاق الحالة', 'success');
       loadEmergencies();
     } catch (err) {
-      setMsg('❌ ' + (err.response?.data?.msg || 'فشل الإغلاق'));
+      showMsg('❌ ' + (err.response?.data?.msg || 'فشل الإغلاق'), 'error');
     }
   };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
-        <h3 style={{ color: 'var(--navy)', margin: 0 }}>
+      {/* ✅ Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <h3
+          style={{
+            margin: 0,
+            fontSize: 20,
+            fontWeight: 700,
+            color: '#f8fafc',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
           🚨 حالات الطوارئ ({emergencies.length})
         </h3>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             className="btn gray"
-            style={{ padding: '6px 12px', fontSize: 12 }}
+            style={{ padding: '8px 16px', fontSize: 13 }}
             onClick={playAlertSound}
-            title="اختبار الصوت"
           >
             🔊 اختبار الصوت
           </button>
           <button
             className="btn gray"
-            style={{ padding: '6px 12px', fontSize: 12 }}
+            style={{ padding: '8px 16px', fontSize: 13 }}
             onClick={loadEmergencies}
           >
             🔄 تحديث
@@ -145,49 +140,69 @@ export default function EmergencyTab() {
         </div>
       </div>
 
+      {/* ✅ Filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {[
-          { key: 'active', label: '🚨 النشطة', color: '#d9534f' },
-          { key: 'resolved', label: '✅ المُغلقة', color: '#2e7d5b' },
-          { key: 'all', label: '📋 الكل', color: '#0a1f44' },
+          { key: 'active',   label: '🚨 النشطة',  gradient: 'linear-gradient(135deg, #ef4444, #b91c1c)' },
+          { key: 'resolved', label: '✅ المُغلقة', gradient: 'linear-gradient(135deg, #10b981, #059669)' },
+          { key: 'all',      label: '📋 الكل',     gradient: 'linear-gradient(135deg, #00e5ff, #a855f7)' },
         ].map(f => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 10,
-              border: 'none',
-              background: filter === f.key ? f.color : '#fff',
-              color: filter === f.key ? '#fff' : 'var(--navy)',
-              fontSize: 13,
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              fontFamily: 'inherit',
-            }}
+            className={`admin-tab ${filter === f.key ? 'active' : ''}`}
+            style={{ fontSize: 13 }}
           >
             {f.label}
           </button>
         ))}
       </div>
 
+      {/* ✅ Message */}
       {msg && (
-        <p style={{
-          padding: 12,
-          background: msg.startsWith('✅') ? '#d4edda' : msg.startsWith('🚨') ? '#fff3cd' : '#f8d7da',
-          borderRadius: 8,
-          marginBottom: 16,
-          color: '#000',
-          fontSize: 13,
-        }}>{msg}</p>
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 12,
+            marginBottom: 16,
+            fontSize: 13,
+            fontWeight: 600,
+            direction: 'rtl',
+            textAlign: 'right',
+            background:
+              msgType === 'success'
+                ? 'rgba(16, 185, 129, 0.15)'
+                : msgType === 'warning'
+                ? 'rgba(251, 191, 36, 0.15)'
+                : 'rgba(239, 68, 68, 0.15)',
+            color:
+              msgType === 'success'
+                ? '#34d399'
+                : msgType === 'warning'
+                ? '#fcd34d'
+                : '#fca5a5',
+            border: `1px solid ${
+              msgType === 'success'
+                ? 'rgba(16, 185, 129, 0.3)'
+                : msgType === 'warning'
+                ? 'rgba(251, 191, 36, 0.3)'
+                : 'rgba(239, 68, 68, 0.3)'
+            }`,
+            animation: 'ssFadeIn 0.3s ease',
+          }}
+        >
+          {msg}
+        </div>
       )}
 
-      <div className="glass" style={{ padding: 20 }}>
+      {/* ✅ List */}
+      <div className="ss-glass" style={{ padding: 20 }}>
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--gray)' }}>⏳ جاري التحميل...</p>
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+            ⏳ جاري التحميل...
+          </p>
         ) : emergencies.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--gray)' }}>
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
             {filter === 'active' ? '✅ لا توجد حالات طوارئ نشطة' : 'لا توجد حالات'}
           </p>
         ) : (
@@ -201,56 +216,96 @@ export default function EmergencyTab() {
                   style={{
                     padding: 16,
                     borderRadius: 12,
-                    background: isActive ? 'linear-gradient(145deg, #fff5f5, #ffe8e8)' : '#f5f7fa',
-                    border: isActive ? `2px solid ${type.color}` : '1px solid #e0e6ef',
-                    boxShadow: isActive ? `0 4px 16px ${type.color}22` : '0 2px 8px rgba(0,0,0,0.05)',
+                    background: isActive
+                      ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(185, 28, 28, 0.08))'
+                      : 'rgba(255, 255, 255, 0.04)',
+                    border: isActive
+                      ? '1px solid rgba(239, 68, 68, 0.4)'
+                      : '1px solid rgba(255, 255, 255, 0.08)',
+                    boxShadow: isActive
+                      ? '0 4px 24px rgba(239, 68, 68, 0.2)'
+                      : '0 2px 8px rgba(0,0,0,0.1)',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      flexWrap: 'wrap',
+                      gap: 12,
+                    }}
+                  >
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                        <span style={{
-                          background: type.color,
-                          color: '#fff',
-                          padding: '4px 12px',
-                          borderRadius: 12,
-                          fontSize: 12,
-                          fontWeight: 'bold',
-                        }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          marginBottom: 8,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <span
+                          className="payroll-status"
+                          style={{ background: type.gradient }}
+                        >
                           {type.label}
                         </span>
-                        <span style={{
-                          background: isActive ? '#d9534f' : '#2e7d5b',
-                          color: '#fff',
-                          padding: '4px 10px',
-                          borderRadius: 12,
-                          fontSize: 11,
-                          fontWeight: 'bold',
-                        }}>
+                        <span
+                          className="payroll-status"
+                          style={{
+                            background: isActive
+                              ? 'linear-gradient(135deg, #ef4444, #b91c1c)'
+                              : 'linear-gradient(135deg, #10b981, #059669)',
+                          }}
+                        >
                           {isActive ? '🚨 نشطة' : '✅ مُغلقة'}
                         </span>
                       </div>
 
-                      <p style={{ margin: '4px 0', fontSize: 14, color: '#0a1f44', fontWeight: 'bold' }}>
+                      <p
+                        style={{
+                          margin: '4px 0',
+                          fontSize: 15,
+                          color: '#f8fafc',
+                          fontWeight: 700,
+                        }}
+                      >
                         👤 {e.user?.name || 'موظف'}
                       </p>
-                      <p style={{ margin: '4px 0', fontSize: 12, color: '#5a6478' }}>
+                      <p
+                        style={{
+                          margin: '4px 0',
+                          fontSize: 12,
+                          color: 'rgba(255,255,255,0.65)',
+                        }}
+                      >
                         🏢 {e.branch?.name || '-'}
                         {e.user?.phone && ` · 📞 ${e.user.phone}`}
                       </p>
-                      <p style={{ margin: '4px 0', fontSize: 12, color: '#5a6478' }}>
+                      <p
+                        style={{
+                          margin: '4px 0',
+                          fontSize: 12,
+                          color: 'rgba(255,255,255,0.55)',
+                        }}
+                      >
                         🕐 {toCairo(e.createdAt)}
                       </p>
 
                       {e.message && (
-                        <p style={{
-                          margin: '8px 0 0',
-                          padding: 8,
-                          background: '#fff',
-                          borderRadius: 8,
-                          fontSize: 13,
-                          color: '#0a1f44',
-                        }}>
+                        <p
+                          style={{
+                            margin: '8px 0 0',
+                            padding: 10,
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            borderRadius: 8,
+                            fontSize: 13,
+                            color: 'rgba(255,255,255,0.85)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                          }}
+                        >
                           💬 {e.message}
                         </p>
                       )}
@@ -260,13 +315,11 @@ export default function EmergencyTab() {
                           href={`https://www.google.com/maps?q=${e.location.lat},${e.location.lng}`}
                           target="_blank"
                           rel="noopener noreferrer"
+                          className="btn gray"
                           style={{
                             display: 'inline-block',
-                            marginTop: 8,
-                            padding: '6px 12px',
-                            background: '#0a1f44',
-                            color: '#fff',
-                            borderRadius: 8,
+                            marginTop: 10,
+                            padding: '8px 14px',
                             fontSize: 12,
                             textDecoration: 'none',
                           }}
@@ -276,14 +329,26 @@ export default function EmergencyTab() {
                       )}
 
                       {e.status === 'resolved' && e.resolvedBy && (
-                        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#2e7d5b' }}>
+                        <p
+                          style={{
+                            margin: '8px 0 0',
+                            fontSize: 12,
+                            color: '#34d399',
+                          }}
+                        >
                           ✅ أُغلقت بواسطة: {e.resolvedBy.name}
                           {e.resolvedAt && ` · ${toCairo(e.resolvedAt)}`}
                         </p>
                       )}
 
                       {e.notes && (
-                        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#5a6478' }}>
+                        <p
+                          style={{
+                            margin: '6px 0 0',
+                            fontSize: 12,
+                            color: 'rgba(255,255,255,0.6)',
+                          }}
+                        >
                           📝 {e.notes}
                         </p>
                       )}
@@ -291,18 +356,9 @@ export default function EmergencyTab() {
 
                     {isActive && (
                       <button
+                        className="btn green"
                         onClick={() => resolveEmergency(e._id)}
-                        style={{
-                          padding: '10px 20px',
-                          background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 10,
-                          fontWeight: 'bold',
-                          cursor: 'pointer',
-                          fontSize: 13,
-                          fontFamily: 'inherit',
-                        }}
+                        style={{ padding: '10px 20px', fontSize: 13 }}
                       >
                         ✅ إغلاق الحالة
                       </button>
