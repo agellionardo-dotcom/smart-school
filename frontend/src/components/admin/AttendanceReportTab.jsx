@@ -1,7 +1,6 @@
 import { toCairo } from '../../utils/dateHelpers';
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../api';
+import api from '../../api';
 
 const MONTHS = [
   'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
@@ -9,25 +8,18 @@ const MONTHS = [
 ];
 
 export default function AttendanceReportTab() {
-  const [subTab, setSubTab] = useState('attendance'); // attendance | absence-late
+  const [subTab, setSubTab] = useState('attendance');
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
 
-  const token = localStorage.getItem('token');
-  const headers = { Authorization: `Bearer ${token}` };
-
-  // ✅ جلب البيانات
   const loadData = async () => {
     try {
       setLoading(true);
       const endpoint = subTab === 'attendance' ? 'monthly-attendance' : 'absence-late';
-      const { data } = await axios.get(
-        `${API_URL}/api/reports/${endpoint}?month=${month}&year=${year}`,
-        { headers }
-      );
+      const { data } = await api.get(`/reports/${endpoint}?month=${month}&year=${year}`);
       setData(data);
     } catch (err) {
       setMsg('❌ ' + (err.response?.data?.msg || 'فشل التحميل'));
@@ -36,18 +28,15 @@ export default function AttendanceReportTab() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [month, year, subTab]);
+  useEffect(() => { loadData(); }, [month, year, subTab]);
 
-  // ✅ تصدير
   const exportReport = async (type) => {
     try {
       setMsg('⏳ جاري التحميل...');
       const endpoint = subTab === 'attendance' ? 'monthly-attendance' : 'absence-late';
-      const response = await axios.get(
-        `${API_URL}/api/reports/${endpoint}/${type}?month=${month}&year=${year}`,
-        { headers, responseType: 'blob' }
+      const response = await api.get(
+        `/reports/${endpoint}/${type}?month=${month}&year=${year}`,
+        { responseType: 'blob' }
       );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -64,13 +53,10 @@ export default function AttendanceReportTab() {
     }
   };
 
-  // ✅ إحصائيات
   const stats = data.length > 0 ? {
     totalEmployees: data.length,
-    // للحضور
     totalPresent: subTab === 'attendance' ? data.reduce((s, r) => s + r.presentDays, 0) : 0,
     avgAttendance: subTab === 'attendance' ? Math.round(data.reduce((s, r) => s + r.attendanceRate, 0) / data.length) : 0,
-    // للغياب والتأخير
     totalAbsent: subTab === 'absence-late' ? data.reduce((s, r) => s + r.absentDays, 0) : 0,
     totalLate: subTab === 'absence-late' ? data.reduce((s, r) => s + r.lateDays, 0) : 0,
     totalLateMinutes: subTab === 'absence-late' ? data.reduce((s, r) => s + r.totalLateMinutes, 0) : 0,
@@ -92,45 +78,23 @@ export default function AttendanceReportTab() {
         </div>
       </div>
 
-      {/* التبويبات الفرعية */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <button
-          onClick={() => setSubTab('attendance')}
-          style={{
-            padding: '10px 20px',
-            borderRadius: 10,
-            border: 'none',
-            background: subTab === 'attendance' ? 'linear-gradient(145deg, #0a1f44, #142b5c)' : '#fff',
-            color: subTab === 'attendance' ? '#fff' : 'var(--navy)',
-            fontSize: 13,
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            fontFamily: 'inherit',
-          }}
-        >
-          📊 الحضور الشهري
-        </button>
-        <button
-          onClick={() => setSubTab('absence-late')}
-          style={{
-            padding: '10px 20px',
-            borderRadius: 10,
-            border: 'none',
-            background: subTab === 'absence-late' ? 'linear-gradient(145deg, #8e2b2b, #5c1c1c)' : '#fff',
-            color: subTab === 'absence-late' ? '#fff' : 'var(--navy)',
-            fontSize: 13,
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            fontFamily: 'inherit',
-          }}
-        >
-          📉 الغياب والتأخير
-        </button>
+        <button onClick={() => setSubTab('attendance')} style={{
+          padding: '10px 20px', borderRadius: 10, border: 'none',
+          background: subTab === 'attendance' ? 'linear-gradient(145deg, #0a1f44, #142b5c)' : '#fff',
+          color: subTab === 'attendance' ? '#fff' : 'var(--navy)',
+          fontSize: 13, fontWeight: 'bold', cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'inherit',
+        }}>📊 الحضور الشهري</button>
+        <button onClick={() => setSubTab('absence-late')} style={{
+          padding: '10px 20px', borderRadius: 10, border: 'none',
+          background: subTab === 'absence-late' ? 'linear-gradient(145deg, #8e2b2b, #5c1c1c)' : '#fff',
+          color: subTab === 'absence-late' ? '#fff' : 'var(--navy)',
+          fontSize: 13, fontWeight: 'bold', cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontFamily: 'inherit',
+        }}>📉 الغياب والتأخير</button>
       </div>
 
-      {/* فلاتر */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, background: '#fff', padding: 12, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         <select className="input" value={month} onChange={e => setMonth(parseInt(e.target.value))}
           style={{ width: 140, padding: '10px 14px' }}>
@@ -140,19 +104,15 @@ export default function AttendanceReportTab() {
           style={{ width: 100, padding: '10px 14px' }}>
           {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        <button className="btn gray" onClick={loadData} style={{ padding: '10px 20px', fontSize: 13 }}>
-          🔄 تحديث
-        </button>
+        <button className="btn gray" onClick={loadData} style={{ padding: '10px 20px', fontSize: 13 }}>🔄 تحديث</button>
       </div>
 
-      {/* الإحصائيات */}
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
           <div style={{ padding: 16, background: '#0a1f44', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
             <div style={{ fontSize: 24, fontWeight: 900 }}>{stats.totalEmployees}</div>
             <div style={{ fontSize: 12 }}>👥 الموظفين</div>
           </div>
-
           {subTab === 'attendance' && (
             <>
               <div style={{ padding: 16, background: '#2e7d5b', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
@@ -165,7 +125,6 @@ export default function AttendanceReportTab() {
               </div>
             </>
           )}
-
           {subTab === 'absence-late' && (
             <>
               <div style={{ padding: 16, background: '#8e2b2b', color: '#fff', borderRadius: 12, textAlign: 'center' }}>
@@ -193,7 +152,6 @@ export default function AttendanceReportTab() {
         }}>{msg}</p>
       )}
 
-      {/* الجدول */}
       <div className="glass" style={{ padding: 20 }}>
         {loading ? (
           <p style={{ textAlign: 'center', color: 'var(--gray)' }}>⏳ جاري التحميل...</p>
@@ -202,27 +160,17 @@ export default function AttendanceReportTab() {
         ) : (
           <div style={{ overflowX: 'auto' }}>
             {subTab === 'attendance' ? (
-              // ✅ جدول الحضور
               <table>
                 <thead>
                   <tr>
-                    <th>الموظف</th>
-                    <th>الفرع</th>
-                    <th>حضور</th>
-                    <th>تأخير</th>
-                    <th>غياب</th>
-                    <th>دقائق التأخير</th>
-                    <th>ساعات العمل</th>
-                    <th>نسبة الحضور</th>
+                    <th>الموظف</th><th>الفرع</th><th>حضور</th><th>تأخير</th><th>غياب</th>
+                    <th>دقائق التأخير</th><th>ساعات العمل</th><th>نسبة الحضور</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.map(r => (
                     <tr key={r.user._id}>
-                      <td>
-                        <b>{r.user.name}</b>
-                        {r.user.position && <div style={{ fontSize: 11, color: '#5a6478' }}>{r.user.position}</div>}
-                      </td>
+                      <td><b>{r.user.name}</b>{r.user.position && <div style={{ fontSize: 11, color: '#5a6478' }}>{r.user.position}</div>}</td>
                       <td style={{ fontSize: 13 }}>{r.branch?.name || '-'}</td>
                       <td style={{ color: '#2e7d5b', fontWeight: 'bold' }}>{r.presentDays}</td>
                       <td style={{ color: '#b8860b', fontWeight: 'bold' }}>{r.lateDays}</td>
@@ -233,26 +181,18 @@ export default function AttendanceReportTab() {
                         <span style={{
                           background: r.attendanceRate >= 90 ? '#2e7d5b' : r.attendanceRate >= 70 ? '#b8860b' : '#8e2b2b',
                           color: '#fff', padding: '4px 10px', borderRadius: 10, fontSize: 12, fontWeight: 'bold',
-                        }}>
-                          {r.attendanceRate}%
-                        </span>
+                        }}>{r.attendanceRate}%</span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              // ✅ جدول الغياب والتأخير
               <table>
                 <thead>
                   <tr>
-                    <th>الموظف</th>
-                    <th>الفرع</th>
-                    <th>أيام الغياب</th>
-                    <th>أيام التأخير</th>
-                    <th>إجمالي دقائق التأخير</th>
-                    <th>متوسط التأخير اليومي</th>
-                    <th>الحالة</th>
+                    <th>الموظف</th><th>الفرع</th><th>أيام الغياب</th><th>أيام التأخير</th>
+                    <th>إجمالي دقائق التأخير</th><th>متوسط التأخير اليومي</th><th>الحالة</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -264,40 +204,14 @@ export default function AttendanceReportTab() {
                                    { label: '🔴 يحتاج تحذير', color: '#8e2b2b' };
                     return (
                       <tr key={r.user._id}>
-                        <td>
-                          <b>{r.user.name}</b>
-                          {r.user.position && <div style={{ fontSize: 11, color: '#5a6478' }}>{r.user.position}</div>}
-                        </td>
+                        <td><b>{r.user.name}</b>{r.user.position && <div style={{ fontSize: 11, color: '#5a6478' }}>{r.user.position}</div>}</td>
                         <td style={{ fontSize: 13 }}>{r.branch?.name || '-'}</td>
-                        <td>
-                          <span style={{
-                            color: r.absentDays > 0 ? '#8e2b2b' : '#2e7d5b',
-                            fontWeight: 'bold',
-                            fontSize: 14,
-                          }}>
-                            {r.absentDays}
-                          </span>
-                        </td>
-                        <td>
-                          <span style={{
-                            color: r.lateDays > 0 ? '#b8860b' : '#2e7d5b',
-                            fontWeight: 'bold',
-                            fontSize: 14,
-                          }}>
-                            {r.lateDays}
-                          </span>
-                        </td>
+                        <td><span style={{ color: r.absentDays > 0 ? '#8e2b2b' : '#2e7d5b', fontWeight: 'bold', fontSize: 14 }}>{r.absentDays}</span></td>
+                        <td><span style={{ color: r.lateDays > 0 ? '#b8860b' : '#2e7d5b', fontWeight: 'bold', fontSize: 14 }}>{r.lateDays}</span></td>
                         <td>{r.totalLateMinutes} د</td>
                         <td>{r.avgLateMinutes} د</td>
                         <td>
-                          <span style={{
-                            background: status.color,
-                            color: '#fff',
-                            padding: '4px 10px',
-                            borderRadius: 10,
-                            fontSize: 11,
-                            fontWeight: 'bold',
-                          }}>
+                          <span style={{ background: status.color, color: '#fff', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 'bold' }}>
                             {status.label}
                           </span>
                         </td>

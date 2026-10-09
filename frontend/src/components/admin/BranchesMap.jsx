@@ -1,9 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Map, { Marker, Popup, Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import axios from 'axios';
-import { API_URL } from '../../api';
-
+import api from '../../api';
 // ==================== الإحداثيات الافتراضية (المنيا) ====================
 const DEFAULT_VIEW = {
   longitude: 30.7503,
@@ -122,12 +120,11 @@ export default function BranchesMap() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
   // ✅ جلب الفروع
   useEffect(() => {
-    axios.get(`${API_URL}/api/branches`, { headers })
-      .then(r => setBranches(r.data))
+    api.get('/branches')
+  .then(r => setBranches(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

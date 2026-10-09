@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../api';
+import api from '../../api';
 
 export default function SettingsTab() {
   const [settings, setSettings] = useState({
@@ -17,18 +16,17 @@ export default function SettingsTab() {
     defaultRadius: 5
   });
   const [msg, setMsg] = useState('');
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
   useEffect(() => {
-    axios.get(`${API_URL}/api/admin/settings`, { headers })
-      .then(r => setSettings({ ...settings, ...r.data }))
-      .catch(() => {});
+    api.get('/admin/settings')
+      .then(r => setSettings(prev => ({ ...prev, ...r.data })))
+      .catch((err) => console.error('loadSettings error:', err));
   }, []);
 
   const save = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`${API_URL}/api/admin/settings`, settings, { headers });
+      await api.put('/admin/settings', settings);
       setMsg('✅ تم حفظ الإعدادات');
     } catch (err) {
       setMsg('❌ ' + (err.response?.data?.msg || 'فشل'));
@@ -43,9 +41,7 @@ export default function SettingsTab() {
         <p style={{
           padding: 12,
           background: msg.startsWith('✅') ? '#d4edda' : '#f8d7da',
-          borderRadius: 8,
-          marginBottom: 16,
-          color: '#000'
+          borderRadius: 8, marginBottom: 16, color: '#000'
         }}>{msg}</p>
       )}
 
@@ -73,23 +69,4 @@ export default function SettingsTab() {
         <h4 style={{ color: 'var(--navy)', marginTop: 24, marginBottom: 12 }}>📱 الميزات</h4>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <input type="checkbox" checked={settings.enableGeoFence}
-            onChange={e => setSettings({ ...settings, enableGeoFence: e.target.checked })} />
-          تفعيل التحقق الجغرافي (GPS)
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <input type="checkbox" checked={settings.enableQRCode}
-            onChange={e => setSettings({ ...settings, enableQRCode: e.target.checked })} />
-          تفعيل رمز QR
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <input type="checkbox" checked={settings.enableFaceRecognition}
-            onChange={e => setSettings({ ...settings, enableFaceRecognition: e.target.checked })} />
-          تفعيل التعرف على الوجه
-        </label>
-
-        <br /><br />
-        <button className="btn" style={{ width: '100%' }}>💾 حفظ الإعدادات</button>
-      </form>
-    </div>
-  );
-}
+            onChange={e => setSettings({ ...settings, enableGeoFence: e.target

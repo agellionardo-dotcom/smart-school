@@ -1,7 +1,6 @@
 import { toCairo } from '../../utils/dateHelpers';
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../api';
+import api, { API_URL } from '../../api';
 import { io } from 'socket.io-client';
 
 const EMERGENCY_TYPES = {
@@ -21,33 +20,31 @@ export default function EmergencyTab() {
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  const headers = { Authorization: `Bearer ${token}` };
-
   // ✅ دالة تشغيل صوت التنبيه
   const playAlertSound = () => {
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      
+
       const playTone = (frequency, startTime, duration) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-        
+
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        
+
         oscillator.frequency.value = frequency;
         oscillator.type = 'sine';
-        
+
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
         gainNode.gain.linearRampToValueAtTime(0, startTime + duration);
-        
+
         oscillator.start(startTime);
         oscillator.stop(startTime + duration);
       };
-      
+
       const now = audioContext.currentTime;
-      
+
       playTone(800, now, 0.3);
       playTone(600, now + 0.3, 0.3);
       playTone(800, now + 0.6, 0.3);
@@ -59,10 +56,11 @@ export default function EmergencyTab() {
   // ✅ جلب حالات الطوارئ
   const loadEmergencies = async () => {
     try {
+      setLoading(true);
       const url = filter === 'all'
-        ? `${API_URL}/api/emergency`
-        : `${API_URL}/api/emergency?status=${filter}`;
-      const { data } = await axios.get(url, { headers });
+        ? '/emergency'
+        : `/emergency?status=${filter}`;
+      const { data } = await api.get(url);
       setEmergencies(data);
     } catch (err) {
       setMsg('❌ ' + (err.response?.data?.msg || 'فشل تحميل الحالات'));
@@ -89,15 +87,15 @@ export default function EmergencyTab() {
 
     socket.on('emergency:new', (data) => {
       setMsg(`🚨 حالة طوارئ جديدة: ${data.emergency?.user?.name || 'موظف'}`);
-      
+
       // ✅ تشغيل الصوت
       playAlertSound();
-      
+
       // ✅ اهتزاز (لو موبايل)
       if (navigator.vibrate) {
         navigator.vibrate([500, 200, 500, 200, 500]);
       }
-      
+
       loadEmergencies();
     });
 
@@ -114,11 +112,7 @@ export default function EmergencyTab() {
     if (notes === null) return;
 
     try {
-      await axios.put(
-        `${API_URL}/api/emergency/${id}/resolve`,
-        { notes: notes || '' },
-        { headers }
-      );
+      await api.put(`/emergency/${id}/resolve`, { notes: notes || '' });
       setMsg('✅ تم إغلاق الحالة');
       loadEmergencies();
     } catch (err) {

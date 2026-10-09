@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../api';
+import api from '../../api';
 
 export default function OverviewTab() {
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
   useEffect(() => {
-    axios.get(`${API_URL}/api/admin/branches-stats`, { headers })
+    api.get('/admin/branches-stats')
       .then(r => setStats(r.data))
-      .catch(() => {})
+      .catch((err) => console.error('loadStats error:', err))
       .finally(() => setLoading(false));
   }, []);
 
@@ -26,22 +24,10 @@ export default function OverviewTab() {
   return (
     <div>
       <div className="grid" style={{ marginBottom: 30 }}>
-        <div className="stat-card">
-          <h3>{totals.total}</h3>
-          <p>إجمالي الموظفين</p>
-        </div>
-        <div className="stat-card" style={{ background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)' }}>
-          <h3>{totals.present}</h3>
-          <p>حضور اليوم</p>
-        </div>
-        <div className="stat-card" style={{ background: 'linear-gradient(145deg, #b8860b, #8b6508)' }}>
-          <h3>{totals.late}</h3>
-          <p>تأخير اليوم</p>
-        </div>
-        <div className="stat-card" style={{ background: 'linear-gradient(145deg, #8e2b2b, #5c1c1c)' }}>
-          <h3>{totals.absent}</h3>
-          <p>غياب اليوم</p>
-        </div>
+        <div className="stat-card"><h3>{totals.total}</h3><p>إجمالي الموظفين</p></div>
+        <div className="stat-card" style={{ background: 'linear-gradient(145deg, #2e7d5b, #1e5a40)' }}><h3>{totals.present}</h3><p>حضور اليوم</p></div>
+        <div className="stat-card" style={{ background: 'linear-gradient(145deg, #b8860b, #8b6508)' }}><h3>{totals.late}</h3><p>تأخير اليوم</p></div>
+        <div className="stat-card" style={{ background: 'linear-gradient(145deg, #8e2b2b, #5c1c1c)' }}><h3>{totals.absent}</h3><p>غياب اليوم</p></div>
       </div>
 
       <h3 style={{ color: 'var(--navy)', marginBottom: 16 }}>🏢 الفروع</h3>
