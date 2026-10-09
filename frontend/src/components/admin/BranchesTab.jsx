@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { API_URL } from '../../api';
+import api from '../../api';
 import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -91,12 +90,15 @@ export default function BranchesTab() {
   });
   const [msg, setMsg] = useState('');
   const mapRef = useRef(null);
-  const headers = { Authorization: `Bearer ${localStorage.getItem('token')}` };
 
-  const loadBranches = () => {
-    axios.get(`${API_URL}/api/admin/branches`, { headers })
-      .then(r => setBranches(r.data))
-      .catch(() => {});
+  // ✅ جلب الفروع — api instance بيضيف التوكن والـ /api تلقائياً
+  const loadBranches = async () => {
+    try {
+      const { data } = await api.get('/branches');
+      setBranches(data);
+    } catch (err) {
+      console.error('loadBranches error:', err);
+    }
   };
 
   useEffect(() => { loadBranches(); }, []);
@@ -139,10 +141,10 @@ export default function BranchesTab() {
       };
 
       if (editBranch) {
-        await axios.put(`${API_URL}/api/admin/branches/${editBranch._id}`, payload, { headers });
+        await api.put(`/branches/${editBranch._id}`, payload);
         setMsg('✅ تم تعديل الفرع');
       } else {
-        await axios.post(`${API_URL}/api/admin/branches`, payload, { headers });
+        await api.post('/branches', payload);
         setMsg('✅ تم إضافة الفرع');
       }
 
@@ -174,7 +176,7 @@ export default function BranchesTab() {
   const deleteBranch = async (id) => {
     if (!window.confirm('هل أنت متأكد من حذف الفرع؟')) return;
     try {
-      await axios.delete(`${API_URL}/api/admin/branches/${id}`, { headers });
+      await api.delete(`/branches/${id}`);
       setMsg('✅ تم الحذف');
       loadBranches();
     } catch (err) {
@@ -295,7 +297,6 @@ export default function BranchesTab() {
 
             {showMapPicker && (
               <div style={{ marginTop: 16 }}>
-                {/* أزرار نوع الخريطة */}
                 <div style={{
                   display: 'flex',
                   gap: 6,
@@ -327,7 +328,6 @@ export default function BranchesTab() {
                   ))}
                 </div>
 
-                {/* الخريطة الكبيرة */}
                 <div style={{
                   height: 'clamp(300px, 50vh, 450px)',
                   borderRadius: 16,
@@ -389,7 +389,6 @@ export default function BranchesTab() {
                   </Map>
                 </div>
 
-                {/* صندوق الإحداثيات + زر مسح */}
                 <div style={{
                   marginTop: 12,
                   padding: 12,
@@ -415,7 +414,6 @@ export default function BranchesTab() {
                   </button>
                 </div>
 
-                {/* نصيحة */}
                 <div style={{
                   marginTop: 8,
                   padding: 10,
