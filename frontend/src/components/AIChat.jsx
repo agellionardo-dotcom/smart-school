@@ -18,7 +18,6 @@ export default function AIChat() {
         setMessages(JSON.parse(saved));
       } catch {}
     } else {
-      // ✅ رسالة ترحيب
       setMessages([
         {
           role: 'model',
@@ -62,11 +61,16 @@ export default function AIChat() {
     setLoading(true);
 
     try {
-      // ✅ ناخد آخر 10 رسائل كـ context
-      const history = newMessages.slice(-10, -1).map(m => ({
+      // ✅ ناخد آخر 10 رسائل (بدون الرسالة الجديدة)
+      let history = newMessages.slice(-10, -1).map(m => ({
         role: m.role,
         content: m.content,
       }));
+
+      // ✅ نشيل أي رسالة "model" في الأول (رسالة الترحيب)
+      while (history.length > 0 && history[0].role === 'model') {
+        history.shift();
+      }
 
       const { data } = await api.post('/ai/chat', {
         message: messageText,
