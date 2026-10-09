@@ -42,9 +42,14 @@ router.post('/chat', auth, async (req, res) => {
         parts: [{ text: h.content }],
       }));
 
-    // ✅ شيل رسالة الترحيب (model) من الأول
+    // ✅ شيل أي "model" من الأول (رسالة الترحيب)
     while (validHistory.length > 0 && validHistory[0].role === 'model') {
       validHistory.shift();
+    }
+
+    // ✅ شيل أي "model" من الآخر (لأن Gemini عايز آخر رسالة user)
+    while (validHistory.length > 0 && validHistory[validHistory.length - 1].role === 'model') {
+      validHistory.pop();
     }
 
     // ✅ لو الـ history فاضي، نستخدم generateContent مباشرة
@@ -53,9 +58,16 @@ router.post('/chat', auth, async (req, res) => {
       const result = await model.generateContent(message);
       response = result.response.text();
     } else {
-      const chat = model.startChat({ history: validHistory });
-      const result = await chat.sendMessage(message);
-      response = result.response.text();
+      try {
+        const chat = model.startChat({ history: validHistory });
+        const result = await chat.sendMessage(message);
+        response = result.response.text();
+      } catch (chatErr) {
+        // ✅ Fallback لو startChat فشل — نستخدم generateContent
+        console.warn('startChat failed, using generateContent:', chatErr.message);
+        const result = await model.generateContent(message);
+        response = result.response.text();
+      }
     }
 
     res.json({
@@ -66,15 +78,19 @@ router.post('/chat', auth, async (req, res) => {
   } catch (err) {
     console.error('AI Chat error:', err);
 
-    let errorMsg = 'حدث خطأ في المساعد الذكي';
+    let errorMsg = 'حدث خطأ مؤقت — جرب تاني';
     if (err.message?.includes('API_KEY')) {
       errorMsg = 'مفتاح API غير صالح — راجع الإعدادات';
     } else if (err.message?.includes('quota')) {
-      errorMsg = 'تم استهلاك الحصة اليومية — جرب بكرة';
+      errorMsg = 'تم استهلاك الحصة اليومية — جرب بعد شوية';
     } else if (err.message?.includes('role')) {
-      errorMsg = 'خطأ في تنسيق المحادثة';
+      errorMsg = 'خطأ في تنسيق المحادثة — جرب تسأل من جديد';
     } else if (err.message?.includes('not found')) {
       errorMsg = 'الموديل غير متاح';
+    } else if (err.message?.includes('SAFETY') || err.message?.includes('blocked')) {
+      errorMsg = 'مقدرش أجاوب على السؤال ده — جرب صيغة تانية';
+    } else if (err.message?.includes('timeout') || err.message?.includes('ETIMEDOUT')) {
+      errorMsg = 'الاتصال بطيء — جرب تاني';
     }
 
     res.status(500).json({ msg: errorMsg, error: err.message });
@@ -82,7 +98,7 @@ router.post('/chat', auth, async (req, res) => {
 });
 
 // ============================================
-// ✅ GET /api/ai/suggestions
+// ✅ GET /api/ai/suggestions — اقتراحات جاهزة
 // ============================================
 router.get('/suggestions', auth, async (req, res) => {
   try {
