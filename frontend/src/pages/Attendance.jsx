@@ -10,6 +10,19 @@ import { isOnline } from '../services/networkStatus';
 import { toCairoTime } from '../utils/dateHelpers';
 import { GlassCard, GradientButton } from '../components/ui';
 
+// ✅ Biometric — يدعم Web + Mobile
+let BiometricAuth = null;
+let Capacitor = null;
+
+try {
+  const biometricModule = require('@aparajita/capacitor-biometric-auth');
+  BiometricAuth = biometricModule.BiometricAuth;
+  const capacitorCore = require('@capacitor/core');
+  Capacitor = capacitorCore.Capacitor;
+} catch (err) {
+  console.warn('Biometric not available:', err.message);
+}
+
 export default function Attendance() {
   const [todayAttendance, setTodayAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,10 +31,38 @@ export default function Attendance() {
   const [msgType, setMsgType] = useState('info');
   const [queueCount, setQueueCount] = useState(0);
   const [online, setOnline] = useState(true);
-  const [detectedBranch, setDetectedBranch] = useState(null); // ✅ جديد
+  const [detectedBranch, setDetectedBranch] = useState(null);
+
+  // ✅ جديد — حالة البصمة
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState(null);
+  const [biometricEnabled, setBiometricEnabled] = useState(true);
 
   const userRef = useRef(JSON.parse(localStorage.getItem('user') || '{}'));
   const user = userRef.current;
+
+  // ============================================
+  // ✅ فحص توفر البصمة
+  // ============================================
+  const checkBiometric = useCallback(async () => {
+    try {
+      if (!BiometricAuth || !Capacitor) {
+        setBiometricAvailable(false);
+        return;
+      }
+      if (!Capacitor.isNativePlatform()) {
+        setBiometricAvailable(false);
+        return;
+      }
+
+      const result = await BiometricAuth.checkBiometry();
+      setBiometricAvailable(result.isAvailable);
+      setBiometricType(result.biometryType || null);
+    } catch (err) {
+      console.warn('Biometric check error:', err);
+      setBiometricAvailable(false);
+    }
+  }, []);
 
   // ============================================
   // ✅ الحصول على الموقع
@@ -44,6 +85,35 @@ export default function Attendance() {
       );
     });
   }, []);
+
+  // ============================================
+  // ✅ التحقق بالبصمة
+  // ============================================
+  const authenticateBiometric = useCallback(
+    async (reason) => {
+      if (!biometricAvailable || !BiometricAuth) {
+        return { success: false, used: false };
+      }
+
+      try {
+        await BiometricAuth.authenticate({
+          reason: reason || 'سجّل حضورك',
+          cancelTitle: 'إلغاء',
+          allowDeviceCredential: false,
+          iosFallbackTitle: 'استخدم كلمة المرور',
+          androidTitle: 'تسجيل الحضور',
+          androidSubtitle: 'ضع بصمتك',
+          androidConfirmationRequired: false,
+        });
+        return { success: true, used: true };
+      } catch (err) {
+        console.warn('Biometric auth error:', err);
+        // المستخدم لغى — نكمل بدون بصمة (Fallback)
+        return { success: false, used: false, cancelled: true };
+      }
+    },
+    [biometricAvailable]
+  );
 
   // ============================================
   // ✅ عرض رسالة
@@ -117,18 +187,20 @@ export default function Attendance() {
   useEffect(() => {
     loadToday();
     loadQueueCount();
+    checkBiometric();
 
     const interval = setInterval(loadQueueCount, 5000);
     return () => clearInterval(interval);
-  }, [loadToday, loadQueueCount]);
+  }, [loadToday, loadQueueCount, checkBiometric]);
 
   // ============================================
-  // ✅ تسجيل الحضور
+  // ✅ تسجيل الحضور (GPS + Biometric Fallback)
   // ============================================
   const handleCheckIn = useCallback(async () => {
     setActionLoading(true);
     setDetectedBranch(null);
     try {
+      // 1. ✅ الموقع (إجباري)
       let location = null;
       try {
         location = await getLocation();
@@ -136,25 +208,47 @@ export default function Attendance() {
         showMsg('⚠️ فشل الحصول على الموقع: ' + err.message, 'warning');
       }
 
+      // 2. ✅ البصمة (اختيارية — لو متاحة)
+      let biometricUsed = false;
+      let bioType = null;
+
+      if (biometricAvailable && biometricEnabled) {
+        const bio = await authenticateBiometric('سجّل حضورك');
+        biometricUsed = bio.used;
+        bioType = bio.used ? biometricType : null;
+
+        if (bio.cancelled) {
+          showMsg('ℹ️ تم التخطي — سيتم التسجيل بالموقع فقط', 'info');
+        }
+      }
+
+      // 3. ✅ إرسال الطلب
       const isConn = await isOnline();
       setOnline(isConn);
 
       if (isConn) {
-        const { data } = await api.post('/attendance/checkin', {
+        const payload = {
           lat: location?.lat,
           lng: location?.lng,
-        });
+          biometricUsed,
+          biometricType: bioType,
+          deviceId: user._id, // مؤقت — يستبدل بـ Device ID حقيقي
+        };
+
+        const { data } = await api.post('/attendance/checkin', payload);
         setTodayAttendance(data);
 
-        // ✅ عرض معلومات الفرع المكتشف
         if (data.detectedBranch) {
           setDetectedBranch(data.detectedBranch);
           showMsg(
-            `✅ تم التسجيل من ${data.detectedBranch.name} (${data.detectedBranch.distance} متر)`,
+            `✅ تم التسجيل من ${data.detectedBranch.name} (${data.detectedBranch.distance} متر)${biometricUsed ? ' 🔐' : ''}`,
             'success'
           );
         } else {
-          showMsg('✅ تم تسجيل الحضور', 'success');
+          showMsg(
+            `✅ تم تسجيل الحضور${biometricUsed ? ' بالبصمة 🔐' : ''}`,
+            'success'
+          );
         }
 
         await cacheData('today_attendance', data);
@@ -164,6 +258,8 @@ export default function Attendance() {
           lat: location?.lat,
           lng: location?.lng,
           user: user._id,
+          biometricUsed,
+          biometricType: bioType,
         });
         await loadQueueCount();
         showMsg('📴 تم الحفظ محلياً — سيتم المزامنة عند عودة الإنترنت', 'warning');
@@ -178,7 +274,16 @@ export default function Attendance() {
     } finally {
       setActionLoading(false);
     }
-  }, [getLocation, loadQueueCount, showMsg, user._id]);
+  }, [
+    getLocation,
+    loadQueueCount,
+    showMsg,
+    user._id,
+    biometricAvailable,
+    biometricEnabled,
+    biometricType,
+    authenticateBiometric,
+  ]);
 
   // ============================================
   // ✅ تسجيل الانصراف
@@ -193,24 +298,38 @@ export default function Attendance() {
         showMsg('⚠️ فشل الحصول على الموقع', 'warning');
       }
 
+      // ✅ البصمة (اختيارية)
+      let biometricUsed = false;
+      let bioType = null;
+
+      if (biometricAvailable && biometricEnabled) {
+        const bio = await authenticateBiometric('سجّل انصرافك');
+        biometricUsed = bio.used;
+        bioType = bio.used ? biometricType : null;
+      }
+
       const isConn = await isOnline();
       setOnline(isConn);
 
       if (isConn) {
-        const { data } = await api.post('/attendance/checkout', {
+        const payload = {
           lat: location?.lat,
           lng: location?.lng,
-        });
+          biometricUsed,
+          biometricType: bioType,
+        };
+
+        const { data } = await api.post('/attendance/checkout', payload);
         setTodayAttendance(data);
 
         if (data.detectedBranch) {
           setDetectedBranch(data.detectedBranch);
+          showMsg(`✅ تم الانصراف من ${data.detectedBranch.name}`, 'success');
+        } else {
           showMsg(
-            `✅ تم الانصراف من ${data.detectedBranch.name}`,
+            `✅ تم تسجيل الانصراف${biometricUsed ? ' بالبصمة 🔐' : ''}`,
             'success'
           );
-        } else {
-          showMsg('✅ تم تسجيل الانصراف', 'success');
         }
 
         await cacheData('today_attendance', data);
@@ -220,6 +339,8 @@ export default function Attendance() {
           lat: location?.lat,
           lng: location?.lng,
           user: user._id,
+          biometricUsed,
+          biometricType: bioType,
         });
         await loadQueueCount();
         showMsg('📴 تم الحفظ محلياً — سيتم المزامنة عند عودة الإنترنت', 'warning');
@@ -234,7 +355,16 @@ export default function Attendance() {
     } finally {
       setActionLoading(false);
     }
-  }, [getLocation, loadQueueCount, showMsg, user._id]);
+  }, [
+    getLocation,
+    loadQueueCount,
+    showMsg,
+    user._id,
+    biometricAvailable,
+    biometricEnabled,
+    biometricType,
+    authenticateBiometric,
+  ]);
 
   // ============================================
   // ✅ Loading
@@ -243,7 +373,13 @@ export default function Attendance() {
     return (
       <div className="dashboard">
         <GlassCard padding="lg">
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+          <p
+            style={{
+              textAlign: 'center',
+              color: 'rgba(255,255,255,0.7)',
+              margin: 0,
+            }}
+          >
             ⏳ جاري التحميل...
           </p>
         </GlassCard>
@@ -253,6 +389,7 @@ export default function Attendance() {
 
   const checkedIn = todayAttendance?.checkIn;
   const checkedOut = todayAttendance?.checkOut;
+  const usedBiometric = todayAttendance?.verification?.biometricUsed;
 
   // ============================================
   // ✅ Render
@@ -280,7 +417,7 @@ export default function Attendance() {
         </p>
       </div>
 
-      {/* ✅ حالة الشبكة */}
+      {/* ✅ حالة الشبكة + البصمة */}
       <div
         className="ss-glass"
         style={{
@@ -289,6 +426,8 @@ export default function Attendance() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 8,
           borderRight: online ? '3px solid #10b981' : '3px solid #fbbf24',
         }}
       >
@@ -301,21 +440,55 @@ export default function Attendance() {
         >
           {online ? '🌐 متصل بالإنترنت' : '📴 غير متصل — وضع أوفلاين'}
         </span>
-        {queueCount > 0 && (
-          <span
-            style={{
-              background: 'linear-gradient(135deg, #fb923c, #ef4444)',
-              color: '#fff',
-              padding: '3px 10px',
-              borderRadius: 10,
-              fontSize: 11,
-              fontWeight: 700,
-              boxShadow: '0 2px 8px rgba(251,146,60,0.4)',
-            }}
-          >
-            ⏳ {queueCount} طلب معلق
-          </span>
-        )}
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* ✅ عرض حالة البصمة */}
+          {biometricAvailable && (
+            <button
+              onClick={() => setBiometricEnabled(!biometricEnabled)}
+              style={{
+                background: biometricEnabled
+                  ? 'rgba(168, 85, 247, 0.15)'
+                  : 'rgba(255,255,255,0.05)',
+                color: biometricEnabled ? '#a78bfa' : 'rgba(255,255,255,0.5)',
+                padding: '4px 10px',
+                borderRadius: 8,
+                fontSize: 11,
+                fontWeight: 700,
+                border: `1px solid ${
+                  biometricEnabled
+                    ? 'rgba(168, 85, 247, 0.3)'
+                    : 'rgba(255,255,255,0.1)'
+                }`,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+              title={
+                biometricEnabled
+                  ? 'البصمة مفعّلة — اضغط لتعطيلها'
+                  : 'البصمة معطّلة — اضغط لتفعيلها'
+              }
+            >
+              {biometricEnabled ? '🔐 بصمة' : '🔓 بدون بصمة'}
+            </button>
+          )}
+
+          {queueCount > 0 && (
+            <span
+              style={{
+                background: 'linear-gradient(135deg, #fb923c, #ef4444)',
+                color: '#fff',
+                padding: '3px 10px',
+                borderRadius: 10,
+                fontSize: 11,
+                fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(251,146,60,0.4)',
+              }}
+            >
+              ⏳ {queueCount}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* ✅ رسالة */}
@@ -354,7 +527,6 @@ export default function Attendance() {
                 ? 'rgba(251, 191, 36, 0.3)'
                 : 'rgba(0, 229, 255, 0.3)'
             }`,
-            animation: 'ssFadeIn 0.3s ease',
           }}
         >
           {msg}
@@ -454,6 +626,32 @@ export default function Attendance() {
                 ? `تم التسجيل: ${toCairoTime(checkedIn)}`
                 : 'لم يتم التسجيل بعد'}
             </p>
+
+            {/* ✅ عرض التحقق */}
+            {checkedIn && usedBiometric && (
+              <p
+                style={{
+                  color: '#a78bfa',
+                  marginTop: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                🔐 تم التحقق بالبصمة
+              </p>
+            )}
+            {checkedIn && !usedBiometric && (
+              <p
+                style={{
+                  color: 'rgba(255,255,255,0.4)',
+                  marginTop: 6,
+                  fontSize: 11,
+                  fontWeight: 600,
+                }}
+              >
+                📍 تم التحقق بالموقع فقط
+              </p>
+            )}
           </div>
         </GlassCard>
 
@@ -515,6 +713,8 @@ export default function Attendance() {
             ? '⏳'
             : checkedIn
             ? '✅ تم الحضور'
+            : biometricAvailable && biometricEnabled
+            ? '🔐 تسجيل الحضور بالبصمة'
             : '📥 تسجيل الحضور'}
         </GradientButton>
 
@@ -533,6 +733,42 @@ export default function Attendance() {
             : '📤 تسجيل الانصراف'}
         </GradientButton>
       </div>
+
+      {/* ✅ ملاحظة عن البصمة */}
+      {biometricAvailable && (
+        <div
+          style={{
+            marginTop: 16,
+            padding: 12,
+            background: 'rgba(168, 85, 247, 0.08)',
+            border: '1px solid rgba(168, 85, 247, 0.2)',
+            borderRadius: 10,
+            fontSize: 12,
+            color: 'rgba(255,255,255,0.7)',
+            textAlign: 'center',
+          }}
+        >
+          💡 {biometricType === 'faceId' ? 'Face ID' : 'بصمة الإصبع'} متاحة على
+          جهازك — هتستخدم تلقائياً عند التسجيل
+        </div>
+      )}
+
+      {!biometricAvailable && (
+        <div
+          style={{
+            marginTop: 16,
+            padding: 12,
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 10,
+            fontSize: 12,
+            color: 'rgba(255,255,255,0.5)',
+            textAlign: 'center',
+          }}
+        >
+          📍 سيتم التسجيل بالموقع فقط (البصمة غير متاحة على هذا الجهاز)
+        </div>
+      )}
     </div>
   );
 }

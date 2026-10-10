@@ -37,4 +37,5 @@ my-release-key.jks
 *.keystore
 frontend/android/my-release-key.jks
 *.backup
-backend/middleware/*.backup
+backend/middleware/*.backupfirebase-service-account.json 
+*service-account*.json 
