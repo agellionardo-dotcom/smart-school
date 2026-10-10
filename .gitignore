@@ -41,3 +41,8 @@ backend/middleware/*.backupfirebase-service-account.json
 *service-account*.json 
 firebase-service-account.json 
 *service-account*.json 
+# Firebase Service Accounts (حساس)
+firebase-service-account*.json
+*service-account*.json
+notificatio-*.json
+firebase-oneline.txt
