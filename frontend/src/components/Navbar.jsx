@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getQueueCount } from '../services/offlineStorage';
+import ThemeToggle from './ThemeToggle';
 
 export default function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -61,6 +62,11 @@ export default function Navbar() {
             onError={(e) => { e.target.style.display = 'none'; }}
           />
           <h2 className="ss-navbar-title">Smart School</h2>
+        </div>
+
+        {/* ✅ زر تبديل الوضع */}
+        <div style={{ marginRight: 'auto' }}>
+          <ThemeToggle />
         </div>
       </nav>
 
@@ -133,8 +139,6 @@ export default function Navbar() {
                 )}
               </Link>
 
-              {/* ✅ ملاحظة: لوحة الإدارة اتشالت — بقت زر عائم 👑 */}
-
               <div className="ss-drawer-divider"></div>
 
               <button className="ss-drawer-link ss-logout-btn" onClick={logout}>
@@ -162,17 +166,18 @@ export default function Navbar() {
           align-items: center;
           gap: 14px;
           padding: 12px 20px;
-          background: rgba(10, 22, 40, 0.75);
+          background: var(--ss-bg-glass, rgba(10, 22, 40, 0.75));
           backdrop-filter: blur(20px) saturate(180%);
           -webkit-backdrop-filter: blur(20px) saturate(180%);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+          border-bottom: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.08));
+          box-shadow: var(--ss-shadow-md, 0 4px 24px rgba(0, 0, 0, 0.2));
+          transition: all 0.3s ease;
         }
 
         .ss-navbar-toggle {
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: #fff;
+          background: var(--ss-bg-glass, rgba(255, 255, 255, 0.08));
+          border: 1px solid var(--ss-border-glass, rgba(255, 255, 255, 0.12));
+          color: var(--ss-text-primary, #fff);
           width: 42px;
           height: 42px;
           border-radius: 12px;
@@ -201,7 +206,7 @@ export default function Navbar() {
         }
         .ss-navbar-title {
           margin: 0;
-          color: #fff;
+          color: var(--ss-text-primary, #fff);
           font-size: 20px;
           font-weight: 700;
           background: linear-gradient(135deg, #00e5ff, #a855f7);
@@ -231,10 +236,10 @@ export default function Navbar() {
           bottom: 0;
           width: min(340px, 88vw);
           z-index: 999;
-          background: rgba(15, 33, 56, 0.92);
+          background: var(--ss-bg-secondary, rgba(15, 33, 56, 0.92));
           backdrop-filter: blur(24px) saturate(180%);
           -webkit-backdrop-filter: blur(24px) saturate(180%);
-          border-left: 1px solid rgba(255, 255, 255, 0.1);
+          border-left: 1px solid var(--ss-border-glass, rgba(255, 255, 255, 0.1));
           box-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
           display: flex;
           flex-direction: column;
@@ -250,7 +255,7 @@ export default function Navbar() {
         .ss-drawer-header {
           padding: 24px 20px;
           text-align: center;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          border-bottom: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.08));
           background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(168, 85, 247, 0.08));
         }
         .ss-drawer-logo {
@@ -262,24 +267,24 @@ export default function Navbar() {
         }
         .ss-drawer-header h3 {
           margin: 0;
-          color: #fff;
+          color: var(--ss-text-primary, #fff);
           font-size: 18px;
           font-weight: 700;
         }
         .ss-drawer-header p {
           margin: 4px 0 0;
-          color: rgba(255, 255, 255, 0.6);
+          color: var(--ss-text-muted, rgba(255, 255, 255, 0.6));
           font-size: 12px;
         }
 
         .ss-drawer-user {
           padding: 16px 20px;
-          background: rgba(0, 0, 0, 0.15);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          background: var(--ss-bg-glass, rgba(0, 0, 0, 0.15));
+          border-bottom: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.08));
           text-align: center;
         }
         .ss-drawer-user-name {
-          color: #fff;
+          color: var(--ss-text-primary, #fff);
           font-size: 15px;
           font-weight: 600;
           margin-bottom: 4px;
@@ -301,7 +306,7 @@ export default function Navbar() {
           align-items: center;
           gap: 14px;
           padding: 14px 20px;
-          color: rgba(255, 255, 255, 0.85);
+          color: var(--ss-text-secondary, rgba(255, 255, 255, 0.85));
           text-decoration: none;
           font-size: 14px;
           font-weight: 500;
@@ -314,15 +319,16 @@ export default function Navbar() {
           font-family: inherit;
           text-align: right;
           width: 100%;
+          cursor: pointer;
         }
         .ss-drawer-link:hover {
-          background: rgba(255, 255, 255, 0.06);
-          color: #fff;
+          background: var(--ss-bg-glass, rgba(255, 255, 255, 0.06));
+          color: var(--ss-text-primary, #fff);
         }
         .ss-drawer-link.active {
           background: linear-gradient(90deg, rgba(0, 229, 255, 0.15), transparent);
           border-right-color: #00e5ff;
-          color: #fff;
+          color: var(--ss-text-primary, #fff);
         }
 
         .ss-icon {
@@ -346,7 +352,7 @@ export default function Navbar() {
 
         .ss-drawer-divider {
           height: 1px;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+          background: linear-gradient(90deg, transparent, var(--ss-border-glass, rgba(255, 255, 255, 0.1)), transparent);
           margin: 8px 0;
         }
 
@@ -362,9 +368,9 @@ export default function Navbar() {
         .ss-drawer-footer {
           padding: 16px 20px;
           text-align: center;
-          color: rgba(255, 255, 255, 0.4);
+          color: var(--ss-text-muted, rgba(255, 255, 255, 0.4));
           font-size: 11px;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          border-top: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.06));
           line-height: 1.6;
         }
       `}</style>

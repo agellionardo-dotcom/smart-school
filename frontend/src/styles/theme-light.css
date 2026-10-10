@@ -1,0 +1,64 @@
+/* ============================================
+   Smart School — Light Mode Override
+   ============================================
+   بيتطبق فقط لما `data-theme="light"` على <html>
+   ============================================ */
+
+[data-theme='light'] {
+  /* ---------- الخلفيات ---------- */
+  --ss-bg-base: #f5f7fa;
+  --ss-bg-surface: rgba(0, 0, 0, 0.03);
+  --ss-bg-surface-strong: rgba(0, 0, 0, 0.06);
+  --ss-bg-glass: rgba(255, 255, 255, 0.75);
+  --ss-bg-glass-hover: rgba(255, 255, 255, 0.95);
+
+  /* ---------- النصوص ---------- */
+  --ss-text-primary: #0a1628;
+  --ss-text-secondary: #334155;
+  --ss-text-muted: #64748b;
+  --ss-text-dark: #f8fafc;
+  --ss-text-on-light: #f8fafc;
+
+  /* ---------- الحدود ---------- */
+  --ss-border-glass: rgba(10, 31, 68, 0.12);
+  --ss-border-glass-strong: rgba(10, 31, 68, 0.25);
+  --ss-border-subtle: rgba(10, 31, 68, 0.06);
+
+  /* ---------- الظلال ---------- */
+  --ss-shadow-sm: 0 2px 8px rgba(10, 31, 68, 0.08);
+  --ss-shadow-md: 0 4px 16px rgba(10, 31, 68, 0.1);
+  --ss-shadow-lg: 0 8px 32px rgba(10, 31, 68, 0.12);
+  --ss-shadow-xl: 0 16px 48px rgba(10, 31, 68, 0.15);
+
+  /* ---------- نيون معدَّل للـ Light ---------- */
+  --ss-navy-900: #e8eef5;
+  --ss-navy-800: #d9e4f0;
+  --ss-navy-700: #c2d3e6;
+}
+
+/* ---------- Body Background ---------- */
+html[data-theme='light'] body {
+  background: #f5f7fa;
+  color: #0a1628;
+}
+
+/* ---------- Smooth Transitions ---------- */
+html,
+body {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+/* ---------- Scrollbar ---------- */
+html[data-theme='light'] ::-webkit-scrollbar-track {
+  background: rgba(10, 31, 68, 0.04);
+}
+
+html[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+}
+
+html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}

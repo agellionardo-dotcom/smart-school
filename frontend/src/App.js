@@ -1,3 +1,6 @@
+import { ThemeProvider } from './contexts/ThemeContext';
+import './styles/theme.css';
+import './styles/theme-light.css';
 import AdminFloatingButton from './components/AdminFloatingButton';
 import EmployeeProfile from './pages/EmployeeProfile';
 import React, { useEffect } from 'react';
@@ -77,35 +80,37 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      {/* ✅ الخلفية المتحركة */}
-      <AnimatedBackground variant="fluid" />
+    <ThemeProvider>
+      <BrowserRouter>
+        {/* ✅ الخلفية المتحركة */}
+        <AnimatedBackground variant="fluid" />
 
-      {/* ✅ كل المحتوى فوق الخلفية */}
-      <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
-          <Route path="/dashboard" element={<PrivateRoute><Navbar /><Dashboard /></PrivateRoute>} />
-          <Route path="/attendance" element={<PrivateRoute><Navbar /><Attendance /></PrivateRoute>} />
-          <Route path="/leaves" element={<PrivateRoute><Navbar /><Leaves /></PrivateRoute>} />
-          <Route path="/scan-qr" element={<PrivateRoute><Navbar /><ScanQr /></PrivateRoute>} />
-          <Route path="/admin" element={<PrivateRoute><Navbar /><AdminDashboard /></PrivateRoute>} />
-          <Route path="/employee/:id" element={<PrivateRoute><Navbar /><EmployeeProfile /></PrivateRoute>} />
-          <Route path="/sync-queue" element={<PrivateRoute><Navbar /><SyncQueue /></PrivateRoute>} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        {/* ✅ كل المحتوى فوق الخلفية */}
+        <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/dashboard" element={<PrivateRoute><Navbar /><Dashboard /></PrivateRoute>} />
+            <Route path="/attendance" element={<PrivateRoute><Navbar /><Attendance /></PrivateRoute>} />
+            <Route path="/leaves" element={<PrivateRoute><Navbar /><Leaves /></PrivateRoute>} />
+            <Route path="/scan-qr" element={<PrivateRoute><Navbar /><ScanQr /></PrivateRoute>} />
+            <Route path="/admin" element={<PrivateRoute><Navbar /><AdminDashboard /></PrivateRoute>} />
+            <Route path="/employee/:id" element={<PrivateRoute><Navbar /><EmployeeProfile /></PrivateRoute>} />
+            <Route path="/sync-queue" element={<PrivateRoute><Navbar /><SyncQueue /></PrivateRoute>} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
 
-        {/* ✅ المساعد الذكي */}
-        <AIChat />
+          {/* ✅ المساعد الذكي */}
+          <AIChat />
 
-        {/* ✅ زر لوحة الإدارة العائم */}
-        <AdminFloatingButton />
+          {/* ✅ زر لوحة الإدارة العائم */}
+          <AdminFloatingButton />
 
-        {/* ✅ إشعارات Push */}
-        <NotificationPermission />
-      </div>
-    </BrowserRouter>
+          {/* ✅ إشعارات Push */}
+          <NotificationPermission />
+        </div>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
