@@ -1409,4 +1409,158 @@ router.get('/analytics/dashboard', auth, async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+// ==================== Dashboard Charts (بيانات الرسوم البيانية) ====================
+router.get('/dashboard-charts', auth, async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const Branch = require('../models/Branch');
+    const Attendance = require('../models/Attendance');
+
+    // ✅ الفلترة حسب الدور
+    let branchFilter = {};
+    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+
+    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+      // كل الفروع
+    } else if (req.user.role === 'hr') {
+      const hq = await Branch.findOne({ type: 'main' });
+      if (hq && String(req.user.branch) === String(hq._id)) {
+        // كل الفروع
+      } else {
+        branchFilter = { branch: req.user.branch };
+        userFilter.branch = req.user.branch;
+      }
+    } else if (req.user.role === 'manager') {
+      branchFilter = { branch: req.user.branch };
+      userFilter.branch = req.user.branch;
+    } else {
+      userFilter._id = req.user.id;
+    }
+
+    // ✅ 1. إحصائيات اليوم
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayAttendances = await Attendance.find({
+      date: { $gte: today, $lt: tomorrow },
+      ...branchFilter,
+    });
+
+    const totalEmployees = await User.countDocuments(userFilter);
+    const presentToday = todayAttendances.filter((a) => a.checkIn).length;
+    const lateToday = todayAttendances.filter((a) => a.status === 'late').length;
+    const absentToday = totalEmployees - presentToday;
+    const checkedOutToday = todayAttendances.filter((a) => a.checkOut).length;
+
+    // ✅ 2. حضور آخر 7 أيام
+    const attendance7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const next = new Date(d);
+      next.setDate(next.getDate() + 1);
+
+      const dayAtt = await Attendance.find({
+        date: { $gte: d, $lt: next },
+        ...branchFilter,
+      });
+
+      const dayName = d.toLocaleDateString('ar-EG', { weekday: 'short' });
+
+      attendance7Days.push({
+        day: dayName,
+        date: d.toLocaleDateString('ar-EG', { day: '2-digit', month: '2-digit' }),
+        present: dayAtt.filter((a) => a.checkIn).length,
+        late: dayAtt.filter((a) => a.status === 'late').length,
+        absent: totalEmployees - dayAtt.filter((a) => a.checkIn).length,
+      });
+    }
+
+    // ✅ 3. التأخير آخر 7 أيام (دقائق)
+    const lateMinutes7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const next = new Date(d);
+      next.setDate(next.getDate() + 1);
+
+      const dayAtt = await Attendance.find({
+        date: { $gte: d, $lt: next },
+        status: 'late',
+        ...branchFilter,
+      });
+
+      const totalMin = dayAtt.reduce((s, a) => s + (a.lateMinutes || 0), 0);
+      const dayName = d.toLocaleDateString('ar-EG', { weekday: 'short' });
+
+      lateMinutes7Days.push({
+        day: dayName,
+        minutes: totalMin,
+        count: dayAtt.length,
+      });
+    }
+
+    // ✅ 4. توزيع الفروع
+    const branches = await Branch.find();
+    const branchDistribution = await Promise.all(
+      branches.map(async (b) => {
+        // لو المدير → فرعه فقط
+        if (
+          req.user.role === 'manager' &&
+          String(b._id) !== String(req.user.branch)
+        ) {
+          return null;
+        }
+
+        const count = await User.countDocuments({
+          active: true,
+          branch: b._id,
+          role: { $ne: 'superadmin' },
+        });
+
+        return {
+          name: b.name,
+          type: b.type,
+          count,
+        };
+      })
+    ).then((arr) => arr.filter(Boolean));
+
+    // ✅ 5. نسب الحضور
+    const attendanceRate =
+      totalEmployees > 0 ? Math.round((presentToday / totalEmployees) * 100) : 0;
+
+    // ✅ 6. متوسط التأخير
+    const avgLateMinutes =
+      lateToday > 0
+        ? Math.round(
+            todayAttendances
+              .filter((a) => a.status === 'late')
+              .reduce((s, a) => s + (a.lateMinutes || 0), 0) / lateToday
+          )
+        : 0;
+
+    res.json({
+      today: {
+        totalEmployees,
+        presentToday,
+        lateToday,
+        absentToday,
+        checkedOutToday,
+        attendanceRate,
+        avgLateMinutes,
+      },
+      attendance7Days,
+      lateMinutes7Days,
+      branchDistribution,
+    });
+  } catch (err) {
+    console.error('Dashboard charts error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
 module.exports = router;

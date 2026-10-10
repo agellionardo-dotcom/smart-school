@@ -1,3 +1,4 @@
+import DocumentsTab from '../components/admin/DocumentsTab';
 import QrTab from '../components/admin/QrTab';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -37,6 +38,7 @@ export default function AdminDashboard() {
     { id: 'announcements', label: '📢 الإعلانات',      roles: ['superadmin', 'manager', 'hr'] },
     { id: 'payroll',       label: '💰 المرتبات',       roles: ['superadmin', 'hr'] },
     { id: 'reports',       label: '📊 التقارير',       roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'documents',     label: '📄 المستندات',      roles: ['superadmin', 'manager', 'hr'] }, // ✅ جديد
     { id: 'organization',  label: '📄 الهيكل التنظيمي',  roles: ['superadmin', 'manager', 'hr'] },
     { id: 'users',         label: '👥 المستخدمون',     roles: ['superadmin', 'hr'] },
     { id: 'branches',      label: '🏢 الفروع',         roles: ['superadmin'] },
@@ -104,6 +106,7 @@ export default function AdminDashboard() {
         {tab === 'announcements' && <AnnouncementsTab />}
         {tab === 'payroll' && <PayrollTab />}
         {tab === 'reports' && <AttendanceReportTab />}
+        {tab === 'documents' && <DocumentsTab />} {/* ✅ جديد */}
         {tab === 'users' && <UsersTab />}
         {tab === 'branches' && <BranchesTab />}
         {tab === 'map' && <BranchesMap />}

@@ -53,6 +53,7 @@ app.use('/api/emergency', require('./routes/emergency'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/ai', require('./routes/ai')); // ✅ المساعد الذكي
+app.use('/api/documents', require('./routes/documents'));
 app.use('/api/notifications', require('./routes/notifications')); // ✅ الإشعارات (جديد)
 
 // ✅ 6. تشغيل السيرفر (في النهاية)
