@@ -3,6 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { saveData, getData } from '../services/offlineStorage';
 import { isOnline } from '../services/networkStatus';
+import {
+  checkBiometricAvailability,
+  enableBiometric,
+  loginWithBiometric,
+  isBiometricEnabled,
+  getDeviceId,
+} from '../services/biometric';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -11,10 +18,22 @@ export default function Login() {
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // ✅ Biometric state
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabledState] = useState(false);
+  const [biometricType, setBiometricType] = useState(null);
+  const [showEnablePrompt, setShowEnablePrompt] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
   const nav = useNavigate();
 
+  // ============================================
+  // ✅ 1. تحميل البيانات + فحص البصمة
+  // ============================================
   useEffect(() => {
-    const loadSavedCredentials = async () => {
+    const init = async () => {
+      // تحميل الـ credentials المحفوظة
       try {
         const saved = await getData('saved_credentials');
         if (saved && saved.email) {
@@ -25,10 +44,96 @@ export default function Login() {
       } catch (err) {
         console.error('Error loading saved credentials:', err);
       }
+
+      // فحص البصمة
+      try {
+        const availability = await checkBiometricAvailability();
+        setBiometricAvailable(availability.available);
+        setBiometricType(availability.type);
+
+        const enabled = await isBiometricEnabled();
+        setBiometricEnabledState(enabled);
+      } catch (err) {
+        console.warn('Biometric check error:', err);
+      }
     };
-    loadSavedCredentials();
+
+    init();
   }, []);
 
+  // ============================================
+  // ✅ 2. تسجيل الدخول بالبصمة
+  // ============================================
+  const handleBiometricLogin = async () => {
+    if (biometricLoading) return;
+
+    setBiometricLoading(true);
+    setErr('');
+
+    try {
+      const result = await loginWithBiometric();
+
+      if (result.success) {
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
+
+        setMsg('✅ تم تسجيل الدخول بالبصمة');
+        setTimeout(() => nav('/dashboard'), 500);
+      }
+    } catch (err) {
+      console.error('Biometric login error:', err);
+      setErr('❌ ' + (err.message || 'فشل تسجيل الدخول بالبصمة'));
+
+      // ✅ لو الـ token منتهي → نمسح التخزين
+      if (err.message?.includes('منتهية') || err.message?.includes('غير صالح')) {
+        await handleClearBiometric();
+      }
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
+
+  // ============================================
+  // ✅ 3. تفعيل البصمة (بعد Login ناجح)
+  // ============================================
+  const handleEnableBiometric = async () => {
+    try {
+      setBiometricLoading(true);
+
+      const result = await enableBiometric();
+
+      if (result.success) {
+        setBiometricEnabledState(true);
+        setShowEnablePrompt(false);
+        setMsg('✅ تم تفعيل البصمة بنجاح');
+        setTimeout(() => nav('/dashboard'), 800);
+      }
+    } catch (err) {
+      console.error('Enable biometric error:', err);
+      setErr('❌ ' + (err.message || 'فشل تفعيل البصمة'));
+      setShowEnablePrompt(false);
+      setTimeout(() => nav('/dashboard'), 500);
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
+
+  // ============================================
+  // ✅ 4. مسح بيانات البصمة
+  // ============================================
+  const handleClearBiometric = async () => {
+    try {
+      const { clearBiometricData } = await import('../services/biometric');
+      await clearBiometricData();
+      setBiometricEnabledState(false);
+    } catch (err) {
+      console.warn('Clear error:', err);
+    }
+  };
+
+  // ============================================
+  // ✅ 5. تسجيل الدخول العادي
+  // ============================================
   const submit = async (e) => {
     e.preventDefault();
     setErr('');
@@ -63,7 +168,13 @@ export default function Login() {
             await saveData('saved_credentials', null);
           }
 
-          nav('/dashboard');
+          // ✅ لو البصمة متوفرة ومش مفعّلة → اسأل المستخدم
+          if (biometricAvailable && !biometricEnabled) {
+            setShowEnablePrompt(true);
+            setLoading(false);
+          } else {
+            nav('/dashboard');
+          }
           return;
         } catch (apiErr) {
           if (apiErr.response) {
@@ -85,6 +196,7 @@ export default function Login() {
         }
       }
 
+      // ✅ وضع أوفلاين
       const cached = await getData('cached_user');
 
       if (cached && cached.user && cached.token) {
@@ -122,9 +234,11 @@ export default function Login() {
     }
   };
 
+  // ============================================
+  // ✅ Render
+  // ============================================
   return (
     <div className="login-page">
-      {/* ✅ الكارت الزجاجي */}
       <div className="login-card">
         {/* Logo + Title */}
         <div className="login-header">
@@ -197,6 +311,27 @@ export default function Login() {
             )}
           </button>
 
+          {/* ✅ زر البصمة */}
+          {biometricAvailable && biometricEnabled && (
+            <button
+              type="button"
+              onClick={handleBiometricLogin}
+              disabled={biometricLoading || loading}
+              className="login-btn login-btn-biometric"
+            >
+              {biometricLoading ? (
+                <>
+                  <span className="login-spinner" />
+                  جاري...
+                </>
+              ) : (
+                <>
+                  {biometricType === 'faceId' ? '👤 الدخول بـ Face ID' : '🔐 الدخول بالبصمة'}
+                </>
+              )}
+            </button>
+          )}
+
           <div className="login-forgot">
             <Link to="/forgot-password" className="login-forgot-link">
               🔐 نسيت كلمة المرور؟
@@ -208,6 +343,53 @@ export default function Login() {
           © 2026 SMART For Computer &amp; Electronics
         </p>
       </div>
+
+      {/* ✅ Modal تفعيل البصمة */}
+      {showEnablePrompt && (
+        <div className="login-modal-overlay">
+          <div className="login-modal">
+            <div className="login-modal-icon">🔐</div>
+            <h2 className="login-modal-title">تفعيل الدخول بالبصمة؟</h2>
+            <p className="login-modal-text">
+              سجّل دخولك في المرة الجاية ببصمة إصبعك
+              {biometricType === 'faceId' && ' أو Face ID'}
+              — أسرع وأأمن من كتابة كلمة المرور.
+            </p>
+
+            {err && <div className="login-alert login-alert-error">{err}</div>}
+
+            <div className="login-modal-actions">
+              <button
+                type="button"
+                onClick={handleEnableBiometric}
+                disabled={biometricLoading}
+                className="login-btn login-btn-success"
+              >
+                {biometricLoading ? (
+                  <>
+                    <span className="login-spinner" />
+                    جاري...
+                  </>
+                ) : (
+                  <>✅ نعم، فعّل</>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEnablePrompt(false);
+                  nav('/dashboard');
+                }}
+                disabled={biometricLoading}
+                className="login-btn login-btn-ghost"
+              >
+                لا، شكراً
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ============ Styles ============ */}
       <style>{`
@@ -221,7 +403,6 @@ export default function Login() {
           z-index: 2;
         }
 
-        /* ---------- Card ---------- */
         .login-card {
           width: 100%;
           max-width: 440px;
@@ -243,10 +424,7 @@ export default function Login() {
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        /* ---------- Header ---------- */
-        .login-header {
-          margin-bottom: 28px;
-        }
+        .login-header { margin-bottom: 28px; }
 
         .login-logo-wrap {
           position: relative;
@@ -296,7 +474,6 @@ export default function Login() {
           font-weight: 500;
         }
 
-        /* ---------- Form ---------- */
         .login-form {
           display: flex;
           flex-direction: column;
@@ -333,9 +510,7 @@ export default function Login() {
           text-align: right;
         }
 
-        .login-input::placeholder {
-          color: rgba(255, 255, 255, 0.4);
-        }
+        .login-input::placeholder { color: rgba(255, 255, 255, 0.4); }
 
         .login-input:focus {
           background: rgba(255, 255, 255, 0.1);
@@ -343,7 +518,6 @@ export default function Login() {
           box-shadow: 0 0 0 4px rgba(0, 229, 255, 0.12);
         }
 
-        /* ---------- Remember ---------- */
         .login-remember {
           display: flex;
           align-items: center;
@@ -369,7 +543,6 @@ export default function Login() {
           user-select: none;
         }
 
-        /* ---------- Alerts ---------- */
         .login-alert {
           padding: 12px 16px;
           border-radius: 12px;
@@ -377,12 +550,6 @@ export default function Login() {
           font-weight: 500;
           text-align: right;
           direction: rtl;
-          animation: loginAlertIn 0.3s ease;
-        }
-
-        @keyframes loginAlertIn {
-          from { opacity: 0; transform: translateY(-8px); }
-          to { opacity: 1; transform: translateY(0); }
         }
 
         .login-alert-error {
@@ -397,7 +564,6 @@ export default function Login() {
           border: 1px solid rgba(251, 191, 36, 0.3);
         }
 
-        /* ---------- Button ---------- */
         .login-btn {
           display: flex;
           align-items: center;
@@ -416,7 +582,6 @@ export default function Login() {
           cursor: pointer;
           transition: all 0.25s;
           box-shadow: 0 8px 24px rgba(0, 229, 255, 0.3);
-          letter-spacing: 0.3px;
         }
 
         .login-btn:hover:not(:disabled) {
@@ -433,6 +598,33 @@ export default function Login() {
           cursor: not-allowed;
         }
 
+        /* ✅ زر البصمة */
+        .login-btn-biometric {
+          background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+          box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3);
+          margin-top: 4px;
+        }
+
+        .login-btn-biometric:hover:not(:disabled) {
+          box-shadow: 0 12px 32px rgba(168, 85, 247, 0.5);
+        }
+
+        .login-btn-success {
+          background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+          box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+        }
+
+        .login-btn-ghost {
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.7);
+          box-shadow: none;
+        }
+
+        .login-btn-ghost:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.12);
+          box-shadow: none;
+        }
+
         .login-spinner {
           width: 18px;
           height: 18px;
@@ -446,7 +638,6 @@ export default function Login() {
           to { transform: rotate(360deg); }
         }
 
-        /* ---------- Forgot ---------- */
         .login-forgot {
           margin-top: 8px;
           text-align: center;
@@ -465,26 +656,80 @@ export default function Login() {
           text-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
         }
 
-        /* ---------- Footer ---------- */
         .login-footer {
           margin: 24px 0 0;
           font-size: 11px;
           color: rgba(255, 255, 255, 0.35);
         }
 
-        /* ---------- Mobile ---------- */
+        /* ✅ Modal */
+        .login-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          padding: 16px;
+          animation: loginFadeIn 0.3s ease;
+        }
+
+        @keyframes loginFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .login-modal {
+          max-width: 400px;
+          width: 100%;
+          padding: 32px 24px;
+          background: rgba(15, 33, 56, 0.95);
+          backdrop-filter: blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 24px;
+          text-align: center;
+          animation: loginModalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes loginModalIn {
+          from { opacity: 0; transform: scale(0.9) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .login-modal-icon {
+          font-size: 56px;
+          margin-bottom: 16px;
+        }
+
+        .login-modal-title {
+          margin: 0 0 12px;
+          font-size: 22px;
+          font-weight: 800;
+          color: #f8fafc;
+        }
+
+        .login-modal-text {
+          margin: 0 0 24px;
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.7);
+          line-height: 1.7;
+        }
+
+        .login-modal-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
         @media (max-width: 480px) {
           .login-card {
             padding: 32px 24px;
             border-radius: 24px;
           }
-          .login-logo {
-            width: 100px;
-            height: 100px;
-          }
-          .login-title {
-            font-size: 26px;
-          }
+          .login-logo { width: 100px; height: 100px; }
+          .login-title { font-size: 26px; }
         }
       `}</style>
     </div>

@@ -78,6 +78,30 @@ const userSchema = new mongoose.Schema({
     payroll: { type: Boolean, default: true }
   },
 
+  // ✅ جديد — إعدادات المستخدم
+  preferences: {
+    biometricLogin: { type: Boolean, default: false },
+    notifications: { type: Boolean, default: true },
+    language: { type: String, default: 'ar' }
+  },
+
+  // ✅ جديد — الأجهزة الموثوقة للبصمة
+  trustedDevices: [{
+    deviceId: { type: String, required: true },
+    deviceName: { type: String },
+    deviceModel: { type: String },
+    platform: {
+      type: String,
+      enum: ['android', 'ios', 'web'],
+      default: 'android'
+    },
+    biometricEnabled: { type: Boolean, default: false },
+    biometricType: { type: String }, // 'fingerprint' | 'faceId' | 'iris'
+    refreshToken: { type: String, select: false },
+    lastLogin: { type: Date, default: Date.now },
+    createdAt: { type: Date, default: Date.now }
+  }],
+
   // ===== بيانات النظام =====
   lastLogin: { type: Date },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
