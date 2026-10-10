@@ -13,17 +13,26 @@ export default function AdminFloatingButton() {
   const canAccessAdmin = ['superadmin', 'manager', 'hr'].includes(user.role);
 
   // ✅ إخفاء في صفحات Login/Register + Admin نفسه
-  const isAuthPage = ['/', '/forgot-password', '/reset-password'].some(
-    (p) => location.pathname.startsWith(p)
-  );
+  const AUTH_PAGES = ['/', '/forgot-password', '/reset-password'];
+  const isAuthPage =
+    AUTH_PAGES.includes(location.pathname) ||
+    AUTH_PAGES.some((p) => p !== '/' && location.pathname.startsWith(p + '/'));
+
   const isAdminPage = location.pathname.startsWith('/admin');
 
   useEffect(() => {
-    // ✅ يظهر في صفحات معينة فقط
-    setVisible(canAccessAdmin && !isAuthPage && !isAdminPage);
-  }, [canAccessAdmin, isAuthPage, isAdminPage]);
+    const shouldShow = canAccessAdmin && !isAuthPage && !isAdminPage;
+    console.log('[AdminFloatingButton]', {
+      canAccessAdmin,
+      isAuthPage,
+      isAdminPage,
+      pathname: location.pathname,
+      shouldShow,
+    });
+    setVisible(shouldShow);
+  }, [canAccessAdmin, isAuthPage, isAdminPage, location.pathname]);
 
-  // ✅ أنيميشن نبض كل 5 ثواني
+  // ✅ أنيميشن نبض
   useEffect(() => {
     if (!visible) return;
     const interval = setInterval(() => {
@@ -118,7 +127,6 @@ export default function AdminFloatingButton() {
           opacity: 0.9;
         }
 
-        /* ✅ نبض */
         .ss-admin-float.pulse {
           animation: ssAdminPulse 2s ease-in-out;
         }
@@ -136,7 +144,6 @@ export default function AdminFloatingButton() {
           }
         }
 
-        /* ✅ Mobile */
         @media (max-width: 480px) {
           .ss-admin-float {
             width: 60px;
@@ -152,7 +159,6 @@ export default function AdminFloatingButton() {
           }
         }
 
-        /* ✅ إخفاء الـ Label في الشاشات الصغيرة جداً */
         @media (max-width: 360px) {
           .ss-admin-float-label {
             display: none;
