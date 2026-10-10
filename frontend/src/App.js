@@ -1,3 +1,4 @@
+import AdminFloatingButton from './components/AdminFloatingButton';
 import EmployeeProfile from './pages/EmployeeProfile';
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -12,7 +13,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
 import AIChat from './components/AIChat';
-import NotificationPermission from './components/NotificationPermission'; // ✅ جديد
+import NotificationPermission from './components/NotificationPermission';
 import { AnimatedBackground } from './components/ui';
 import { startNetworkMonitoring } from './services/networkStatus';
 import { getQueue, removeFromQueue } from './services/offlineStorage';
@@ -24,9 +25,6 @@ const PrivateRoute = ({ children }) => {
 };
 
 export default function App() {
-  // ============================================================
-  // Network Monitoring + Auto Sync (Global)
-  // ============================================================
   useEffect(() => {
     let listenerHandle = null;
     let isMounted = true;
@@ -101,6 +99,9 @@ export default function App() {
 
         {/* ✅ المساعد الذكي */}
         <AIChat />
+
+        {/* ✅ زر لوحة الإدارة العائم */}
+        <AdminFloatingButton />
 
         {/* ✅ إشعارات Push */}
         <NotificationPermission />

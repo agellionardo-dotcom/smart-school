@@ -46,3 +46,5 @@ firebase-service-account*.json
 *service-account*.json
 notificatio-*.json
 firebase-oneline.txt
+.vercel
+.env*
