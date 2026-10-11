@@ -1,3 +1,5 @@
+// frontend/src/components/admin/BranchesMap.jsx
+
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -9,98 +11,102 @@ const DEFAULT_VIEW = {
   zoom: 10,
 };
 
+// ✅ لون الخلفية الداكن — يمنع الشاشة الزرقاء
+const BG_COLOR = '#0a1420';
+
+// ✅ maxZoom الأقصى للخريطة (overzoom)
+const MAP_MAX_ZOOM = 22;
+const MAP_MIN_ZOOM = 3;
+
+/**
+ * ✅ بناء ستايل مع:
+ *  - background layer داكن (يمنع الشاشة الزرقاء)
+ *  - source.maxzoom = الحد الحقيقي للـ tiles
+ *  - layer.maxzoom = 22 (overzoom)
+ */
+const buildRasterStyle = ({ sourceId, tiles, attribution, sourceMaxZoom, tileSize = 256 }) => ({
+  version: 8,
+  sources: {
+    [sourceId]: {
+      type: 'raster',
+      tiles,
+      tileSize,
+      maxzoom: sourceMaxZoom,   // ← الحد الحقيقي للـ tiles
+      attribution,
+    },
+  },
+  layers: [
+    // ✅ 1) خلفية داكنة (تمنع الأزرق)
+    {
+      id: `${sourceId}-background`,
+      type: 'background',
+      paint: { 'background-color': BG_COLOR },
+    },
+    // ✅ 2) طبقة الـ raster مع overzoom
+    {
+      id: `${sourceId}-layer`,
+      type: 'raster',
+      source: sourceId,
+      minzoom: 0,
+      maxzoom: MAP_MAX_ZOOM,    // ← overzoom تلقائي
+    },
+  ],
+});
+
 const MAP_STYLES = {
   satellite: {
     name: '🛰️ قمر صناعي',
-    style: {
-      version: 8,
-      sources: {
-        'google-satellite': {
-          type: 'raster',
-          tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
-          tileSize: 256,
-          attribution: '&copy; Google',
-        },
-      },
-      layers: [
-        { id: 'google-satellite-layer', type: 'raster', source: 'google-satellite', minzoom: 0, maxzoom: 17 },
-      ],
-    },
+    style: buildRasterStyle({
+      sourceId: 'google-satellite',
+      tiles: ['https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}'],
+      attribution: '&copy; Google',
+      sourceMaxZoom: 17,
+    }),
   },
   hybrid: {
     name: '🌍 هجين',
-    style: {
-      version: 8,
-      sources: {
-        'google-hybrid': {
-          type: 'raster',
-          tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
-          tileSize: 256,
-          attribution: '&copy; Google',
-        },
-      },
-      layers: [
-        { id: 'google-hybrid-layer', type: 'raster', source: 'google-hybrid', minzoom: 0, maxzoom: 17 },
-      ],
-    },
+    style: buildRasterStyle({
+      sourceId: 'google-hybrid',
+      tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
+      attribution: '&copy; Google',
+      sourceMaxZoom: 17,
+    }),
   },
   esri: {
     name: '🌎 Esri',
-    style: {
-      version: 8,
-      sources: {
-        'esri-satellite': {
-          type: 'raster',
-          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-          tileSize: 256,
-          attribution: '&copy; Esri',
-        },
-      },
-      layers: [
-        { id: 'esri-satellite-layer', type: 'raster', source: 'esri-satellite', minzoom: 0, maxzoom: 19 },
+    style: buildRasterStyle({
+      sourceId: 'esri-satellite',
+      tiles: [
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       ],
-    },
+      attribution: '&copy; Esri',
+      sourceMaxZoom: 19,
+    }),
   },
   street: {
     name: '🗺️ شارع',
-    style: {
-      version: 8,
-      sources: {
-        'osm-street': {
-          type: 'raster',
-          tiles: [
-            'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          ],
-          tileSize: 256,
-          attribution: '&copy; OpenStreetMap',
-        },
-      },
-      layers: [
-        { id: 'osm-street-layer', type: 'raster', source: 'osm-street', minzoom: 0, maxzoom: 19 },
+    style: buildRasterStyle({
+      sourceId: 'osm-street',
+      tiles: [
+        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
       ],
-    },
+      attribution: '&copy; OpenStreetMap',
+      sourceMaxZoom: 19,
+    }),
   },
   dark: {
     name: '🌙 داكن',
-    style: {
-      version: 8,
-      sources: {
-        'carto-dark': {
-          type: 'raster',
-          tiles: [
-            'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-          ],
-          tileSize: 256,
-          attribution: '&copy; CartoDB',
-        },
-      },
-      layers: [
-        { id: 'carto-dark-layer', type: 'raster', source: 'carto-dark', minzoom: 0, maxzoom: 19 },
+    style: buildRasterStyle({
+      sourceId: 'carto-dark',
+      tiles: [
+        'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+        'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
       ],
-    },
+      attribution: '&copy; CartoDB',
+      sourceMaxZoom: 19,
+    }),
   },
 };
 
@@ -158,7 +164,11 @@ export default function BranchesMap() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        setViewState({ longitude, latitude, zoom: 16 });
+        setViewState({
+          longitude,
+          latitude,
+          zoom: 16,
+        });
         setUserLocation({ lat: latitude, lng: longitude, accuracy });
       },
       (err) => alert('فشل تحديد الموقع: ' + err.message),
@@ -416,6 +426,7 @@ export default function BranchesMap() {
           boxShadow: '0 15px 40px rgba(0, 0, 0, 0.4), 0 0 32px rgba(0, 229, 255, 0.1)',
           border: '2px solid rgba(0, 229, 255, 0.3)',
           position: 'relative',
+          background: BG_COLOR,   // ✅ خلفية داكنة للحاوية نفسها
         }}
       >
         <Map
@@ -424,9 +435,12 @@ export default function BranchesMap() {
           onMove={evt => setViewState(evt.viewState)}
           mapStyle={MAP_STYLES[mapStyle].style}
           style={{ width: '100%', height: '100%' }}
+          maxZoom={MAP_MAX_ZOOM}      // ✅ 22
+          minZoom={MAP_MIN_ZOOM}      // ✅ 3
           attributionControl={true}
+          logoPosition="bottom-right"
         >
-          <NavigationControl position="top-left" />
+          <NavigationControl position="top-left" showCompass={true} />
 
           {validBranches.map(b => (
             <Marker
