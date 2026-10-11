@@ -1,3 +1,5 @@
+// backend/routes/face.js
+
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
@@ -12,37 +14,58 @@ const {
 // ============================================
 // ✅ 1. تسجيل الوجه (Enroll)
 // POST /api/face/enroll
+// يقبل: image (base64) أو faceDescriptor (128 رقم)
 // ============================================
 router.post('/enroll', auth, async (req, res) => {
   try {
-    const { image } = req.body;
+    const { image, faceDescriptor } = req.body;
 
-    if (!image) {
-      return res.status(400).json({ msg: 'الصورة مطلوبة' });
+    let descriptor = null;
+
+    // ✅ الحالة 1: descriptor جاهز من التطبيق
+    if (faceDescriptor && Array.isArray(faceDescriptor)) {
+      if (faceDescriptor.length !== 128) {
+        return res.status(400).json({
+          msg: `descriptor غير صحيح — لازم 128 رقم، إنت بعت ${faceDescriptor.length}`,
+        });
+      }
+      descriptor = faceDescriptor;
+      console.log('[Face Enroll] Using descriptor from client (128 values)');
+    }
+    // ✅ الحالة 2: صورة base64 (من المتصفح)
+    else if (image) {
+      console.log('[Face Enroll] Processing image on server...');
+      const imageBuffer = dataURLToBuffer(image);
+      const result = await getFaceDescriptor(imageBuffer);
+
+      if (!result.success) {
+        return res.status(400).json({ msg: result.error });
+      }
+      descriptor = result.descriptor;
+    }
+    // ❌ لا image ولا faceDescriptor
+    else {
+      return res.status(400).json({
+        msg: 'مطلوب صورة (image) أو faceDescriptor',
+      });
     }
 
-    // ✅ استخراج الـ descriptor
-    const imageBuffer = dataURLToBuffer(image);
-    const result = await getFaceDescriptor(imageBuffer);
-
-    if (!result.success) {
-      return res.status(400).json({ msg: result.error });
-    }
-
-    // ✅ حفظ في قاعدة البيانات
+    // ✅ حفظ في المستخدم
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
     }
 
-    user.faceDescriptor = result.descriptor;
+    user.faceDescriptor = descriptor;
     user.faceEnrolled = true;
     user.faceEnrolledAt = new Date();
     await user.save();
 
+    console.log('[Face Enroll] ✅ Saved for user:', user._id);
+
     res.json({
       success: true,
-      msg: '✅ تم تسجيل الوجه بنجاح',
+      msg: 'تم تسجيل الوجه بنجاح',
       faceEnrolled: true,
     });
   } catch (err) {
@@ -54,14 +77,11 @@ router.post('/enroll', auth, async (req, res) => {
 // ============================================
 // ✅ 2. التحقق من الوجه (Verify)
 // POST /api/face/verify
+// يقبل: image (base64) أو faceDescriptor (128 رقم)
 // ============================================
 router.post('/verify', auth, async (req, res) => {
   try {
-    const { image } = req.body;
-
-    if (!image) {
-      return res.status(400).json({ msg: 'الصورة مطلوبة' });
-    }
+    const { image, faceDescriptor } = req.body;
 
     // ✅ جلب المستخدم + descriptor
     const user = await User.findById(req.user.id);
@@ -71,35 +91,67 @@ router.post('/verify', auth, async (req, res) => {
 
     if (!user.faceDescriptor || user.faceDescriptor.length === 0) {
       return res.status(400).json({
-        msg: 'الوجه غير مسجّل — سجّل وجهك أولاً',
+        msg: 'الوجه مش مسجل — سجّل وجهك أولاً',
         faceEnrolled: false,
       });
     }
 
-    // ✅ استخراج descriptor من الصورة الجديدة
-    const imageBuffer = dataURLToBuffer(image);
-    const result = await getFaceDescriptor(imageBuffer);
+    let descriptor = null;
 
-    if (!result.success) {
-      return res.status(400).json({ msg: result.error });
+    // ✅ الحالة 1: descriptor جاهز
+    if (faceDescriptor && Array.isArray(faceDescriptor)) {
+      if (faceDescriptor.length !== 128) {
+        return res.status(400).json({
+          msg: `descriptor غير صحيح — لازم 128 رقم، إنت بعت ${faceDescriptor.length}`,
+        });
+      }
+      descriptor = faceDescriptor;
+      console.log('[Face Verify] Using descriptor from client');
+    }
+    // ✅ الحالة 2: صورة base64
+    else if (image) {
+      const imageBuffer = dataURLToBuffer(image);
+      const result = await getFaceDescriptor(imageBuffer);
+
+      if (!result.success) {
+        return res.status(400).json({ msg: result.error });
+      }
+      descriptor = result.descriptor;
+    }
+    // ❌ لا image ولا descriptor
+    else {
+      return res.status(400).json({
+        msg: 'مطلوب صورة (image) أو faceDescriptor',
+      });
     }
 
-    // ✅ مقارنة الوجهين
-    const comparison = compareFaces(user.faceDescriptor, result.descriptor);
+    // ✅ مقارنة
+    const comparison = compareFaces(user.faceDescriptor, descriptor);
+
+    console.log(
+      '[Face Verify] distance:',
+      comparison.distance,
+      'match:',
+      comparison.match
+    );
 
     if (comparison.match) {
       res.json({
         success: true,
+        match: true,
         verified: true,
-        confidence: Math.round(comparison.confidence * 100),
-        msg: '✅ تم التحقق من الوجه',
+        distance: comparison.distance,
+        confidence: Math.round((1 - comparison.distance) * 100),
+        msg: 'تم التحقق من الوجه بنجاح',
       });
     } else {
       res.status(401).json({
         success: false,
+        match: false,
         verified: false,
-        confidence: Math.round(comparison.confidence * 100),
-        msg: '❌ الوجه لا يطابق السجل',
+        distance: comparison.distance,
+        confidence: Math.round((1 - comparison.distance) * 100),
+        msg: '❌ الوجه مش مطابق للمسجل',
       });
     }
   } catch (err) {
@@ -147,7 +199,7 @@ router.delete('/remove', auth, async (req, res) => {
 
     res.json({
       success: true,
-      msg: '✅ تم حذف تسجيل الوجه',
+      msg: 'تم حذف الوجه بنجاح',
     });
   } catch (err) {
     res.status(500).json({ msg: err.message });
