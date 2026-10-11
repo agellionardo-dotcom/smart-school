@@ -1,3 +1,5 @@
+// frontend/src/components/AdminFloatingButton.jsx
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -12,25 +14,12 @@ export default function AdminFloatingButton() {
   // ✅ الصلاحيات — يظهر للمدير/HR/manager
   const canAccessAdmin = ['superadmin', 'manager', 'hr'].includes(user.role);
 
-  // ✅ إخفاء في صفحات Login/Register + Admin نفسه
-  const AUTH_PAGES = ['/', '/forgot-password', '/reset-password'];
-  const isAuthPage =
-    AUTH_PAGES.includes(location.pathname) ||
-    AUTH_PAGES.some((p) => p !== '/' && location.pathname.startsWith(p + '/'));
-
-  const isAdminPage = location.pathname.startsWith('/admin');
-
   useEffect(() => {
-    const shouldShow = canAccessAdmin && !isAuthPage && !isAdminPage;
-    console.log('[AdminFloatingButton]', {
-      canAccessAdmin,
-      isAuthPage,
-      isAdminPage,
-      pathname: location.pathname,
-      shouldShow,
-    });
+    // ✅ يظهر في Dashboard بس + صلاحية Admin
+    const isDashboard = location.pathname === '/dashboard';
+    const shouldShow = canAccessAdmin && isDashboard;
     setVisible(shouldShow);
-  }, [canAccessAdmin, isAuthPage, isAdminPage, location.pathname]);
+  }, [canAccessAdmin, location.pathname]);
 
   // ✅ أنيميشن نبض
   useEffect(() => {

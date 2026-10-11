@@ -1,4 +1,7 @@
+// frontend/src/components/AIChat.jsx
+
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';   // ← جديد
 import api from '../api';
 
 export default function AIChat() {
@@ -10,7 +13,19 @@ export default function AIChat() {
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const suggestionsLoadedRef = useRef(false); // ✅ يمنع infinite loop
+  const suggestionsLoadedRef = useRef(false);
+
+  const location = useLocation();                          // ← جديد
+  const token = localStorage.getItem('token');             // ← جديد
+
+  // ✅ الصفحات اللي المساعد يختفي فيها
+  const AUTH_PAGES = ['/', '/forgot-password', '/reset-password'];
+  const isAuthPage =
+    AUTH_PAGES.includes(location.pathname) ||
+    AUTH_PAGES.some((p) => p !== '/' && location.pathname.startsWith(p + '/'));
+
+  // ✅ يختفي في: Login/Register + لما مفيش توكن
+  const shouldHide = !token || isAuthPage;
 
   // ✅ تحميل المحادثة من localStorage
   useEffect(() => {
@@ -43,8 +58,7 @@ export default function AIChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  // ✅ تحميل الاقتراحات مرة واحدة لما يفتح
-  // ✅ استخدمنا useRef عشان نتجنب infinite loop
+  // ✅ تحميل الاقتراحات مرة واحدة
   useEffect(() => {
     if (!isOpen) return;
     if (suggestionsLoadedRef.current) return;
@@ -54,7 +68,6 @@ export default function AIChat() {
       .get('/ai/suggestions')
       .then((r) => setSuggestions(r.data.suggestions || []))
       .catch(() => {
-        // لو فشل، نسمح بإعادة المحاولة في المرة الجاية
         suggestionsLoadedRef.current = false;
       });
   }, [isOpen]);
@@ -75,7 +88,6 @@ export default function AIChat() {
     setLoading(true);
 
     try {
-      // ✅ نبني history نظيف
       let history = newMessages
         .slice(-10, -1)
         .filter((m) => !m.isError)
@@ -85,17 +97,14 @@ export default function AIChat() {
           content: m.content,
         }));
 
-      // ✅ شيل رسالة الترحيب (model) من الأول
       while (history.length > 0 && history[0].role === 'model') {
         history.shift();
       }
 
-      // ✅ شيل أي "model" من الآخر
       while (history.length > 0 && history[history.length - 1].role === 'model') {
         history.pop();
       }
 
-      // ✅ شيل "model" المتتاليين
       history = history.filter((h, i, arr) => {
         if (i === 0) return h.role === 'user';
         return !(h.role === 'model' && arr[i - 1]?.role === 'model');
@@ -129,7 +138,6 @@ export default function AIChat() {
     }
   };
 
-  // ✅ Enter للإرسال
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -137,7 +145,6 @@ export default function AIChat() {
     }
   };
 
-  // ✅ مسح المحادثة
   const clearChat = () => {
     if (!window.confirm('مسح كل المحادثة؟')) return;
     setMessages([
@@ -150,6 +157,9 @@ export default function AIChat() {
     localStorage.removeItem('ai_chat_history');
   };
 
+  // ✅ إخفاء كامل قبل تسجيل الدخول
+  if (shouldHide) return null;
+
   return (
     <>
       {/* ✅ زر عائم — Glassmorphism */}
@@ -158,6 +168,7 @@ export default function AIChat() {
           onClick={() => setIsOpen(true)}
           className="ai-fab"
           title="المساعد الذكي"
+          aria-label="المساعد الذكي"
         >
           <span className="ai-fab-emoji">🤖</span>
           <span className="ai-fab-glow" />
@@ -167,7 +178,6 @@ export default function AIChat() {
       {/* ✅ نافذة الدردشة — Glass */}
       {isOpen && (
         <div className="ai-window">
-          {/* Header */}
           <div className="ai-header">
             <div className="ai-header-left">
               <span className="ai-header-emoji">🤖</span>
@@ -186,7 +196,6 @@ export default function AIChat() {
             </div>
           </div>
 
-          {/* Messages */}
           <div className="ai-messages">
             {messages.map((msg, i) => (
               <div
@@ -222,7 +231,6 @@ export default function AIChat() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggestions */}
           {messages.length <= 1 && suggestions.length > 0 && (
             <div className="ai-suggestions">
               {suggestions.map((s, i) => (
@@ -238,7 +246,6 @@ export default function AIChat() {
             </div>
           )}
 
-          {/* Input */}
           <div className="ai-input-bar">
             <textarea
               ref={inputRef}
@@ -268,9 +275,9 @@ export default function AIChat() {
           position: fixed;
           bottom: 20px;
           right: 20px;
-          z-index: 9999;
-          width: 62px;
-          height: 62px;
+          z-index: 9997;
+          width: 56px;                    /* ← صغّرناها من 62 */
+          height: 56px;
           border-radius: 50%;
           border: 1px solid rgba(255,255,255,0.2);
           background: linear-gradient(135deg, #00e5ff 0%, #a855f7 100%);
@@ -285,7 +292,7 @@ export default function AIChat() {
         }
         .ai-fab:hover { transform: scale(1.1) rotate(5deg); }
         .ai-fab:active { transform: scale(0.95); }
-        .ai-fab-emoji { font-size: 28px; position: relative; z-index: 2; }
+        .ai-fab-emoji { font-size: 26px; position: relative; z-index: 2; }   /* ← صغّرناها من 28 */
         .ai-fab-glow {
           position: absolute;
           inset: -4px;

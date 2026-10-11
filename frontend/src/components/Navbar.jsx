@@ -1,7 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿// frontend/src/components/Navbar.jsx
+
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getQueueCount } from '../services/offlineStorage';
 import ThemeToggle from './ThemeToggle';
+import NavbarActions from './NavbarActions';   // ← جديد
 
 export default function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -64,8 +67,9 @@ export default function Navbar() {
           <h2 className="ss-navbar-title">Smart School</h2>
         </div>
 
-        {/* ✅ زر تبديل الوضع */}
-        <div style={{ marginRight: 'auto' }}>
+        {/* ✅ أزرار الإدارة/العودة + تبديل الوضع */}
+        <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <NavbarActions />
           <ThemeToggle />
         </div>
       </nav>
@@ -187,6 +191,7 @@ export default function Navbar() {
           align-items: center;
           justify-content: center;
           transition: all 0.2s;
+          flex-shrink: 0;
         }
         .ss-navbar-toggle:hover {
           background: rgba(0, 229, 255, 0.15);
@@ -197,6 +202,7 @@ export default function Navbar() {
           display: flex;
           align-items: center;
           gap: 12px;
+          flex-shrink: 0;
         }
         .ss-navbar-logo {
           width: 42px;
@@ -213,6 +219,7 @@ export default function Navbar() {
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
+          white-space: nowrap;
         }
 
         .ss-drawer-overlay {

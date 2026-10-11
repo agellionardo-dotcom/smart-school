@@ -1,4 +1,6 @@
-﻿import React, { useEffect, useState, useCallback, useRef } from 'react';
+﻿// frontend/src/pages/Attendance.jsx
+
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import api from '../api';
 import {
   addToQueue,
@@ -9,6 +11,8 @@ import {
 import { isOnline } from '../services/networkStatus';
 import { toCairoTime } from '../utils/dateHelpers';
 import { GlassCard, GradientButton } from '../components/ui';
+import FaceEnroll from '../components/FaceEnroll';
+import FaceVerify from '../components/FaceVerify';
 
 // ✅ Biometric — import مباشر (Webpack بيعرفه)
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
@@ -29,6 +33,10 @@ export default function Attendance() {
   const [biometricType, setBiometricType] = useState(null);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
 
+  // ✅ جديد — Face Recognition
+  const [faceMode, setFaceMode] = useState(null); // 'enroll' | 'verify' | null
+  const [faceEnrolled, setFaceEnrolled] = useState(false);
+
   const userRef = useRef(JSON.parse(localStorage.getItem('user') || '{}'));
   const user = userRef.current;
 
@@ -37,28 +45,18 @@ export default function Attendance() {
   // ============================================
   const checkBiometric = useCallback(async () => {
     try {
-      console.log('=== Biometric Check ===');
-      console.log('Capacitor:', !!Capacitor);
-      console.log('isNative:', Capacitor?.isNativePlatform?.());
-
-      // ✅ لو مش Native → مش هنشتغل
       if (!Capacitor?.isNativePlatform?.()) {
-        console.log('❌ Not native platform');
         setBiometricAvailable(false);
         setBiometricType(null);
         return;
       }
 
-      // ✅ فحص البصمة
       const result = await BiometricAuth.checkBiometry();
-      console.log('Biometry Result:', result);
 
       if (result.isAvailable) {
-        console.log('✅ Biometric available:', result.biometryType);
         setBiometricAvailable(true);
         setBiometricType(result.biometryType || 'fingerprint');
       } else {
-        console.log('❌ Biometric not available:', result.reason);
         setBiometricAvailable(false);
         setBiometricType(null);
       }
@@ -186,16 +184,102 @@ export default function Attendance() {
   }, []);
 
   // ============================================
+  // ✅ فحص حالة Face
+  // ============================================
+  const checkFaceStatus = useCallback(async () => {
+    try {
+      const isConn = await isOnline();
+      if (!isConn) return;
+
+      const { data } = await api.get('/face/status');
+      setFaceEnrolled(data.faceEnrolled || false);
+    } catch (err) {
+      console.warn('Face status error:', err);
+    }
+  }, []);
+
+  // ============================================
   // ✅ useEffect
   // ============================================
   useEffect(() => {
     loadToday();
     loadQueueCount();
     checkBiometric();
+    checkFaceStatus();
 
     const interval = setInterval(loadQueueCount, 5000);
     return () => clearInterval(interval);
-  }, [loadToday, loadQueueCount, checkBiometric]);
+  }, [loadToday, loadQueueCount, checkBiometric, checkFaceStatus]);
+
+  // ============================================
+  // ✅ Face Handlers
+  // ============================================
+  const handleFaceEnrollSuccess = useCallback(() => {
+    setFaceMode(null);
+    setFaceEnrolled(true);
+    showMsg('✅ تم تسجيل وجهك بنجاح!', 'success');
+  }, [showMsg]);
+
+  const handleFaceVerifySuccess = useCallback(
+    async (data) => {
+      setFaceMode(null);
+
+      // ✅ بعد نجاح Face، نكمل تسجيل الحضور
+      let location = null;
+      try {
+        location = await getLocation();
+      } catch (err) {
+        showMsg('⚠️ فشل الحصول على الموقع', 'warning');
+      }
+
+      const isConn = await isOnline();
+      setOnline(isConn);
+
+      if (isConn) {
+        const payload = {
+          lat: location?.lat,
+          lng: location?.lng,
+          faceVerified: true,
+          faceDistance: data.distance,
+          deviceId: user._id,
+        };
+
+        try {
+          const { data: res } = await api.post('/attendance/checkin', payload);
+          setTodayAttendance(res);
+
+          if (res.detectedBranch) {
+            setDetectedBranch(res.detectedBranch);
+            showMsg(
+              `✅ تم التسجيل بالوجه من ${res.detectedBranch.name}`,
+              'success'
+            );
+          } else {
+            showMsg('✅ تم تسجيل الحضور بالوجه!', 'success');
+          }
+
+          await cacheData('today_attendance', res);
+        } catch (err) {
+          showMsg(
+            '❌ ' + (err.response?.data?.msg || 'فشل تسجيل الحضور'),
+            'error'
+          );
+        }
+      } else {
+        await addToQueue({
+          type: 'checkin',
+          lat: location?.lat,
+          lng: location?.lng,
+          user: user._id,
+          faceVerified: true,
+          faceDistance: data.distance,
+        });
+        await loadQueueCount();
+        showMsg('📴 تم الحفظ محلياً — سيتم المزامنة لاحقاً', 'warning');
+      }
+    },
+    [getLocation, showMsg, user._id, loadQueueCount]
+  );
 
   // ============================================
   // ✅ تسجيل الحضور
@@ -690,6 +774,76 @@ export default function Attendance() {
           {actionLoading ? '⏳' : checkedOut ? '✅ تم الانصراف' : '📤 تسجيل الانصراف'}
         </GradientButton>
       </div>
+
+      {/* ✅ زر Face Recognition */}
+      {!checkedIn && (
+        <div style={{ marginTop: 16 }}>
+          <button
+            onClick={() => setFaceMode(faceEnrolled ? 'verify' : 'enroll')}
+            disabled={actionLoading}
+            style={{
+              width: '100%',
+              padding: '16px 20px',
+              borderRadius: 14,
+              border: '1px solid rgba(0, 229, 255, 0.4)',
+              background:
+                'linear-gradient(135deg, rgba(0,229,255,0.15), rgba(168,85,247,0.15))',
+              color: '#67e8f9',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              transition: 'all 0.3s',
+            }}
+          >
+            <span style={{ fontSize: 20 }}>👤</span>
+            <span>
+              {faceEnrolled
+                ? 'تسجيل الحضور بالوجه'
+                : 'سجّل وجهك أولاً (Face Recognition)'}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* ✅ Face Modal */}
+      {faceMode && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.85)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            direction: 'rtl',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setFaceMode(null);
+          }}
+        >
+          <div style={{ width: '100%', maxWidth: 480 }}>
+            {faceMode === 'enroll' && (
+              <FaceEnroll
+                onSuccess={handleFaceEnrollSuccess}
+                onCancel={() => setFaceMode(null)}
+              />
+            )}
+            {faceMode === 'verify' && (
+              <FaceVerify
+                onSuccess={handleFaceVerifySuccess}
+                onCancel={() => setFaceMode(null)}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ملاحظة عن البصمة */}
       {biometricAvailable && (
