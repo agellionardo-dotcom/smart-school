@@ -4,6 +4,17 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api';
+import maplibregl from 'maplibre-gl';
+
+// ✅ تحديد worker من public/
+if (typeof window !== 'undefined' && maplibregl.setWorkerUrl) {
+  try {
+    maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
+    console.log('[MapLibre] Worker URL set to /maplibre-gl-worker.mjs');
+  } catch (e) {
+    console.warn('[MapLibre] Could not set worker URL:', e);
+  }
+}
 
 const DEFAULT_VIEW = {
   longitude: 30.7503,
