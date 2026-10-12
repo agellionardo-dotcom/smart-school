@@ -6,13 +6,20 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api';
 import maplibregl from 'maplibre-gl';
 
-// ✅ تحديد worker من public/
-if (typeof window !== 'undefined' && maplibregl.setWorkerUrl) {
+// ✅ استخدام workerClass بدل setWorkerUrl
+if (typeof window !== 'undefined' && !maplibregl.workerClass) {
   try {
-    maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
-    console.log('[MapLibre] Worker URL set to /maplibre-gl-worker.mjs');
+    const workerUrl = new URL('/maplibre-gl-worker.mjs', window.location.origin);
+    
+    maplibregl.workerClass = class extends Worker {
+      constructor() {
+        super(workerUrl, { type: 'module' });
+      }
+    };
+    
+    console.log('[MapLibre] Worker class set:', workerUrl.href);
   } catch (e) {
-    console.warn('[MapLibre] Could not set worker URL:', e);
+    console.warn('[MapLibre] Could not set worker class:', e);
   }
 }
 
