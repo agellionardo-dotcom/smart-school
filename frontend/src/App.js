@@ -1,6 +1,8 @@
 import { ThemeProvider } from './contexts/ThemeContext';
 import './styles/theme.css';
 import './styles/theme-light.css';
+import './styles/theme-dark.css';
+import './index.css';   // ✅ مضاف
 import AdminFloatingButton from './components/AdminFloatingButton';
 import EmployeeProfile from './pages/EmployeeProfile';
 import React, { useEffect } from 'react';
@@ -82,10 +84,8 @@ export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        {/* ✅ الخلفية المتحركة */}
         <AnimatedBackground variant="fluid" />
 
-        {/* ✅ كل المحتوى فوق الخلفية */}
         <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
           <Routes>
             <Route path="/" element={<Login />} />
@@ -101,13 +101,8 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
 
-          {/* ✅ المساعد الذكي */}
           <AIChat />
-
-          {/* ✅ زر لوحة الإدارة العائم */}
           <AdminFloatingButton />
-
-          {/* ✅ إشعارات Push */}
           <NotificationPermission />
         </div>
       </BrowserRouter>

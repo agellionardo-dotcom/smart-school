@@ -1,10 +1,5 @@
 /* ============================================
    Smart School — Glass / Clay / Pastel Effects
-   ============================================
-   كلاسات جاهزة لتأثيرات:
-   - Glassmorphism (زجاجي)
-   - Clay (صلصال)
-   - Pastel soft (باستيل)
    ============================================ */
 
 /* ---------- Glass Card ---------- */
@@ -14,7 +9,7 @@
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid var(--ss-border-glass);
   border-radius: var(--ss-radius-lg);
-  box-shadow: var(--ss-shadow-lg), inset 0 1px 0 rgba(255,255,255,0.15);
+  box-shadow: var(--ss-shadow-lg), inset 0 1px 0 var(--ss-glass-inset-top);
   transition: all var(--ss-transition-base);
 }
 
@@ -22,51 +17,51 @@
   background: var(--ss-bg-glass-hover);
   border-color: var(--ss-border-glass-strong);
   transform: translateY(-2px);
-  box-shadow: var(--ss-shadow-xl), inset 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow: var(--ss-shadow-xl), inset 0 1px 0 var(--ss-glass-inset-top-hover);
 }
 
 .ss-glass-strong {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--ss-bg-glass-strong);
   backdrop-filter: blur(30px) saturate(200%);
   -webkit-backdrop-filter: blur(30px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid var(--ss-border-glass-strong);
 }
 
 .ss-glass-subtle {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ss-bg-glass-subtle);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ss-border-subtle);
 }
 
 /* ---------- Glass Navbar ---------- */
 .ss-glass-navbar {
-  background: rgba(15, 33, 56, 0.85);
+  background: var(--ss-bg-navbar);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--ss-border-subtle);
+  box-shadow: var(--ss-shadow-md);
 }
 
 /* ---------- Clay Card (Pastel) ---------- */
 .ss-clay {
-  background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(240,245,255,0.9));
+  background: linear-gradient(135deg, var(--ss-bg-glass-hover), var(--ss-bg-surface));
   border-radius: var(--ss-radius-xl);
   box-shadow:
-    0 10px 30px rgba(30, 58, 95, 0.15),
-    inset 0 -4px 8px rgba(30, 58, 95, 0.06),
-    inset 0 4px 8px rgba(255, 255, 255, 0.9);
+    0 10px 30px var(--ss-shadow-md),
+    inset 0 -4px 8px var(--ss-shadow-sm),
+    inset 0 4px 8px var(--ss-glass-inset-top);
   border: none;
-  color: var(--ss-text-on-light);
+  color: var(--ss-text-primary);
   transition: all var(--ss-transition-spring);
 }
 
 .ss-clay:hover {
   transform: translateY(-4px) scale(1.01);
   box-shadow:
-    0 16px 40px rgba(30, 58, 95, 0.22),
-    inset 0 -4px 8px rgba(30, 58, 95, 0.06),
-    inset 0 4px 8px rgba(255, 255, 255, 0.9);
+    0 16px 40px var(--ss-shadow-lg),
+    inset 0 -4px 8px var(--ss-shadow-sm),
+    inset 0 4px 8px var(--ss-glass-inset-top);
 }
 
 /* ---------- Neon Border ---------- */
@@ -96,11 +91,12 @@
 /* ---------- Gradient Border Card ---------- */
 .ss-gradient-card {
   position: relative;
-  background: rgba(15, 33, 56, 0.6);
+  background: var(--ss-bg-gradient-card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: var(--ss-radius-lg);
   padding: 2px;
+  color: var(--ss-text-primary);
 }
 
 .ss-gradient-card::before {
@@ -137,21 +133,15 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.ss-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.ss-btn:active:not(:disabled) {
-  transform: scale(0.97);
-}
+.ss-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ss-btn:active:not(:disabled) { transform: scale(0.97); }
 
 /* ---------- Input Base ---------- */
 .ss-input {
   width: 100%;
   padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--ss-bg-input);
+  border: 1px solid var(--ss-border-input);
   border-radius: var(--ss-radius-md);
   color: var(--ss-text-primary);
   font-family: inherit;
@@ -160,12 +150,10 @@
   outline: none;
 }
 
-.ss-input::placeholder {
-  color: var(--ss-text-muted);
-}
+.ss-input::placeholder { color: var(--ss-text-muted); }
 
 .ss-input:focus {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--ss-bg-surface-strong);
   border-color: var(--ss-cyan);
   box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.15);
 }
@@ -179,8 +167,9 @@
   border-radius: var(--ss-radius-full);
   font-size: var(--ss-font-xs);
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--ss-bg-badge);
+  border: 1px solid var(--ss-border-badge);
+  color: var(--ss-text-primary);
 }
 
 .ss-badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16,185,129,0.3); }
@@ -191,12 +180,12 @@
 /* ---------- Divider ---------- */
 .ss-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  background: linear-gradient(90deg, transparent, var(--ss-border-divider), transparent);
   margin: var(--ss-space-md) 0;
   border: none;
 }
 
-/* ---------- Ripple / Hover Effect ---------- */
+/* ---------- Hover Lift ---------- */
 .ss-hover-lift {
   transition: transform var(--ss-transition-base), box-shadow var(--ss-transition-base);
 }
@@ -208,8 +197,13 @@
 
 /* ---------- Skeleton Loader ---------- */
 .ss-skeleton {
-  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.05) 75%);
+  background: linear-gradient(90deg, var(--ss-bg-skeleton-1) 25%, var(--ss-bg-skeleton-2) 50%, var(--ss-bg-skeleton-1) 75%);
   background-size: 200% 100%;
   animation: ss-shimmer 1.5s infinite;
   border-radius: var(--ss-radius-sm);
+}
+
+@keyframes ss-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

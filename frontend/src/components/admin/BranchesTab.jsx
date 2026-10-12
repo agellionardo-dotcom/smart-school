@@ -202,7 +202,7 @@ export default function BranchesTab() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -250,7 +250,7 @@ export default function BranchesTab() {
         <div className="ss-glass" style={{ padding: 24, marginBottom: 20 }}>
           <h4
             style={{
-              color: '#f8fafc',
+              color: 'var(--ss-text-primary)',
               marginBottom: 16,
               fontSize: 17,
               fontWeight: 700,
@@ -269,7 +269,7 @@ export default function BranchesTab() {
             />
             <br /><br />
 
-            <label style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600 }}>
+            <label style={{ color: 'var(--ss-text-secondary)', fontSize: 14, fontWeight: 600 }}>
               نوع الفرع *
             </label>
             <select
@@ -284,7 +284,7 @@ export default function BranchesTab() {
 
             {form.type === 'sub' && (
               <>
-                <label style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600 }}>
+                <label style={{ color: 'var(--ss-text-secondary)', fontSize: 14, fontWeight: 600 }}>
                   الفرع الرئيسي *
                 </label>
                 <select
@@ -302,7 +302,7 @@ export default function BranchesTab() {
               </>
             )}
 
-            <label style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: 600 }}>
+            <label style={{ color: 'var(--ss-text-secondary)', fontSize: 14, fontWeight: 600 }}>
               نطاق التسجيل (متر) *
             </label>
             <input
@@ -319,7 +319,7 @@ export default function BranchesTab() {
             <label
               style={{
                 fontWeight: 700,
-                color: '#67e8f9',
+                color: 'var(--ss-text-accent)',
                 fontSize: 14,
                 display: 'inline-block',
                 marginBottom: 8,
@@ -492,7 +492,7 @@ export default function BranchesTab() {
                       fontSize: 13,
                       fontFamily: 'monospace',
                       direction: 'ltr',
-                      color: '#f8fafc',
+                      color: 'var(--ss-text-primary)',
                     }}
                   >
                     <div><b>Lat:</b> {form.lat || '—'}</div>
@@ -557,7 +557,7 @@ export default function BranchesTab() {
           <div key={b._id} className="ss-glass" style={{ padding: 20 }}>
             <h4
               style={{
-                color: '#f8fafc',
+                color: 'var(--ss-text-primary)',
                 marginBottom: 10,
                 fontSize: 16,
                 fontWeight: 700,
@@ -569,7 +569,7 @@ export default function BranchesTab() {
             <p
               style={{
                 fontSize: 13,
-                color: 'rgba(255,255,255,0.65)',
+                color: 'var(--ss-text-secondary)',
                 marginBottom: 8,
                 margin: '0 0 8px 0',
               }}
@@ -578,7 +578,7 @@ export default function BranchesTab() {
             </p>
 
             {b.manager && (
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: '4px 0' }}>
+              <p style={{ fontSize: 13, color: 'var(--ss-text-secondary)', margin: '4px 0' }}>
                 👤 المدير: {b.manager.name}
               </p>
             )}
@@ -586,7 +586,7 @@ export default function BranchesTab() {
             <p
               style={{
                 fontSize: 12,
-                color: 'rgba(255,255,255,0.5)',
+                color: 'var(--ss-text-muted)',
                 marginTop: 8,
                 fontFamily: 'monospace',
                 direction: 'ltr',
@@ -597,12 +597,12 @@ export default function BranchesTab() {
             </p>
 
             {b.phone && (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: '4px 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--ss-text-secondary)', margin: '4px 0' }}>
                 📞 {b.phone}
               </p>
             )}
             {b.address && (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: '4px 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--ss-text-secondary)', margin: '4px 0' }}>
                 🏠 {b.address}
               </p>
             )}

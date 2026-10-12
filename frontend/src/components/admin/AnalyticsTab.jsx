@@ -30,7 +30,7 @@ export default function AnalyticsTab() {
 
   if (loading) {
     return (
-      <p style={{ textAlign: 'center', padding: 40, color: 'rgba(255,255,255,0.6)' }}>
+      <p style={{ textAlign: 'center', padding: 40, color: 'var(--ss-text-muted)' }}>
         ⏳ جاري التحميل...
       </p>
     );
@@ -62,7 +62,7 @@ export default function AnalyticsTab() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -114,7 +114,7 @@ export default function AnalyticsTab() {
       <div className="ss-glass" style={{ padding: 20, marginBottom: 20 }}>
         <h4
           style={{
-            color: '#67e8f9',
+            color: 'var(--ss-text-accent)',
             marginBottom: 16,
             fontSize: 16,
             fontWeight: 700,
@@ -124,19 +124,19 @@ export default function AnalyticsTab() {
         </h4>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={data.payrollCosts}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey="month" stroke="rgba(255,255,255,0.6)" />
-            <YAxis tickFormatter={(v) => (v / 1000) + 'k'} stroke="rgba(255,255,255,0.6)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--ss-border-subtle)" />
+            <XAxis dataKey="month" stroke="var(--ss-text-muted)" />
+            <YAxis tickFormatter={(v) => (v / 1000) + 'k'} stroke="var(--ss-text-muted)" />
             <Tooltip
               formatter={(v) => formatMoney(v) + ' ج.م'}
               contentStyle={{
-                background: 'rgba(15, 33, 56, 0.95)',
-                border: '1px solid rgba(255,255,255,0.15)',
+                background: 'var(--ss-bg-glass)',
+                border: '1px solid var(--ss-border-glass)',
                 borderRadius: 12,
-                color: '#f8fafc',
+                color: 'var(--ss-text-primary)',
               }}
             />
-            <Legend wrapperStyle={{ color: '#f8fafc' }} />
+            <Legend wrapperStyle={{ color: 'var(--ss-text-primary)' }} />
             <Bar dataKey="totalNet" fill="#00e5ff" name="الصافي" radius={[8, 8, 0, 0]} />
             <Bar dataKey="totalDeductions" fill="#ef4444" name="الخصومات" radius={[8, 8, 0, 0]} />
           </BarChart>
@@ -147,7 +147,7 @@ export default function AnalyticsTab() {
       <div className="ss-glass" style={{ padding: 20, marginBottom: 20 }}>
         <h4
           style={{
-            color: '#67e8f9',
+            color: 'var(--ss-text-accent)',
             marginBottom: 16,
             fontSize: 16,
             fontWeight: 700,
@@ -157,18 +157,18 @@ export default function AnalyticsTab() {
         </h4>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data.attendanceTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey="date" stroke="rgba(255,255,255,0.6)" />
-            <YAxis stroke="rgba(255,255,255,0.6)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--ss-border-subtle)" />
+            <XAxis dataKey="date" stroke="var(--ss-text-muted)" />
+            <YAxis stroke="var(--ss-text-muted)" />
             <Tooltip
               contentStyle={{
-                background: 'rgba(15, 33, 56, 0.95)',
-                border: '1px solid rgba(255,255,255,0.15)',
+                background: 'var(--ss-bg-glass)',
+                border: '1px solid var(--ss-border-glass)',
                 borderRadius: 12,
-                color: '#f8fafc',
+                color: 'var(--ss-text-primary)',
               }}
             />
-            <Legend wrapperStyle={{ color: '#f8fafc' }} />
+            <Legend wrapperStyle={{ color: 'var(--ss-text-primary)' }} />
             <Line type="monotone" dataKey="present" stroke="#10b981" name="حضور" strokeWidth={2} />
             <Line type="monotone" dataKey="late" stroke="#fbbf24" name="تأخير" strokeWidth={2} />
             <Line type="monotone" dataKey="absent" stroke="#ef4444" name="غياب" strokeWidth={2} />
@@ -188,7 +188,7 @@ export default function AnalyticsTab() {
         <div className="ss-glass" style={{ padding: 20 }}>
           <h4
             style={{
-              color: '#67e8f9',
+              color: 'var(--ss-text-accent)',
               marginBottom: 16,
               fontSize: 16,
               fontWeight: 700,
@@ -213,16 +213,16 @@ export default function AnalyticsTab() {
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(15, 33, 56, 0.95)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'var(--ss-bg-glass)',
+                    border: '1px solid var(--ss-border-glass)',
                     borderRadius: 12,
-                    color: '#f8fafc',
+                    color: 'var(--ss-text-primary)',
                   }}
                 />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: 40 }}>
+            <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)', padding: 40 }}>
               لا توجد بيانات جنس
             </p>
           )}
@@ -231,7 +231,7 @@ export default function AnalyticsTab() {
         <div className="ss-glass" style={{ padding: 20 }}>
           <h4
             style={{
-              color: '#67e8f9',
+              color: 'var(--ss-text-accent)',
               marginBottom: 16,
               fontSize: 16,
               fontWeight: 700,
@@ -242,15 +242,15 @@ export default function AnalyticsTab() {
           {data.ageData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={data.ageData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis dataKey="name" stroke="rgba(255,255,255,0.6)" />
-                <YAxis stroke="rgba(255,255,255,0.6)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--ss-border-subtle)" />
+                <XAxis dataKey="name" stroke="var(--ss-text-muted)" />
+                <YAxis stroke="var(--ss-text-muted)" />
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(15, 33, 56, 0.95)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'var(--ss-bg-glass)',
+                    border: '1px solid var(--ss-border-glass)',
                     borderRadius: 12,
-                    color: '#f8fafc',
+                    color: 'var(--ss-text-primary)',
                   }}
                 />
                 <Bar dataKey="value" name="عدد الموظفين" radius={[8, 8, 0, 0]}>
@@ -261,7 +261,7 @@ export default function AnalyticsTab() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: 40 }}>
+            <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)', padding: 40 }}>
               لا توجد بيانات أعمار
             </p>
           )}
@@ -279,7 +279,7 @@ export default function AnalyticsTab() {
         <div className="ss-glass" style={{ padding: 20 }}>
           <h4
             style={{
-              color: '#67e8f9',
+              color: 'var(--ss-text-accent)',
               marginBottom: 16,
               fontSize: 16,
               fontWeight: 700,
@@ -289,15 +289,15 @@ export default function AnalyticsTab() {
           </h4>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={data.branchDistribution} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis type="number" stroke="rgba(255,255,255,0.6)" />
-              <YAxis dataKey="name" type="category" width={120} stroke="rgba(255,255,255,0.6)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--ss-border-subtle)" />
+              <XAxis type="number" stroke="var(--ss-text-muted)" />
+              <YAxis dataKey="name" type="category" width={120} stroke="var(--ss-text-muted)" />
               <Tooltip
                 contentStyle={{
-                  background: 'rgba(15, 33, 56, 0.95)',
-                  border: '1px solid rgba(255,255,255,0.15)',
+                  background: 'var(--ss-bg-glass)',
+                  border: '1px solid var(--ss-border-glass)',
                   borderRadius: 12,
-                  color: '#f8fafc',
+                  color: 'var(--ss-text-primary)',
                 }}
               />
               <Bar dataKey="count" name="عدد الموظفين" fill="#a855f7" radius={[0, 8, 8, 0]} />
@@ -308,7 +308,7 @@ export default function AnalyticsTab() {
         <div className="ss-glass" style={{ padding: 20 }}>
           <h4
             style={{
-              color: '#67e8f9',
+              color: 'var(--ss-text-accent)',
               marginBottom: 16,
               fontSize: 16,
               fontWeight: 700,
@@ -333,16 +333,16 @@ export default function AnalyticsTab() {
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(15, 33, 56, 0.95)',
-                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'var(--ss-bg-glass)',
+                    border: '1px solid var(--ss-border-glass)',
                     borderRadius: 12,
-                    color: '#f8fafc',
+                    color: 'var(--ss-text-primary)',
                   }}
                 />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: 40 }}>
+            <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)', padding: 40 }}>
               لا توجد بيانات أقسام
             </p>
           )}

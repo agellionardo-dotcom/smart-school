@@ -80,7 +80,7 @@ export default function AttendanceReportTab() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -250,11 +250,11 @@ export default function AttendanceReportTab() {
       {/* ✅ Table */}
       <div className="ss-glass" style={{ padding: 20 }}>
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             ⏳ جاري التحميل...
           </p>
         ) : data.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             لا توجد بيانات لهذا الشهر
           </p>
         ) : (
@@ -273,12 +273,12 @@ export default function AttendanceReportTab() {
                       <td>
                         <b>{r.user.name}</b>
                         {r.user.position && (
-                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: 'var(--ss-text-muted)', marginTop: 2 }}>
                             {r.user.position}
                           </div>
                         )}
                       </td>
-                      <td style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                      <td style={{ fontSize: 13, color: 'var(--ss-text-secondary)' }}>
                         {r.branch?.name || '-'}
                       </td>
                       <td style={{ color: '#34d399', fontWeight: 'bold' }}>{r.presentDays}</td>
@@ -330,12 +330,12 @@ export default function AttendanceReportTab() {
                         <td>
                           <b>{r.user.name}</b>
                           {r.user.position && (
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: 'var(--ss-text-muted)', marginTop: 2 }}>
                               {r.user.position}
                             </div>
                           )}
                         </td>
-                        <td style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                        <td style={{ fontSize: 13, color: 'var(--ss-text-secondary)' }}>
                           {r.branch?.name || '-'}
                         </td>
                         <td>

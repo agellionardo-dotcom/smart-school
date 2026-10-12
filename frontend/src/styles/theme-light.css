@@ -1,64 +1,139 @@
 /* ============================================
    Smart School — Light Mode Override
-   ============================================
-   بيتطبق فقط لما `data-theme="light"` على <html>
+   بيتطبق فقط لما data-theme="light"
    ============================================ */
 
-[data-theme='light'] {
+html[data-theme='light'] {
+  /* ---------- الألوان الأساسية ---------- */
+  --ss-navy-900: #e8eef5;
+  --ss-navy-800: #d9e4f0;
+  --ss-navy-700: #c2d3e6;
+  --ss-navy-600: #a5bed9;
+  --ss-navy-500: #7a94b8;
+  --ss-navy-400: #5a7ba3;
+  --ss-navy-300: #3d5a7d;
+
   /* ---------- الخلفيات ---------- */
   --ss-bg-base: #f5f7fa;
-  --ss-bg-surface: rgba(0, 0, 0, 0.03);
-  --ss-bg-surface-strong: rgba(0, 0, 0, 0.06);
+  --ss-bg-surface: rgba(10, 31, 68, 0.04);
+  --ss-bg-surface-strong: rgba(10, 31, 68, 0.08);
   --ss-bg-glass: rgba(255, 255, 255, 0.75);
   --ss-bg-glass-hover: rgba(255, 255, 255, 0.95);
+  --ss-bg-input: rgba(255, 255, 255, 0.95);
+  --ss-bg-hover: rgba(10, 31, 68, 0.06);
+  --ss-bg-card: rgba(255, 255, 255, 0.85);
+  --ss-bg-secondary: rgba(255, 255, 255, 0.95);
+  --ss-bg-glass-strong: rgba(255, 255, 255, 0.9);
+  --ss-bg-glass-subtle: rgba(255, 255, 255, 0.5);
+  --ss-bg-navbar: rgba(255, 255, 255, 0.85);
+  --ss-bg-gradient-card: rgba(255, 255, 255, 0.7);
+  --ss-bg-badge: rgba(10, 31, 68, 0.06);
+  --ss-bg-skeleton-1: rgba(10, 31, 68, 0.04);
+  --ss-bg-skeleton-2: rgba(10, 31, 68, 0.08);
 
   /* ---------- النصوص ---------- */
   --ss-text-primary: #0a1628;
   --ss-text-secondary: #334155;
   --ss-text-muted: #64748b;
-  --ss-text-dark: #f8fafc;
+  --ss-text-dark: #0a1628;
   --ss-text-on-light: #f8fafc;
+  --ss-text-accent: #0891b2;
 
   /* ---------- الحدود ---------- */
   --ss-border-glass: rgba(10, 31, 68, 0.12);
   --ss-border-glass-strong: rgba(10, 31, 68, 0.25);
   --ss-border-subtle: rgba(10, 31, 68, 0.06);
+  --ss-border-color: rgba(10, 31, 68, 0.15);
+  --ss-border-strong: rgba(10, 31, 68, 0.3);
+  --ss-border-badge: rgba(10, 31, 68, 0.12);
+  --ss-border-input: rgba(10, 31, 68, 0.15);
+  --ss-border-divider: rgba(10, 31, 68, 0.1);
+  --ss-glass-inset-top: rgba(255, 255, 255, 0.6);
+  --ss-glass-inset-top-hover: rgba(255, 255, 255, 0.8);
 
   /* ---------- الظلال ---------- */
   --ss-shadow-sm: 0 2px 8px rgba(10, 31, 68, 0.08);
   --ss-shadow-md: 0 4px 16px rgba(10, 31, 68, 0.1);
   --ss-shadow-lg: 0 8px 32px rgba(10, 31, 68, 0.12);
   --ss-shadow-xl: 0 16px 48px rgba(10, 31, 68, 0.15);
-
-  /* ---------- نيون معدَّل للـ Light ---------- */
-  --ss-navy-900: #e8eef5;
-  --ss-navy-800: #d9e4f0;
-  --ss-navy-700: #c2d3e6;
 }
 
-/* ---------- Body Background ---------- */
+/* ---------- Body ---------- */
 html[data-theme='light'] body {
-  background: #f5f7fa;
-  color: #0a1628;
-}
-
-/* ---------- Smooth Transitions ---------- */
-html,
-body {
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
+  background: var(--ss-bg-base);
+  color: var(--ss-text-primary);
 }
 
 /* ---------- Scrollbar ---------- */
 html[data-theme='light'] ::-webkit-scrollbar-track {
   background: rgba(10, 31, 68, 0.04);
 }
-
 html[data-theme='light'] ::-webkit-scrollbar-thumb {
   background: #94a3b8;
 }
+html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}/* ============================================
+   Smart School — Light Mode Override
+   بيتطبق فقط لما data-theme="light"
+   ============================================ */
 
+[data-theme='light'] {
+  /* ---------- الألوان الأساسية ---------- */
+  --ss-navy-900: #e8eef5;
+  --ss-navy-800: #d9e4f0;
+  --ss-navy-700: #c2d3e6;
+  --ss-navy-600: #a5bed9;
+  --ss-navy-500: #7a94b8;
+  --ss-navy-400: #5a7ba3;
+  --ss-navy-300: #3d5a7d;
+
+  /* ---------- الخلفيات ---------- */
+  --ss-bg-base: #f5f7fa;
+  --ss-bg-surface: rgba(10, 31, 68, 0.04);
+  --ss-bg-surface-strong: rgba(10, 31, 68, 0.08);
+  --ss-bg-glass: rgba(255, 255, 255, 0.75);
+  --ss-bg-glass-hover: rgba(255, 255, 255, 0.95);
+  --ss-bg-input: rgba(255, 255, 255, 0.95);
+  --ss-bg-hover: rgba(10, 31, 68, 0.06);
+  --ss-bg-card: rgba(255, 255, 255, 0.85);
+  --ss-bg-secondary: rgba(255, 255, 255, 0.95);
+
+  /* ---------- النصوص ---------- */
+  --ss-text-primary: #0a1628;
+  --ss-text-secondary: #334155;
+  --ss-text-muted: #64748b;
+  --ss-text-dark: #0a1628;
+  --ss-text-on-light: #f8fafc;
+  --ss-text-accent: #0891b2;
+
+  /* ---------- الحدود ---------- */
+  --ss-border-glass: rgba(10, 31, 68, 0.12);
+  --ss-border-glass-strong: rgba(10, 31, 68, 0.25);
+  --ss-border-subtle: rgba(10, 31, 68, 0.06);
+  --ss-border-color: rgba(10, 31, 68, 0.15);
+  --ss-border-strong: rgba(10, 31, 68, 0.3);
+
+  /* ---------- الظلال ---------- */
+  --ss-shadow-sm: 0 2px 8px rgba(10, 31, 68, 0.08);
+  --ss-shadow-md: 0 4px 16px rgba(10, 31, 68, 0.1);
+  --ss-shadow-lg: 0 8px 32px rgba(10, 31, 68, 0.12);
+  --ss-shadow-xl: 0 16px 48px rgba(10, 31, 68, 0.15);
+}
+
+/* ---------- Body ---------- */
+html[data-theme='light'] body {
+  background: var(--ss-bg-base);
+  color: var(--ss-text-primary);
+}
+
+/* ---------- Scrollbar ---------- */
+html[data-theme='light'] ::-webkit-scrollbar-track {
+  background: rgba(10, 31, 68, 0.04);
+}
+html[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+}
 html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
   background: #475569;
 }

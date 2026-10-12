@@ -23,7 +23,6 @@ export default function OrganizationTab() {
   const [msg, setMsg] = useState('');
   const [expanded, setExpanded] = useState({});
 
-  // ✅ جلب الشجرة
   const loadTree = async () => {
     try {
       const { data } = await api.get('/admin/organization/tree');
@@ -78,15 +77,15 @@ export default function OrganizationTab() {
             background:
               level === 0
                 ? 'rgba(0, 229, 255, 0.08)'
-                : 'rgba(255, 255, 255, 0.05)',
+                : 'var(--ss-bg-surface)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border:
               level === 0
                 ? '1px solid rgba(0, 229, 255, 0.25)'
-                : '1px solid rgba(255, 255, 255, 0.1)',
+                : '1px solid var(--ss-border-glass)',
             borderRadius: 12,
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
+            boxShadow: 'var(--ss-shadow-sm)',
             cursor: hasChildren ? 'pointer' : 'default',
             transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
           }}
@@ -97,7 +96,7 @@ export default function OrganizationTab() {
               style={{
                 marginLeft: 8,
                 fontSize: 12,
-                color: '#67e8f9',
+                color: 'var(--ss-text-accent)',
                 transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
                 transition: 'transform 0.2s',
                 display: 'inline-block',
@@ -117,13 +116,13 @@ export default function OrganizationTab() {
                 gap: 6,
               }}
             >
-              <b style={{ color: '#f8fafc', fontSize: 14 }}>{node.name}</b>
+              <b style={{ color: 'var(--ss-text-primary)', fontSize: 14 }}>{node.name}</b>
               {roleBadge(node.role)}
             </div>
             <div
               style={{
                 fontSize: 12,
-                color: 'rgba(255, 255, 255, 0.6)',
+                color: 'var(--ss-text-muted)',
                 marginTop: 4,
                 display: 'flex',
                 flexWrap: 'wrap',
@@ -136,7 +135,7 @@ export default function OrganizationTab() {
             </div>
           </div>
 
-          <div style={{ fontSize: 11, color: 'rgba(255, 255, 255, 0.5)' }}>
+          <div style={{ fontSize: 11, color: 'var(--ss-text-muted)' }}>
             {hasChildren && `(${node.children.length})`}
           </div>
         </div>
@@ -144,7 +143,7 @@ export default function OrganizationTab() {
         {hasChildren && isOpen && (
           <div
             style={{
-              borderRight: '2px dashed rgba(255, 255, 255, 0.15)',
+              borderRight: '2px dashed var(--ss-border-glass)',
               marginRight: 14,
               paddingRight: 10,
             }}
@@ -174,7 +173,7 @@ export default function OrganizationTab() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -221,11 +220,11 @@ export default function OrganizationTab() {
       {/* ✅ Tree */}
       <div className="ss-glass" style={{ padding: 20 }}>
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             ⏳ جاري التحميل...
           </p>
         ) : tree.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             لا يوجد موظفون. تأكد من إضافة موظفين وتعيين مديرين لهم.
           </p>
         ) : (
@@ -241,17 +240,17 @@ export default function OrganizationTab() {
           padding: 14,
           borderRadius: 12,
           fontSize: 12,
-          color: 'rgba(255, 255, 255, 0.7)',
+          color: 'var(--ss-text-secondary)',
           lineHeight: 1.8,
           direction: 'rtl',
           textAlign: 'right',
         }}
       >
-        <b style={{ color: '#67e8f9' }}>💡 ملاحظة:</b> الشجرة بتبني نفسها من حقل{' '}
+        <b style={{ color: 'var(--ss-text-accent)' }}>💡 ملاحظة:</b> الشجرة بتبني نفسها من حقل{' '}
         <code
           style={{
             background: 'rgba(0, 229, 255, 0.15)',
-            color: '#67e8f9',
+            color: 'var(--ss-text-accent)',
             padding: '2px 6px',
             borderRadius: 4,
             fontFamily: 'monospace',
@@ -261,7 +260,7 @@ export default function OrganizationTab() {
         </code>{' '}
         في بيانات كل موظف. عشان تضيف موظف تحت مدير معين، افتح{' '}
         <b style={{ color: '#a78bfa' }}>EmployeeProfile</b> بتاعه وعدّل حقل{' '}
-        <b style={{ color: '#f8fafc' }}>"المدير المباشر"</b>.
+        <b style={{ color: 'var(--ss-text-primary)' }}>"المدير المباشر"</b>.
       </div>
     </div>
   );

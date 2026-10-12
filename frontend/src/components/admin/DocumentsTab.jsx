@@ -41,7 +41,6 @@ export default function DocumentsTab() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const canManage = ['hr', 'manager', 'superadmin'].includes(user.role);
 
-  // ✅ جلب المستخدمين
   useEffect(() => {
     api.get('/admin/users')
       .then((r) => setUsers(r.data))
@@ -49,7 +48,6 @@ export default function DocumentsTab() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ✅ جلب مستندات الموظف
   const loadDocuments = async (userId) => {
     setDocsLoading(true);
     try {
@@ -103,7 +101,7 @@ export default function DocumentsTab() {
 
   if (loading) {
     return (
-      <p style={{ textAlign: 'center', padding: 40, color: 'var(--gray)' }}>
+      <p style={{ textAlign: 'center', padding: 40, color: 'var(--ss-text-muted)' }}>
         ⏳ جاري التحميل...
       </p>
     );
@@ -113,7 +111,7 @@ export default function DocumentsTab() {
     <div>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
-        <h3 style={{ color: 'var(--navy)', margin: 0 }}>
+        <h3 style={{ color: 'var(--ss-text-primary)', margin: 0 }}>
           📄 إدارة المستندات
         </h3>
         {selectedUser && canManage && (
@@ -124,7 +122,7 @@ export default function DocumentsTab() {
       </div>
 
       {msg && (
-        <p style={{ padding: 12, background: msg.startsWith('✅') ? '#d4edda' : '#f8d7da', borderRadius: 8, marginBottom: 16, color: '#000' }}>
+        <p style={{ padding: 12, background: msg.startsWith('✅') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', borderRadius: 8, marginBottom: 16, color: msg.startsWith('✅') ? '#34d399' : '#fca5a5', border: `1px solid ${msg.startsWith('✅') ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}` }}>
           {msg}
         </p>
       )}
@@ -132,7 +130,7 @@ export default function DocumentsTab() {
       <div style={{ display: 'grid', gridTemplateColumns: selectedUser ? '1fr 2fr' : '1fr', gap: 16 }}>
         {/* قائمة الموظفين */}
         <div className="glass" style={{ padding: 16 }}>
-          <h4 style={{ color: 'var(--navy)', marginBottom: 12, fontSize: 15 }}>
+          <h4 style={{ color: 'var(--ss-text-primary)', marginBottom: 12, fontSize: 15 }}>
             👥 اختر موظف
           </h4>
           <input
@@ -144,7 +142,7 @@ export default function DocumentsTab() {
           />
           <div style={{ maxHeight: 500, overflowY: 'auto' }}>
             {filteredUsers.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--gray)', fontSize: 13 }}>
+              <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)', fontSize: 13 }}>
                 لا يوجد موظفون
               </p>
             ) : (
@@ -157,8 +155,8 @@ export default function DocumentsTab() {
                     borderRadius: 8,
                     cursor: 'pointer',
                     marginBottom: 6,
-                    background: selectedUser?._id === u._id ? '#0a1f44' : '#f5f7fa',
-                    color: selectedUser?._id === u._id ? '#fff' : '#0a1f44',
+                    background: selectedUser?._id === u._id ? 'var(--ss-grad-primary)' : 'var(--ss-bg-surface)',
+                    color: selectedUser?._id === u._id ? '#fff' : 'var(--ss-text-primary)',
                     transition: 'all 0.2s',
                   }}
                 >
@@ -173,11 +171,10 @@ export default function DocumentsTab() {
         {/* المستندات */}
         {selectedUser && (
           <div className="glass" style={{ padding: 16 }}>
-            <h4 style={{ color: 'var(--navy)', marginBottom: 12 }}>
+            <h4 style={{ color: 'var(--ss-text-primary)', marginBottom: 12 }}>
               📁 مستندات: {selectedUser.name}
             </h4>
 
-            {/* إحصائيات */}
             {stats && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8, marginBottom: 16 }}>
                 <StatCard label="إجمالي" value={stats.total} color="#0a1f44" />
@@ -190,21 +187,19 @@ export default function DocumentsTab() {
               </div>
             )}
 
-            {/* ناقص */}
             {stats && stats.missing && stats.missing.length > 0 && (
-              <div style={{ padding: 10, background: '#fff3cd', borderRadius: 8, marginBottom: 12, fontSize: 12 }}>
+              <div style={{ padding: 10, background: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.3)', borderRadius: 8, marginBottom: 12, fontSize: 12, color: '#fcd34d' }}>
                 ⚠️ <b>مستندات ناقصة:</b>{' '}
                 {stats.missing.map((t) => TYPE_LABELS[t] || t).join(' · ')}
               </div>
             )}
 
-            {/* قائمة المستندات */}
             {docsLoading ? (
-              <p style={{ textAlign: 'center', color: 'var(--gray)', padding: 20 }}>
+              <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)', padding: 20 }}>
                 ⏳ جاري التحميل...
               </p>
             ) : documents.length === 0 ? (
-              <p style={{ textAlign: 'center', color: 'var(--gray)', padding: 20 }}>
+              <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)', padding: 20 }}>
                 📭 لا توجد مستندات
               </p>
             ) : (
@@ -224,7 +219,6 @@ export default function DocumentsTab() {
         )}
       </div>
 
-      {/* Modal الرفع */}
       {showUpload && selectedUser && (
         <DocumentUpload
           userId={selectedUser._id}
@@ -241,7 +235,6 @@ export default function DocumentsTab() {
   );
 }
 
-// ✅ Stat Card
 function StatCard({ label, value, color }) {
   return (
     <div style={{ padding: 10, background: color, borderRadius: 8, color: '#fff', textAlign: 'center' }}>
@@ -251,7 +244,6 @@ function StatCard({ label, value, color }) {
   );
 }
 
-// ✅ Document Card
 function DocCard({ doc, canManage, onDelete, onReview }) {
   const status = STATUS_LABELS[doc.status] || STATUS_LABELS.pending;
   const typeLabel = TYPE_LABELS[doc.type] || doc.type;
@@ -267,9 +259,9 @@ function DocCard({ doc, canManage, onDelete, onReview }) {
       style={{
         padding: 12,
         borderRadius: 10,
-        background: '#fff',
+        background: 'var(--ss-bg-glass)',
         border: `1px solid ${
-          isExpired ? '#f8d7da' : isExpiringSoon ? '#fff3cd' : '#e0e6ef'
+          isExpired ? 'rgba(239, 68, 68, 0.3)' : isExpiringSoon ? 'rgba(251, 191, 36, 0.3)' : 'var(--ss-border-subtle)'
         }`,
         display: 'flex',
         justifyContent: 'space-between',
@@ -279,10 +271,10 @@ function DocCard({ doc, canManage, onDelete, onReview }) {
       }}
     >
       <div style={{ flex: 1, minWidth: 200 }}>
-        <div style={{ fontWeight: 700, color: 'var(--navy)', fontSize: 14, marginBottom: 4 }}>
+        <div style={{ fontWeight: 700, color: 'var(--ss-text-primary)', fontSize: 14, marginBottom: 4 }}>
           {typeLabel}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>
+        <div style={{ fontSize: 12, color: 'var(--ss-text-muted)', marginBottom: 4 }}>
           {doc.title}
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -301,7 +293,7 @@ function DocCard({ doc, canManage, onDelete, onReview }) {
           )}
         </div>
         {doc.expiryDate && (
-          <div style={{ fontSize: 11, color: 'var(--gray)', marginTop: 4 }}>
+          <div style={{ fontSize: 11, color: 'var(--ss-text-muted)', marginTop: 4 }}>
             ⏰ ينتهي: {new Date(doc.expiryDate).toLocaleDateString('ar-EG')}
           </div>
         )}

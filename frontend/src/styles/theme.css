@@ -1,16 +1,19 @@
 /* ============================================
    Smart School — Design System Theme
    ============================================
-   نظام التصميم الموحد — ألوان، مسافات، ظلال،
-   وكل الـ tokens المستخدمة في التطبيق.
+   نظام التصميم الموحد — Dark + Light
    ============================================ */
 
-:root {
+/* ============================================
+   DARK MODE (الافتراضي)
+   ============================================ */
+:root,
+html[data-theme='dark'] {
   /* ---------- الألوان الأساسية (الهوية) ---------- */
   --ss-navy-900: #0a1628;
   --ss-navy-800: #0f2138;
   --ss-navy-700: #1a3050;
-  --ss-navy-600: #1e3a5f;   /* اللون الحالي في الـ Navbar */
+  --ss-navy-600: #1e3a5f;
   --ss-navy-500: #2d4a73;
   --ss-navy-400: #4a6b95;
   --ss-navy-300: #7a94b8;
@@ -41,6 +44,17 @@
   --ss-bg-surface-strong: rgba(255, 255, 255, 0.12);
   --ss-bg-glass: rgba(255, 255, 255, 0.08);
   --ss-bg-glass-hover: rgba(255, 255, 255, 0.14);
+  --ss-bg-input: rgba(255, 255, 255, 0.06);
+  --ss-bg-hover: rgba(255, 255, 255, 0.12);
+  --ss-bg-card: rgba(255, 255, 255, 0.06);
+  --ss-bg-secondary: rgba(15, 33, 56, 0.92);
+  --ss-bg-glass-strong: rgba(255, 255, 255, 0.12);
+  --ss-bg-glass-subtle: rgba(255, 255, 255, 0.04);
+  --ss-bg-navbar: rgba(15, 33, 56, 0.85);
+  --ss-bg-gradient-card: rgba(15, 33, 56, 0.6);
+  --ss-bg-badge: rgba(255, 255, 255, 0.1);
+  --ss-bg-skeleton-1: rgba(255, 255, 255, 0.05);
+  --ss-bg-skeleton-2: rgba(255, 255, 255, 0.12);
 
   /* ---------- النصوص (Text) ---------- */
   --ss-text-primary: #f8fafc;
@@ -48,11 +62,19 @@
   --ss-text-muted: #94a3b8;
   --ss-text-dark: #1e293b;
   --ss-text-on-light: #0a1628;
+  --ss-text-accent: #67e8f9;
 
   /* ---------- الحدود (Borders) ---------- */
   --ss-border-glass: rgba(255, 255, 255, 0.18);
   --ss-border-glass-strong: rgba(255, 255, 255, 0.3);
   --ss-border-subtle: rgba(255, 255, 255, 0.08);
+  --ss-border-color: rgba(255, 255, 255, 0.18);
+  --ss-border-strong: rgba(255, 255, 255, 0.3);
+  --ss-border-badge: rgba(255, 255, 255, 0.15);
+  --ss-border-input: rgba(255, 255, 255, 0.12);
+  --ss-border-divider: rgba(255, 255, 255, 0.15);
+  --ss-glass-inset-top: rgba(255, 255, 255, 0.15);
+  --ss-glass-inset-top-hover: rgba(255, 255, 255, 0.2);
 
   /* ---------- الظلال (Shadows) ---------- */
   --ss-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -106,10 +128,7 @@
 /* ============================================
    Reset & Base
    ============================================ */
-
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 html, body {
   margin: 0;
@@ -120,48 +139,31 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-body {
+body, #root {
   min-height: 100vh;
   min-height: 100dvh;
 }
 
-#root {
-  min-height: 100vh;
-  min-height: 100dvh;
-}
-
-/* Scrollbar أنيق */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
-}
-
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--ss-bg-surface); }
 ::-webkit-scrollbar-thumb {
   background: var(--ss-navy-400);
   border-radius: var(--ss-radius-full);
 }
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--ss-cyan);
-}
+::-webkit-scrollbar-thumb:hover { background: var(--ss-cyan); }
 
 /* ============================================
    Utility Classes
    ============================================ */
-
 .ss-container {
-  width: 100%;
-  max-width: 1200px;
+  width: 100%; max-width: 1200px;
   margin: 0 auto;
   padding: 0 var(--ss-space-md);
 }
-
 .ss-flex { display: flex; }
 .ss-flex-center { display: flex; align-items: center; justify-content: center; }
 .ss-flex-between { display: flex; align-items: center; justify-content: space-between; }
@@ -169,18 +171,15 @@ body {
 .ss-gap-sm { gap: var(--ss-space-sm); }
 .ss-gap-md { gap: var(--ss-space-md); }
 .ss-gap-lg { gap: var(--ss-space-lg); }
-
 .ss-text-center { text-align: center; }
 .ss-text-sm { font-size: var(--ss-font-sm); }
 .ss-text-lg { font-size: var(--ss-font-lg); }
 .ss-text-muted { color: var(--ss-text-muted); }
-
 .ss-mt-sm { margin-top: var(--ss-space-sm); }
 .ss-mt-md { margin-top: var(--ss-space-md); }
 .ss-mt-lg { margin-top: var(--ss-space-lg); }
 .ss-mb-md { margin-bottom: var(--ss-space-md); }
 
-/* Gradient Text */
 .ss-gradient-text {
   background: var(--ss-grad-primary);
   -webkit-background-clip: text;
@@ -190,14 +189,5 @@ body {
   font-weight: 700;
 }
 
-/* ============================================
-   RTL Support (العربية)
-   ============================================ */
-
-[dir="rtl"] {
-  text-align: right;
-}
-
-[dir="ltr"] {
-  text-align: left;
-}
+[dir="rtl"] { text-align: right; }
+[dir="ltr"] { text-align: left; }

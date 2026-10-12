@@ -22,7 +22,6 @@ export default function PayrollTab() {
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [filterStatus, setFilterStatus] = useState('');
 
-  // ==================== جلب الرواتب ====================
   const loadPayrolls = async () => {
     try {
       setLoading(true);
@@ -40,7 +39,6 @@ export default function PayrollTab() {
     }
   };
 
-  // ==================== جلب الإحصائيات ====================
   const loadStats = async () => {
     try {
       const { data } = await api.get(`/payroll/stats/${filterYear}/${filterMonth}`);
@@ -55,7 +53,6 @@ export default function PayrollTab() {
     loadStats();
   }, [filterMonth, filterYear, filterStatus]);
 
-  // ==================== اعتماد راتب ====================
   const approvePayroll = async (id) => {
     if (!window.confirm('هل تريد اعتماد هذا الراتب؟')) return;
     try {
@@ -68,7 +65,6 @@ export default function PayrollTab() {
     }
   };
 
-  // ==================== دفع راتب ====================
   const payPayroll = async (id) => {
     if (!window.confirm('هل تريد تسجيل دفع هذا الراتب؟')) return;
     try {
@@ -81,7 +77,6 @@ export default function PayrollTab() {
     }
   };
 
-  // ==================== حذف راتب ====================
   const deletePayroll = async (id) => {
     if (!window.confirm('هل تريد حذف هذا الراتب؟')) return;
     try {
@@ -94,7 +89,6 @@ export default function PayrollTab() {
     }
   };
 
-  // ==================== إنشاء رواتب جماعية ====================
   const bulkGenerate = async () => {
     if (!window.confirm(`إنشاء رواتب لشهر ${MONTHS[filterMonth - 1]} ${filterYear} لكل الموظفين؟`)) return;
     try {
@@ -111,7 +105,6 @@ export default function PayrollTab() {
     }
   };
 
-  // ==================== تصدير Excel أو PDF ====================
   const exportPayroll = async (type) => {
     try {
       setMsg('⏳ جاري التحميل...');
@@ -141,7 +134,6 @@ export default function PayrollTab() {
     }
   };
 
-  // ==================== تحميل قالب Excel للموظفين ====================
   const downloadTemplate = async () => {
     try {
       setMsg('⏳ جاري تحميل القالب...');
@@ -163,7 +155,6 @@ export default function PayrollTab() {
     }
   };
 
-  // ==================== استيراد موظفين من Excel ====================
   const importUsers = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -194,7 +185,6 @@ export default function PayrollTab() {
     e.target.value = '';
   };
 
-  // ==================== تنسيق المبلغ ====================
   const formatMoney = (n) => {
     return (n || 0).toLocaleString('ar-EG') + ' ج.م';
   };
@@ -217,7 +207,7 @@ export default function PayrollTab() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -402,11 +392,11 @@ export default function PayrollTab() {
       {/* ✅ Table */}
       <div className="ss-glass" style={{ padding: 20 }}>
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             ⏳ جاري التحميل...
           </p>
         ) : payrolls.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             لا توجد رواتب لهذا الشهر. اضغط "إنشاء رواتب جماعية" للبدء.
           </p>
         ) : (
@@ -429,7 +419,7 @@ export default function PayrollTab() {
                 {payrolls.map(p => (
                   <tr key={p._id}>
                     <td><b>{p.user?.name}</b></td>
-                    <td style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
+                    <td style={{ fontSize: 13, color: 'var(--ss-text-secondary)' }}>
                       {p.branch?.name || '-'}
                     </td>
                     <td>{formatMoney(p.basicSalary)}</td>
@@ -437,7 +427,7 @@ export default function PayrollTab() {
                     <td style={{ color: '#34d399' }}>+{formatMoney(p.totalBonuses)}</td>
                     <td style={{ color: '#fca5a5' }}>-{formatMoney(p.totalDeductions)}</td>
                     <td>
-                      <b style={{ color: '#67e8f9' }}>{formatMoney(p.netSalary)}</b>
+                      <b style={{ color: 'var(--ss-text-accent)' }}>{formatMoney(p.netSalary)}</b>
                     </td>
                     <td>
                       <span

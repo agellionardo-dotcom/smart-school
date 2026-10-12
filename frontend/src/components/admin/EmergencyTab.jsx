@@ -114,7 +114,7 @@ export default function EmergencyTab() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -198,11 +198,11 @@ export default function EmergencyTab() {
       {/* ✅ List */}
       <div className="ss-glass" style={{ padding: 20 }}>
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             ⏳ جاري التحميل...
           </p>
         ) : emergencies.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             {filter === 'active' ? '✅ لا توجد حالات طوارئ نشطة' : 'لا توجد حالات'}
           </p>
         ) : (
@@ -218,13 +218,13 @@ export default function EmergencyTab() {
                     borderRadius: 12,
                     background: isActive
                       ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(185, 28, 28, 0.08))'
-                      : 'rgba(255, 255, 255, 0.04)',
+                      : 'var(--ss-bg-surface)',
                     border: isActive
                       ? '1px solid rgba(239, 68, 68, 0.4)'
-                      : '1px solid rgba(255, 255, 255, 0.08)',
+                      : '1px solid var(--ss-border-subtle)',
                     boxShadow: isActive
                       ? '0 4px 24px rgba(239, 68, 68, 0.2)'
-                      : '0 2px 8px rgba(0,0,0,0.1)',
+                      : 'var(--ss-shadow-sm)',
                   }}
                 >
                   <div
@@ -268,7 +268,7 @@ export default function EmergencyTab() {
                         style={{
                           margin: '4px 0',
                           fontSize: 15,
-                          color: '#f8fafc',
+                          color: 'var(--ss-text-primary)',
                           fontWeight: 700,
                         }}
                       >
@@ -278,7 +278,7 @@ export default function EmergencyTab() {
                         style={{
                           margin: '4px 0',
                           fontSize: 12,
-                          color: 'rgba(255,255,255,0.65)',
+                          color: 'var(--ss-text-secondary)',
                         }}
                       >
                         🏢 {e.branch?.name || '-'}
@@ -288,7 +288,7 @@ export default function EmergencyTab() {
                         style={{
                           margin: '4px 0',
                           fontSize: 12,
-                          color: 'rgba(255,255,255,0.55)',
+                          color: 'var(--ss-text-muted)',
                         }}
                       >
                         🕐 {toCairo(e.createdAt)}
@@ -299,11 +299,11 @@ export default function EmergencyTab() {
                           style={{
                             margin: '8px 0 0',
                             padding: 10,
-                            background: 'rgba(255, 255, 255, 0.06)',
+                            background: 'var(--ss-bg-surface)',
                             borderRadius: 8,
                             fontSize: 13,
-                            color: 'rgba(255,255,255,0.85)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            color: 'var(--ss-text-secondary)',
+                            border: '1px solid var(--ss-border-subtle)',
                           }}
                         >
                           💬 {e.message}
@@ -346,7 +346,7 @@ export default function EmergencyTab() {
                           style={{
                             margin: '6px 0 0',
                             fontSize: 12,
-                            color: 'rgba(255,255,255,0.6)',
+                            color: 'var(--ss-text-muted)',
                           }}
                         >
                           📝 {e.notes}

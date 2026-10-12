@@ -1,0 +1,15 @@
+/* ============================================
+   Smart School — Dark Mode Override
+   بيتطبق فقط لما data-theme="dark"
+   ملاحظة: القيم الافتراضية في theme.css
+   ============================================ */
+
+[data-theme='dark'] {
+  /* Dark Mode هو الافتراضي — كل القيم في theme.css :root */
+  color-scheme: dark;
+}
+
+html[data-theme='dark'] body {
+  background: var(--ss-bg-base);
+  color: var(--ss-text-primary);
+}

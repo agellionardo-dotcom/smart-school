@@ -34,7 +34,7 @@ export default function SettingsTab() {
   };
 
   const sectionTitle = {
-    color: '#67e8f9',
+    color: 'var(--ss-text-accent)',
     marginTop: 24,
     marginBottom: 12,
     fontSize: 15,
@@ -45,7 +45,7 @@ export default function SettingsTab() {
   };
 
   const labelStyle = {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'var(--ss-text-secondary)',
     fontSize: 13,
     fontWeight: 600,
     display: 'block',
@@ -57,26 +57,25 @@ export default function SettingsTab() {
     alignItems: 'center',
     gap: 10,
     marginBottom: 10,
-    color: 'rgba(255,255,255,0.85)',
+    color: 'var(--ss-text-secondary)',
     fontSize: 14,
     fontWeight: 500,
     cursor: 'pointer',
     padding: '8px 12px',
-    background: 'rgba(255,255,255,0.04)',
+    background: 'var(--ss-bg-surface)',
     borderRadius: 10,
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid var(--ss-border-subtle)',
     transition: 'all 0.2s',
   };
 
   return (
     <div>
-      {/* ✅ Header */}
       <h3
         style={{
           margin: 0,
           fontSize: 20,
           fontWeight: 700,
-          color: '#f8fafc',
+          color: 'var(--ss-text-primary)',
           display: 'flex',
           alignItems: 'center',
           gap: 8,
@@ -86,7 +85,6 @@ export default function SettingsTab() {
         ⚙️ إعدادات التطبيق
       </h3>
 
-      {/* ✅ Message */}
       {msg && (
         <div
           style={{
@@ -114,7 +112,6 @@ export default function SettingsTab() {
       )}
 
       <form onSubmit={save} className="ss-glass" style={{ padding: 24 }}>
-        {/* 🏫 School Info */}
         <h4 style={{ ...sectionTitle, marginTop: 0 }}>🏫 معلومات المدرسة</h4>
         <label style={labelStyle}>اسم المدرسة</label>
         <input
@@ -132,7 +129,6 @@ export default function SettingsTab() {
           onChange={e => setSettings({ ...settings, logoText: e.target.value })}
         />
 
-        {/* 🕐 Work Hours */}
         <h4 style={sectionTitle}>🕐 أوقات العمل</h4>
         <label style={labelStyle}>بداية العمل</label>
         <input
@@ -158,7 +154,6 @@ export default function SettingsTab() {
           onChange={e => setSettings({ ...settings, lateGraceMinutes: Number(e.target.value) })}
         />
 
-        {/* 📱 Features */}
         <h4 style={sectionTitle}>📱 الميزات</h4>
         <label style={checkLabel}>
           <input

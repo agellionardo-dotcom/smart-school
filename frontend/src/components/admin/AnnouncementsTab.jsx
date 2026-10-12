@@ -92,7 +92,7 @@ export default function AnnouncementsTab() {
   };
 
   const labelStyle = {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'var(--ss-text-secondary)',
     fontSize: 13,
     fontWeight: 600,
     display: 'block',
@@ -117,7 +117,7 @@ export default function AnnouncementsTab() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -180,7 +180,7 @@ export default function AnnouncementsTab() {
         >
           <h4
             style={{
-              color: '#f8fafc',
+              color: 'var(--ss-text-primary)',
               marginBottom: 16,
               fontSize: 17,
               fontWeight: 700,
@@ -247,7 +247,7 @@ export default function AnnouncementsTab() {
                 ))}
               </select>
               {(user.role === 'manager' || (user.role === 'hr' && !canSendToAll)) && (
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                <p style={{ fontSize: 11, color: 'var(--ss-text-muted)', marginTop: 4 }}>
                   ℹ️ الإعلان هيتبعت لفرعك بس
                 </p>
               )}
@@ -274,11 +274,11 @@ export default function AnnouncementsTab() {
       {/* ✅ List */}
       <div className="ss-glass" style={{ padding: 20 }}>
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             ⏳ جاري التحميل...
           </p>
         ) : announcements.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             لا توجد إعلانات
           </p>
         ) : (
@@ -291,8 +291,8 @@ export default function AnnouncementsTab() {
                   style={{
                     padding: 16,
                     borderRadius: 12,
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: 'var(--ss-bg-surface)',
+                    border: '1px solid var(--ss-border-subtle)',
                     borderRight: `4px solid transparent`,
                     borderImage: `${type.gradient} 1`,
                     borderImageSlice: 1,
@@ -327,8 +327,8 @@ export default function AnnouncementsTab() {
                         </span>
                         <span
                           style={{
-                            background: 'rgba(255,255,255,0.08)',
-                            color: 'rgba(255,255,255,0.7)',
+                            background: 'var(--ss-bg-badge)',
+                            color: 'var(--ss-text-muted)',
                             padding: '3px 10px',
                             borderRadius: 10,
                             fontSize: 11,
@@ -340,7 +340,7 @@ export default function AnnouncementsTab() {
                       </div>
                       <h4
                         style={{
-                          color: '#f8fafc',
+                          color: 'var(--ss-text-primary)',
                           margin: '0 0 8px',
                           fontSize: 16,
                           fontWeight: 700,
@@ -350,7 +350,7 @@ export default function AnnouncementsTab() {
                       </h4>
                       <p
                         style={{
-                          color: 'rgba(255,255,255,0.8)',
+                          color: 'var(--ss-text-secondary)',
                           fontSize: 14,
                           margin: '0 0 8px',
                           whiteSpace: 'pre-wrap',
@@ -362,7 +362,7 @@ export default function AnnouncementsTab() {
                       <div
                         style={{
                           fontSize: 11,
-                          color: 'rgba(255,255,255,0.5)',
+                          color: 'var(--ss-text-muted)',
                           display: 'flex',
                           gap: 12,
                           flexWrap: 'wrap',

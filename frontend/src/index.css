@@ -1,34 +1,23 @@
 /* ============================================
    Smart School — index.css
-   (محدّث ليتوافق مع التصميم الجديد)
+   كلاسات عامة تستخدم CSS variables
    ============================================ */
 
-/* ---------- متغيرات أساسية (نحافظ عليها للتوافق) ---------- */
-:root {
-  --navy: #0a1f44;
-  --navy-light: #142b5c;
-  --gray: #8b95a7;
-  --gray-light: #d1d7e0;
-  --bg: #0a1628;
-  --border: rgba(255, 255, 255, 0.12);
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-/* ---------- Reset ---------- */
+/* ---------- Reset & Body ---------- */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Cairo', 'Segoe UI', sans-serif;
+  font-family: var(--ss-font-family, 'Cairo', 'Segoe UI', sans-serif);
 }
 
-/* ---------- Body — شفاف عشان AnimatedBackground يظهر ---------- */
 body {
   background: transparent;
   min-height: 100vh;
   direction: rtl;
-  color: #f8fafc;
+  color: var(--ss-text-primary);
   position: relative;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
@@ -37,20 +26,23 @@ body {
 }
 
 /* ============================================
-   كلاسات عامة (تم تحديثها)
+   كلاسات عامة
    ============================================ */
 
-/* ---------- .glass — زجاجي داكن ---------- */
-.glass {
-  background: rgba(15, 33, 56, 0.75);
+/* ---------- .glass ---------- */
+.glass,
+.ss-glass {
+  background: var(--ss-bg-glass);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--ss-border-glass);
+  border-radius: var(--ss-radius-lg);
+  box-shadow: var(--ss-shadow-lg);
+  color: var(--ss-text-primary);
+  transition: all var(--ss-transition-base);
 }
 
-/* ---------- .btn — Gradient + Glow ---------- */
+/* ---------- .btn ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -59,7 +51,7 @@ body {
   padding: 14px 32px;
   border: none;
   border-radius: 14px;
-  background: linear-gradient(135deg, #00e5ff 0%, #a855f7 100%);
+  background: var(--ss-grad-primary);
   color: #fff;
   font-weight: 700;
   cursor: pointer;
@@ -75,60 +67,47 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 12px 32px rgba(0, 229, 255, 0.5);
 }
+.btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.98);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ---------- .btn.gray → نجعله Glass ---------- */
 .btn.gray {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #f8fafc;
+  background: var(--ss-bg-surface-strong);
+  border: 1px solid var(--ss-border-glass);
+  color: var(--ss-text-primary);
   box-shadow: none;
 }
-
 .btn.gray:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--ss-bg-hover);
   border-color: rgba(0, 229, 255, 0.4);
   box-shadow: 0 8px 24px rgba(0, 229, 255, 0.15);
 }
 
-/* ---------- .btn.green (لـ QR) — نحافظ على التدرج الأخضر ---------- */
 .btn.green {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: var(--ss-grad-success);
   box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
 }
-
 .btn.green:hover:not(:disabled) {
   box-shadow: 0 12px 32px rgba(16, 185, 129, 0.55);
 }
 
-/* ---------- .input — Glass ---------- */
+/* ---------- .input ---------- */
 .input {
   width: 100%;
   padding: 14px 18px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: #f8fafc;
+  border: 1px solid var(--ss-border-glass);
+  background: var(--ss-bg-input);
+  color: var(--ss-text-primary);
   font-size: 15px;
   outline: none;
   font-family: inherit;
   transition: all 0.25s;
 }
 
-.input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
-}
+.input::placeholder { color: var(--ss-text-muted); }
 
 .input:focus {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--ss-bg-surface-strong);
   border-color: rgba(0, 229, 255, 0.5);
   box-shadow: 0 0 0 4px rgba(0, 229, 255, 0.12);
 }
@@ -136,7 +115,6 @@ body {
 /* ============================================
    Dashboard
    ============================================ */
-
 .dashboard {
   padding: 30px;
   max-width: 1200px;
@@ -155,63 +133,62 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
-/* ---------- .stat-card — Glass ---------- */
+/* ---------- .stat-card ---------- */
 .stat-card {
   padding: 28px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--ss-bg-glass);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--ss-border-glass);
+  box-shadow: var(--ss-shadow-md);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: var(--ss-text-primary);
 }
 
 .stat-card:hover {
   transform: translateY(-4px);
   border-color: rgba(0, 229, 255, 0.3);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3), 0 0 24px rgba(0, 229, 255, 0.15);
+  box-shadow: var(--ss-shadow-lg), 0 0 24px rgba(0, 229, 255, 0.15);
 }
 
 .stat-card h3 {
   font-size: 42px;
   margin-bottom: 8px;
   font-weight: 900;
-  color: #f8fafc;
+  color: var(--ss-text-primary);
 }
 
 .stat-card p {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--ss-text-secondary);
   font-size: 15px;
   font-weight: 700;
   line-height: 1.5;
 }
 
 .stat-card p:last-child {
-  color: rgba(255, 255, 255, 0.6) !important;
+  color: var(--ss-text-muted) !important;
   font-weight: 500;
 }
 
 /* ============================================
-   Navbar (القديم — هنخليه fallback بس)
-   ملاحظة: Navbar الجديد بيستخدم .ss-navbar
+   Navbar
    ============================================ */
-
 .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  background: rgba(15, 33, 56, 0.85);
+  background: var(--ss-bg-glass);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  color: #fff;
+  color: var(--ss-text-primary);
   position: sticky;
   top: 0;
-  z-index: 100;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  z-index: var(--ss-z-navbar);
+  border-bottom: 1px solid var(--ss-border-subtle);
+  box-shadow: var(--ss-shadow-sm);
 }
 
 .navbar-brand {
@@ -219,29 +196,23 @@ body {
   align-items: center;
   gap: 12px;
 }
-
-.navbar-brand img {
-  width: 40px;
-  height: 40px;
-}
-
+.navbar-brand img { width: 40px; height: 40px; }
 .navbar-brand h2 {
   font-size: 18px;
   margin: 0;
-  color: #fff;
+  color: var(--ss-text-primary);
 }
 
 .navbar-toggle {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #fff;
+  background: var(--ss-bg-surface);
+  border: 1px solid var(--ss-border-glass);
+  color: var(--ss-text-primary);
   font-size: 24px;
   padding: 8px 14px;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
 }
-
 .navbar-toggle:hover {
   background: rgba(0, 229, 255, 0.15);
   border-color: rgba(0, 229, 255, 0.4);
@@ -250,48 +221,41 @@ body {
 /* ============================================
    Tables
    ============================================ */
-
 table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ss-bg-surface);
   backdrop-filter: blur(12px);
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ss-border-subtle);
 }
 
 th, td {
   padding: 14px;
   text-align: right;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
+  border-bottom: 1px solid var(--ss-border-subtle);
+  color: var(--ss-text-primary);
 }
 
 th {
   background: rgba(0, 229, 255, 0.1);
-  color: #67e8f9;
+  color: var(--ss-text-accent);
   font-weight: 800;
   font-size: 13px;
   letter-spacing: 0.3px;
 }
 
-tr:last-child td {
-  border-bottom: none;
-}
-
-tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
-}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--ss-bg-surface); }
 
 /* ============================================
-   Drawer (القديم — fallback)
+   Drawer
    ============================================ */
-
 .drawer-overlay {
   position: fixed;
-  top: 0; right: 0; bottom: 0; left: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
   z-index: 998;
@@ -301,56 +265,38 @@ tr:hover td {
   position: fixed;
   top: 0; right: 0; bottom: 0;
   width: 280px;
-  background: rgba(15, 33, 56, 0.92);
+  background: var(--ss-bg-glass);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  color: #fff;
+  color: var(--ss-text-primary);
   z-index: 999;
   overflow-y: auto;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid var(--ss-border-glass);
 }
 
 .drawer-header {
   padding: 24px;
   text-align: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--ss-border-glass);
 }
-
-.drawer-header img {
-  width: 80px;
-  height: 80px;
-}
-
-.drawer-header h3 {
-  font-size: 18px;
-  margin: 0;
-}
+.drawer-header img { width: 80px; height: 80px; }
+.drawer-header h3 { font-size: 18px; margin: 0; }
 
 .drawer-user {
   padding: 16px 24px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--ss-bg-surface);
 }
+.drawer-user-name { font-size: 15px; font-weight: 700; }
+.drawer-user-role { font-size: 12px; color: var(--ss-text-accent); }
 
-.drawer-user-name {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.drawer-user-role {
-  font-size: 12px;
-  color: #67e8f9;
-}
-
-.drawer-menu {
-  padding: 12px 0;
-}
+.drawer-menu { padding: 12px 0; }
 
 .drawer-link {
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 16px 24px;
-  color: #fff;
+  color: var(--ss-text-primary);
   text-decoration: none;
   cursor: pointer;
   border: none;
@@ -360,68 +306,46 @@ tr:hover td {
   font-family: inherit;
   transition: all 0.2s;
 }
-
-.drawer-link:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.drawer-link.admin-link {
-  color: #67e8f9;
-}
+.drawer-link:hover { background: var(--ss-bg-surface); }
+.drawer-link.admin-link { color: var(--ss-text-accent); }
 
 .drawer-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--ss-border-glass);
   margin: 8px 24px;
 }
 
 .drawer-footer {
   padding: 16px 24px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--ss-text-muted);
   text-align: center;
 }
 
 /* ============================================
-   Utility — بعض العناصر القديمة
+   Utility
    ============================================ */
+h1, h2, h3, h4, h5, h6 { color: var(--ss-text-primary); }
+p { color: var(--ss-text-secondary); }
 
-/* العناوين اللي كانت كحلي → بقت فاتحة */
-h1, h2, h3, h4, h5, h6 {
-  color: #f8fafc;
-}
-
-/* الفقرات النصية */
-p {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-/* الروابط */
 a {
-  color: #67e8f9;
+  color: var(--ss-text-accent);
   transition: color 0.2s;
 }
-
-a:hover {
-  color: #00e5ff;
-}
+a:hover { color: var(--ss-cyan); }
 
 /* ============================================
-   Responsive
+   Admin Tabs
    ============================================ */
-/* ============================================
-   Admin Tabs (Glass Style)
-   ============================================ */
-
 .admin-tab {
   flex: 0 0 auto;
   padding: 10px 18px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--ss-border-glass);
+  background: var(--ss-bg-surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--ss-text-secondary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -431,14 +355,14 @@ a:hover {
 }
 
 .admin-tab:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--ss-bg-hover);
   border-color: rgba(0, 229, 255, 0.3);
-  color: #fff;
+  color: var(--ss-text-primary);
   transform: translateY(-2px);
 }
 
 .admin-tab.active {
-  background: linear-gradient(135deg, #00e5ff 0%, #a855f7 100%);
+  background: var(--ss-grad-primary);
   color: #fff;
   border-color: transparent;
   box-shadow: 0 6px 20px rgba(0, 229, 255, 0.4);
@@ -446,58 +370,51 @@ a:hover {
 }
 
 /* ============================================
-   Stat Card Variants (ملونة)
+   Stat Card Variants
    ============================================ */
-
 .stat-card-success {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.15));
   border-color: rgba(16, 185, 129, 0.3);
 }
-
 .stat-card-success h3 { color: #34d399; }
 
 .stat-card-warning {
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(217, 119, 6, 0.15));
   border-color: rgba(251, 191, 36, 0.3);
 }
-
 .stat-card-warning h3 { color: #fcd34d; }
 
 .stat-card-danger {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(185, 28, 28, 0.15));
   border-color: rgba(239, 68, 68, 0.3);
 }
-
 .stat-card-danger h3 { color: #fca5a5; }
+
 /* ============================================
    Payroll Stats
    ============================================ */
-
 .payroll-stat {
   padding: 16px;
   border-radius: 14px;
   text-align: center;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--ss-border-glass);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-
-.payroll-stat:hover {
-  transform: translateY(-3px);
-}
+.payroll-stat:hover { transform: translateY(-3px); }
 
 .payroll-stat-value {
   font-size: 20px;
   font-weight: 900;
-  color: #f8fafc;
+  color: var(--ss-text-primary);
   margin-bottom: 4px;
   line-height: 1.2;
 }
 
 .payroll-stat-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--ss-text-muted);
   font-weight: 600;
 }
 
@@ -505,51 +422,35 @@ a:hover {
   background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(168, 85, 247, 0.2));
   border-color: rgba(0, 229, 255, 0.3);
 }
-
-.payroll-stat-primary .payroll-stat-value {
-  color: #67e8f9;
-}
+.payroll-stat-primary .payroll-stat-value { color: var(--ss-text-accent); }
 
 .payroll-stat-info {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(37, 99, 235, 0.15));
   border-color: rgba(59, 130, 246, 0.3);
 }
-
-.payroll-stat-info .payroll-stat-value {
-  color: #93c5fd;
-}
+.payroll-stat-info .payroll-stat-value { color: #93c5fd; }
 
 .payroll-stat-success {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.15));
   border-color: rgba(16, 185, 129, 0.3);
 }
-
-.payroll-stat-success .payroll-stat-value {
-  color: #34d399;
-}
+.payroll-stat-success .payroll-stat-value { color: #34d399; }
 
 .payroll-stat-warning {
   background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(217, 119, 6, 0.15));
   border-color: rgba(251, 191, 36, 0.3);
 }
-
-.payroll-stat-warning .payroll-stat-value {
-  color: #fcd34d;
-}
+.payroll-stat-warning .payroll-stat-value { color: #fcd34d; }
 
 .payroll-stat-danger {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(185, 28, 28, 0.15));
   border-color: rgba(239, 68, 68, 0.3);
 }
-
-.payroll-stat-danger .payroll-stat-value {
-  color: #fca5a5;
-}
+.payroll-stat-danger .payroll-stat-value { color: #fca5a5; }
 
 /* ============================================
    Payroll Status Badge
    ============================================ */
-
 .payroll-status {
   color: #fff;
   padding: 4px 10px;
@@ -559,22 +460,22 @@ a:hover {
   display: inline-block;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
-/* ============================================
-   Page Titles (Unified)
-   ============================================ */
 
+/* ============================================
+   Page Titles
+   ============================================ */
 .page-title {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--ss-text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .page-subtitle {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--ss-text-secondary);
   font-size: 14px;
   margin: 0;
 }
@@ -582,22 +483,14 @@ a:hover {
 /* ============================================
    Table Enhancements
    ============================================ */
-
-table td b {
-  color: #f8fafc;
-  font-weight: 700;
-}
-
-table td {
-  font-size: 13px;
-}
+table td b { color: var(--ss-text-primary); font-weight: 700; }
+table td { font-size: 13px; }
 
 /* ============================================
    Chart Container
    ============================================ */
-
 .chart-title {
-  color: #67e8f9;
+  color: var(--ss-text-accent);
   margin-bottom: 16px;
   font-size: 16px;
   font-weight: 700;
@@ -605,6 +498,10 @@ table td {
   align-items: center;
   gap: 8px;
 }
+
+/* ============================================
+   Responsive
+   ============================================ */
 @media (max-width: 768px) {
   .dashboard { padding: 16px; }
   .grid { grid-template-columns: 1fr; }

@@ -27,11 +27,10 @@ export default function Dashboard() {
       <div style={{ marginBottom: 24 }}>
         <h1
           style={{
-            color: '#f8fafc',
             marginBottom: 8,
             fontSize: 28,
             fontWeight: 800,
-            background: 'linear-gradient(135deg, #00e5ff, #a855f7)',
+            background: 'var(--ss-grad-primary)',
             WebkitBackgroundClip: 'text',
             backgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -40,14 +39,26 @@ export default function Dashboard() {
         >
           👋 مرحباً، {user.name}
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, fontSize: 14 }}>
+        <p
+          style={{
+            color: 'var(--ss-text-secondary)',
+            margin: 0,
+            fontSize: 14,
+          }}
+        >
           الفرع: {user.branch?.name || 'غير محدد'}
         </p>
       </div>
 
       {loading ? (
         <GlassCard padding="lg">
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.7)', margin: 0 }}>
+          <p
+            style={{
+              textAlign: 'center',
+              color: 'var(--ss-text-secondary)',
+              margin: 0,
+            }}
+          >
             ⏳ جاري التحميل...
           </p>
         </GlassCard>
@@ -60,10 +71,24 @@ export default function Dashboard() {
                 <div style={{ fontSize: 42, marginBottom: 8 }}>
                   {attendance?.checkIn ? '✅' : '📥'}
                 </div>
-                <p style={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, margin: 0, fontSize: 15 }}>
+                <p
+                  style={{
+                    color: 'var(--ss-text-primary)',
+                    fontWeight: 700,
+                    margin: 0,
+                    fontSize: 15,
+                  }}
+                >
                   آخر حضور
                 </p>
-                <p style={{ color: 'rgba(255,255,255,0.55)', marginTop: 8, fontSize: 13, fontWeight: 500 }}>
+                <p
+                  style={{
+                    color: 'var(--ss-text-muted)',
+                    marginTop: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                >
                   {attendance?.checkIn ? toCairoTime(attendance.checkIn) : 'لم يتم التسجيل'}
                 </p>
               </div>
@@ -74,10 +99,24 @@ export default function Dashboard() {
                 <div style={{ fontSize: 42, marginBottom: 8 }}>
                   {attendance?.checkOut ? '✅' : '📤'}
                 </div>
-                <p style={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, margin: 0, fontSize: 15 }}>
+                <p
+                  style={{
+                    color: 'var(--ss-text-primary)',
+                    fontWeight: 700,
+                    margin: 0,
+                    fontSize: 15,
+                  }}
+                >
                   آخر انصراف
                 </p>
-                <p style={{ color: 'rgba(255,255,255,0.55)', marginTop: 8, fontSize: 13, fontWeight: 500 }}>
+                <p
+                  style={{
+                    color: 'var(--ss-text-muted)',
+                    marginTop: 8,
+                    fontSize: 13,
+                    fontWeight: 500,
+                  }}
+                >
                   {attendance?.checkOut ? toCairoTime(attendance.checkOut) : 'لم يتم التسجيل'}
                 </p>
               </div>

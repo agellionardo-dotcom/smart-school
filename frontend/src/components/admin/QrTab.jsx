@@ -85,7 +85,7 @@ export default function QrTab() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -94,7 +94,7 @@ export default function QrTab() {
         >
           📱 QR Code للحضور
         </h3>
-        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, margin: 0 }}>
+        <p style={{ color: 'var(--ss-text-muted)', fontSize: 13, margin: 0 }}>
           اختر فرعاً لعرض رمز QR الخاص به:
         </p>
       </div>
@@ -118,7 +118,7 @@ export default function QrTab() {
         <div className="ss-glass" style={{ padding: 24, textAlign: 'center' }}>
           <h4
             style={{
-              color: '#f8fafc',
+              color: 'var(--ss-text-primary)',
               marginBottom: 16,
               fontSize: 17,
               fontWeight: 700,

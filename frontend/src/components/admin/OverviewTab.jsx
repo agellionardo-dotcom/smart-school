@@ -14,7 +14,7 @@ export default function OverviewTab() {
 
   if (loading) {
     return (
-      <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.7)' }}>
+      <p style={{ textAlign: 'center', color: 'var(--ss-text-secondary)' }}>
         ⏳ جاري التحميل...
       </p>
     );
@@ -58,7 +58,7 @@ export default function OverviewTab() {
           marginBottom: 16,
           fontSize: 20,
           fontWeight: 700,
-          color: '#f8fafc',
+          color: 'var(--ss-text-primary)',
           display: 'flex',
           alignItems: 'center',
           gap: 8,
@@ -73,7 +73,7 @@ export default function OverviewTab() {
           <div key={b._id} className="ss-glass" style={{ padding: 20 }}>
             <h4
               style={{
-                color: '#f8fafc',
+                color: 'var(--ss-text-primary)',
                 marginBottom: 12,
                 fontSize: 16,
                 fontWeight: 700,
@@ -88,7 +88,7 @@ export default function OverviewTab() {
                 gridTemplateColumns: '1fr 1fr',
                 gap: 10,
                 fontSize: 14,
-                color: 'rgba(255,255,255,0.85)',
+                color: 'var(--ss-text-secondary)',
               }}
             >
               <div>👥 <b>{b.total}</b> موظف</div>
@@ -101,7 +101,7 @@ export default function OverviewTab() {
               style={{
                 marginTop: 12,
                 fontSize: 12,
-                color: 'rgba(255,255,255,0.5)',
+                color: 'var(--ss-text-muted)',
               }}
             >
               📍 نطاق: {b.radius}م | {b.location.lat.toFixed(3)}, {b.location.lng.toFixed(3)}

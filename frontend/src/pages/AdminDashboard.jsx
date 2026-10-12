@@ -38,8 +38,8 @@ export default function AdminDashboard() {
     { id: 'announcements', label: '📢 الإعلانات',      roles: ['superadmin', 'manager', 'hr'] },
     { id: 'payroll',       label: '💰 المرتبات',       roles: ['superadmin', 'hr'] },
     { id: 'reports',       label: '📊 التقارير',       roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'documents',     label: '📄 المستندات',      roles: ['superadmin', 'manager', 'hr'] }, // ✅ جديد
-    { id: 'organization',  label: '📄 الهيكل التنظيمي',  roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'documents',     label: '📄 المستندات',      roles: ['superadmin', 'manager', 'hr'] },
+    { id: 'organization',  label: '📄 الهيكل التنظيمي', roles: ['superadmin', 'manager', 'hr'] },
     { id: 'users',         label: '👥 المستخدمون',     roles: ['superadmin', 'hr'] },
     { id: 'branches',      label: '🏢 الفروع',         roles: ['superadmin'] },
     { id: 'map',           label: '🗺️ الخريطة',        roles: ['superadmin', 'manager', 'hr', 'viewer'] },
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
             marginBottom: 4,
             fontSize: 26,
             fontWeight: 800,
-            background: 'linear-gradient(135deg, #00e5ff, #a855f7)',
+            background: 'var(--ss-grad-primary)',
             WebkitBackgroundClip: 'text',
             backgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -73,7 +73,7 @@ export default function AdminDashboard() {
         >
           👑 لوحة الإدارة
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, fontSize: 14 }}>
+        <p style={{ color: 'var(--ss-text-secondary)', margin: 0, fontSize: 14 }}>
           مرحباً، {user.name}
         </p>
       </div>
@@ -106,7 +106,7 @@ export default function AdminDashboard() {
         {tab === 'announcements' && <AnnouncementsTab />}
         {tab === 'payroll' && <PayrollTab />}
         {tab === 'reports' && <AttendanceReportTab />}
-        {tab === 'documents' && <DocumentsTab />} {/* ✅ جديد */}
+        {tab === 'documents' && <DocumentsTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'branches' && <BranchesTab />}
         {tab === 'map' && <BranchesMap />}

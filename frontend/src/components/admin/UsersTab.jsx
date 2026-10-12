@@ -183,7 +183,7 @@ export default function UsersTab() {
             marginBottom: showReports ? 12 : 0,
           }}
         >
-          <b style={{ color: '#f8fafc', fontSize: 15 }}>📊 التقارير والاستيراد</b>
+          <b style={{ color: 'var(--ss-text-primary)', fontSize: 15 }}>📊 التقارير والاستيراد</b>
           <button
             className="btn gray"
             style={{ padding: '6px 12px', fontSize: 12 }}
@@ -261,7 +261,7 @@ export default function UsersTab() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -317,7 +317,7 @@ export default function UsersTab() {
         <div className="ss-glass" style={{ padding: 24, marginBottom: 20 }}>
           <h4
             style={{
-              color: '#f8fafc',
+              color: 'var(--ss-text-primary)',
               marginBottom: 16,
               fontSize: 17,
               fontWeight: 700,
@@ -402,11 +402,11 @@ export default function UsersTab() {
       {/* ✅ Table */}
       <div className="ss-glass" style={{ padding: 20 }}>
         {loading ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             ⏳ جاري التحميل...
           </p>
         ) : users.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)' }}>
+          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
             لا يوجد مستخدمون
           </p>
         ) : (
@@ -426,14 +426,14 @@ export default function UsersTab() {
                 {users.map(u => (
                   <tr key={u._id}>
                     <td><b>{u.name}</b></td>
-                    <td style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                    <td style={{ fontSize: 13, color: 'var(--ss-text-secondary)' }}>
                       {u.email}
                     </td>
                     <td>{roleBadge(u.role)}</td>
-                    <td style={{ color: 'rgba(255,255,255,0.75)' }}>
+                    <td style={{ color: 'var(--ss-text-secondary)' }}>
                       {u.branch?.name || '-'}
                     </td>
-                    <td style={{ color: 'rgba(255,255,255,0.75)' }}>
+                    <td style={{ color: 'var(--ss-text-secondary)' }}>
                       {u.phone || '-'}
                     </td>
                     <td>
