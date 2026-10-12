@@ -1,21 +1,11 @@
-// frontend/src/components/admin/AnalyticsTab.jsx
-
 import React, { useEffect, useState } from 'react';
 import api from '../../api';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import ChartContainer from '../ChartContainer';
 
 const COLORS = ['#00e5ff', '#a855f7', '#fbbf24', '#10b981', '#ef4444', '#ec4899'];
-
-const TOOLTIP_STYLE = {
-  background: 'rgba(15, 33, 56, 0.95)',
-  border: '1px solid rgba(255,255,255,0.15)',
-  borderRadius: 12,
-  color: '#f8fafc',
-};
 
 export default function AnalyticsTab() {
   const [data, setData] = useState(null);
@@ -122,78 +112,115 @@ export default function AnalyticsTab() {
 
       {/* ✅ Payroll Cost Chart */}
       <div className="ss-glass" style={{ padding: 20, marginBottom: 20 }}>
-        <h4 style={{ color: '#67e8f9', marginBottom: 16, fontSize: 16, fontWeight: 700 }}>
+        <h4
+          style={{
+            color: '#67e8f9',
+            marginBottom: 16,
+            fontSize: 16,
+            fontWeight: 700,
+          }}
+        >
           💰 تكلفة الرواتب (آخر 6 شهور)
         </h4>
-        <ChartContainer height={300}>
-          {({ width, height }) => (
-            <BarChart width={width} height={height} data={data.payrollCosts}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="month" stroke="rgba(255,255,255,0.6)" />
-              <YAxis tickFormatter={(v) => (v / 1000) + 'k'} stroke="rgba(255,255,255,0.6)" />
-              <Tooltip formatter={(v) => formatMoney(v) + ' ج.م'} contentStyle={TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ color: '#f8fafc' }} />
-              <Bar dataKey="totalNet" fill="#00e5ff" name="الصافي" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="totalDeductions" fill="#ef4444" name="الخصومات" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          )}
-        </ChartContainer>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={data.payrollCosts}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+            <XAxis dataKey="month" stroke="rgba(255,255,255,0.6)" />
+            <YAxis tickFormatter={(v) => (v / 1000) + 'k'} stroke="rgba(255,255,255,0.6)" />
+            <Tooltip
+              formatter={(v) => formatMoney(v) + ' ج.م'}
+              contentStyle={{
+                background: 'rgba(15, 33, 56, 0.95)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 12,
+                color: '#f8fafc',
+              }}
+            />
+            <Legend wrapperStyle={{ color: '#f8fafc' }} />
+            <Bar dataKey="totalNet" fill="#00e5ff" name="الصافي" radius={[8, 8, 0, 0]} />
+            <Bar dataKey="totalDeductions" fill="#ef4444" name="الخصومات" radius={[8, 8, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       {/* ✅ Attendance Trend */}
       <div className="ss-glass" style={{ padding: 20, marginBottom: 20 }}>
-        <h4 style={{ color: '#67e8f9', marginBottom: 16, fontSize: 16, fontWeight: 700 }}>
+        <h4
+          style={{
+            color: '#67e8f9',
+            marginBottom: 16,
+            fontSize: 16,
+            fontWeight: 700,
+          }}
+        >
           📉 نسب الغياب (آخر 30 يوم)
         </h4>
-        <ChartContainer height={300}>
-          {({ width, height }) => (
-            <LineChart width={width} height={height} data={data.attendanceTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="date" stroke="rgba(255,255,255,0.6)" />
-              <YAxis stroke="rgba(255,255,255,0.6)" />
-              <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ color: '#f8fafc' }} />
-              <Line type="monotone" dataKey="present" stroke="#10b981" name="حضور" strokeWidth={2} />
-              <Line type="monotone" dataKey="late" stroke="#fbbf24" name="تأخير" strokeWidth={2} />
-              <Line type="monotone" dataKey="absent" stroke="#ef4444" name="غياب" strokeWidth={2} />
-            </LineChart>
-          )}
-        </ChartContainer>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={data.attendanceTrend}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+            <XAxis dataKey="date" stroke="rgba(255,255,255,0.6)" />
+            <YAxis stroke="rgba(255,255,255,0.6)" />
+            <Tooltip
+              contentStyle={{
+                background: 'rgba(15, 33, 56, 0.95)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 12,
+                color: '#f8fafc',
+              }}
+            />
+            <Legend wrapperStyle={{ color: '#f8fafc' }} />
+            <Line type="monotone" dataKey="present" stroke="#10b981" name="حضور" strokeWidth={2} />
+            <Line type="monotone" dataKey="late" stroke="#fbbf24" name="تأخير" strokeWidth={2} />
+            <Line type="monotone" dataKey="absent" stroke="#ef4444" name="غياب" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
 
       {/* ✅ Gender + Age */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
           gap: 20,
           marginBottom: 20,
         }}
       >
         <div className="ss-glass" style={{ padding: 20 }}>
-          <h4 style={{ color: '#67e8f9', marginBottom: 16, fontSize: 16, fontWeight: 700 }}>
+          <h4
+            style={{
+              color: '#67e8f9',
+              marginBottom: 16,
+              fontSize: 16,
+              fontWeight: 700,
+            }}
+          >
             👥 التنوع الجندري
           </h4>
           {data.genderData.some(g => g.value > 0) ? (
-            <ChartContainer height={250}>
-              {({ width, height }) => (
-                <PieChart width={width} height={height}>
-                  <Pie
-                    data={data.genderData.filter(g => g.value > 0)}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={Math.min(width, height) / 3}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {data.genderData.filter(g => g.value > 0).map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                </PieChart>
-              )}
-            </ChartContainer>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={data.genderData.filter(g => g.value > 0)}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  {data.genderData.filter(g => g.value > 0).map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: 'rgba(15, 33, 56, 0.95)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 12,
+                    color: '#f8fafc',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           ) : (
             <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: 40 }}>
               لا توجد بيانات جنس
@@ -202,25 +229,37 @@ export default function AnalyticsTab() {
         </div>
 
         <div className="ss-glass" style={{ padding: 20 }}>
-          <h4 style={{ color: '#67e8f9', marginBottom: 16, fontSize: 16, fontWeight: 700 }}>
+          <h4
+            style={{
+              color: '#67e8f9',
+              marginBottom: 16,
+              fontSize: 16,
+              fontWeight: 700,
+            }}
+          >
             🎂 توزيع الأعمار
           </h4>
           {data.ageData.length > 0 ? (
-            <ChartContainer height={250}>
-              {({ width, height }) => (
-                <BarChart width={width} height={height} data={data.ageData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.6)" />
-                  <YAxis stroke="rgba(255,255,255,0.6)" />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Bar dataKey="value" name="عدد الموظفين" radius={[8, 8, 0, 0]}>
-                    {data.ageData.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              )}
-            </ChartContainer>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={data.ageData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.6)" />
+                <YAxis stroke="rgba(255,255,255,0.6)" />
+                <Tooltip
+                  contentStyle={{
+                    background: 'rgba(15, 33, 56, 0.95)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 12,
+                    color: '#f8fafc',
+                  }}
+                />
+                <Bar dataKey="value" name="عدد الموظفين" radius={[8, 8, 0, 0]}>
+                  {data.ageData.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           ) : (
             <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: 40 }}>
               لا توجد بيانات أعمار
@@ -233,51 +272,75 @@ export default function AnalyticsTab() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
           gap: 20,
         }}
       >
         <div className="ss-glass" style={{ padding: 20 }}>
-          <h4 style={{ color: '#67e8f9', marginBottom: 16, fontSize: 16, fontWeight: 700 }}>
+          <h4
+            style={{
+              color: '#67e8f9',
+              marginBottom: 16,
+              fontSize: 16,
+              fontWeight: 700,
+            }}
+          >
             🏢 توزيع الموظفين حسب الفرع
           </h4>
-          <ChartContainer height={300}>
-            {({ width, height }) => (
-              <BarChart width={width} height={height} data={data.branchDistribution} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                <XAxis type="number" stroke="rgba(255,255,255,0.6)" />
-                <YAxis dataKey="name" type="category" width={100} stroke="rgba(255,255,255,0.6)" />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Bar dataKey="count" name="عدد الموظفين" fill="#a855f7" radius={[0, 8, 8, 0]} />
-              </BarChart>
-            )}
-          </ChartContainer>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data.branchDistribution} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis type="number" stroke="rgba(255,255,255,0.6)" />
+              <YAxis dataKey="name" type="category" width={120} stroke="rgba(255,255,255,0.6)" />
+              <Tooltip
+                contentStyle={{
+                  background: 'rgba(15, 33, 56, 0.95)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: 12,
+                  color: '#f8fafc',
+                }}
+              />
+              <Bar dataKey="count" name="عدد الموظفين" fill="#a855f7" radius={[0, 8, 8, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
         <div className="ss-glass" style={{ padding: 20 }}>
-          <h4 style={{ color: '#67e8f9', marginBottom: 16, fontSize: 16, fontWeight: 700 }}>
+          <h4
+            style={{
+              color: '#67e8f9',
+              marginBottom: 16,
+              fontSize: 16,
+              fontWeight: 700,
+            }}
+          >
             📂 توزيع الموظفين حسب القسم
           </h4>
           {data.departmentData.length > 0 ? (
-            <ChartContainer height={300}>
-              {({ width, height }) => (
-                <PieChart width={width} height={height}>
-                  <Pie
-                    data={data.departmentData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={Math.min(width, height) / 3}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                  >
-                    {data.departmentData.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} />
-                </PieChart>
-              )}
-            </ChartContainer>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={data.departmentData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  {data.departmentData.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: 'rgba(15, 33, 56, 0.95)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 12,
+                    color: '#f8fafc',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           ) : (
             <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', padding: 40 }}>
               لا توجد بيانات أقسام

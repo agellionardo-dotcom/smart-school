@@ -4,9 +4,6 @@
   "installCommand": "npm install",
   "framework": "create-react-app",
   "rewrites": [
-    {
-      "source": "/((?!static/|models/|.*\\.(js|mjs|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map|json)$).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
