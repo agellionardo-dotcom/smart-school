@@ -13,8 +13,6 @@ const {
 
 // ============================================
 // ✅ 1. تسجيل الوجه (Enroll)
-// POST /api/face/enroll
-// يقبل: image (base64) أو faceDescriptor (128 رقم)
 // ============================================
 router.post('/enroll', auth, async (req, res) => {
   try {
@@ -22,7 +20,6 @@ router.post('/enroll', auth, async (req, res) => {
 
     let descriptor = null;
 
-    // ✅ الحالة 1: descriptor جاهز من التطبيق
     if (faceDescriptor && Array.isArray(faceDescriptor)) {
       if (faceDescriptor.length !== 128) {
         return res.status(400).json({
@@ -31,9 +28,7 @@ router.post('/enroll', auth, async (req, res) => {
       }
       descriptor = faceDescriptor;
       console.log('[Face Enroll] Using descriptor from client (128 values)');
-    }
-    // ✅ الحالة 2: صورة base64 (من المتصفح)
-    else if (image) {
+    } else if (image) {
       console.log('[Face Enroll] Processing image on server...');
       const imageBuffer = dataURLToBuffer(image);
       const result = await getFaceDescriptor(imageBuffer);
@@ -42,15 +37,12 @@ router.post('/enroll', auth, async (req, res) => {
         return res.status(400).json({ msg: result.error });
       }
       descriptor = result.descriptor;
-    }
-    // ❌ لا image ولا faceDescriptor
-    else {
+    } else {
       return res.status(400).json({
         msg: 'مطلوب صورة (image) أو faceDescriptor',
       });
     }
 
-    // ✅ حفظ في المستخدم
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
@@ -76,14 +68,11 @@ router.post('/enroll', auth, async (req, res) => {
 
 // ============================================
 // ✅ 2. التحقق من الوجه (Verify)
-// POST /api/face/verify
-// يقبل: image (base64) أو faceDescriptor (128 رقم)
 // ============================================
 router.post('/verify', auth, async (req, res) => {
   try {
     const { image, faceDescriptor } = req.body;
 
-    // ✅ جلب المستخدم + descriptor
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
@@ -98,7 +87,6 @@ router.post('/verify', auth, async (req, res) => {
 
     let descriptor = null;
 
-    // ✅ الحالة 1: descriptor جاهز
     if (faceDescriptor && Array.isArray(faceDescriptor)) {
       if (faceDescriptor.length !== 128) {
         return res.status(400).json({
@@ -107,9 +95,7 @@ router.post('/verify', auth, async (req, res) => {
       }
       descriptor = faceDescriptor;
       console.log('[Face Verify] Using descriptor from client');
-    }
-    // ✅ الحالة 2: صورة base64
-    else if (image) {
+    } else if (image) {
       const imageBuffer = dataURLToBuffer(image);
       const result = await getFaceDescriptor(imageBuffer);
 
@@ -117,15 +103,12 @@ router.post('/verify', auth, async (req, res) => {
         return res.status(400).json({ msg: result.error });
       }
       descriptor = result.descriptor;
-    }
-    // ❌ لا image ولا descriptor
-    else {
+    } else {
       return res.status(400).json({
         msg: 'مطلوب صورة (image) أو faceDescriptor',
       });
     }
 
-    // ✅ مقارنة
     const comparison = compareFaces(user.faceDescriptor, descriptor);
 
     console.log(
@@ -162,7 +145,6 @@ router.post('/verify', auth, async (req, res) => {
 
 // ============================================
 // ✅ 3. حالة تسجيل الوجه
-// GET /api/face/status
 // ============================================
 router.get('/status', auth, async (req, res) => {
   try {
@@ -182,8 +164,31 @@ router.get('/status', auth, async (req, res) => {
 });
 
 // ============================================
-// ✅ 4. حذف الوجه
-// DELETE /api/face/remove
+// ✅ 4. فحص شامل (جديد)
+// GET /api/face/check
+// ============================================
+router.get('/check', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    }
+
+    const faceEnrolled = user.faceEnrolled || false;
+
+    res.json({
+      faceEnrolled,
+      faceEnrolledAt: user.faceEnrolledAt || null,
+      canEnroll: true,
+      canVerify: faceEnrolled,
+    });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ============================================
+// ✅ 5. حذف الوجه
 // ============================================
 router.delete('/remove', auth, async (req, res) => {
   try {

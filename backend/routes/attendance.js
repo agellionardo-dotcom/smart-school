@@ -4,7 +4,7 @@ const Branch = require('../models/Branch');
 const auth = require('../middleware/auth');
 
 // ============================================
-// ✅ دالة حساب المسافة
+// ✅ دالة حساب المسافة (Haversine)
 // ============================================
 function distance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -22,7 +22,15 @@ function distance(lat1, lon1, lat2, lon2) {
 // ============================================
 async function checkInHandler(req, res) {
   try {
-    const { lat, lng, biometricUsed, biometricType, deviceId } = req.body;
+    const {
+      lat,
+      lng,
+      biometricUsed,
+      biometricType,
+      faceVerified,
+      faceDistance,
+      deviceId,
+    } = req.body;
 
     if (!lat || !lng) {
       return res.status(400).json({ msg: 'الموقع مطلوب' });
@@ -35,6 +43,7 @@ async function checkInHandler(req, res) {
     if (d > branch.radius) {
       return res.status(400).json({
         msg: `أنت بعيد بـ ${Math.round(d)} متر عن الفرع`,
+        distance: Math.round(d),
       });
     }
 
@@ -56,9 +65,17 @@ async function checkInHandler(req, res) {
     const lateMinutes =
       now > workStart ? Math.floor((now - workStart) / 60000) : 0;
 
-    // ✅ تحديد طريقة التحقق
-    const verificationMethod = biometricUsed ? 'gps_biometric' : 'gps_only';
-    const mainMethod = biometricUsed ? 'gps_biometric' : 'gps';
+    // ✅ تحديد طريقة التحقق الرئيسية
+    let mainMethod = 'gps';
+    let verificationMethod = 'gps_only';
+
+    if (faceVerified) {
+      mainMethod = 'face';
+      verificationMethod = 'face';
+    } else if (biometricUsed) {
+      mainMethod = 'gps_biometric';
+      verificationMethod = 'gps_biometric';
+    }
 
     const att = await Attendance.create({
       user: req.user.id,
@@ -73,11 +90,23 @@ async function checkInHandler(req, res) {
         method: verificationMethod,
         biometricUsed: !!biometricUsed,
         biometricType: biometricType || null,
+        faceVerified: !!faceVerified,
+        faceDistance: faceDistance || null,
         deviceId: deviceId || null,
       },
     });
 
-    res.json(att);
+    // ✅ إرجاع مع معلومات الفرع
+    const populated = await Attendance.findById(att._id).populate('branch', 'name type');
+
+    res.json({
+      ...populated.toObject(),
+      detectedBranch: {
+        name: branch.name,
+        type: branch.type,
+        distance: Math.round(d),
+      },
+    });
   } catch (err) {
     console.error('checkIn error:', err);
     res.status(500).json({ msg: err.message });
@@ -89,7 +118,31 @@ async function checkInHandler(req, res) {
 // ============================================
 async function checkOutHandler(req, res) {
   try {
-    const { lat, lng, biometricUsed, biometricType, deviceId } = req.body;
+    const {
+      lat,
+      lng,
+      biometricUsed,
+      biometricType,
+      faceVerified,
+      faceDistance,
+      deviceId,
+    } = req.body;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ msg: 'الموقع مطلوب' });
+    }
+
+    const branch = await Branch.findById(req.user.branch);
+    if (!branch) return res.status(400).json({ msg: 'الفرع غير موجود' });
+
+    const d = distance(lat, lng, branch.location.lat, branch.location.lng);
+    if (d > branch.radius) {
+      return res.status(400).json({
+        msg: `أنت بعيد بـ ${Math.round(d)} متر عن الفرع`,
+        distance: Math.round(d),
+      });
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -103,17 +156,29 @@ async function checkOutHandler(req, res) {
     att.checkOut = new Date();
     att.checkOutLocation = { lat, lng };
 
-    // ✅ تحديث verification
     if (att.verification) {
       att.verification.biometricUsed =
         att.verification.biometricUsed || !!biometricUsed;
-      if (biometricType) {
-        att.verification.biometricType = biometricType;
+      if (biometricType) att.verification.biometricType = biometricType;
+      if (faceVerified) {
+        att.verification.faceVerified = true;
+        att.verification.faceDistance = faceDistance || null;
       }
+      if (deviceId) att.verification.deviceId = deviceId;
     }
 
     await att.save();
-    res.json(att);
+
+    const populated = await Attendance.findById(att._id).populate('branch', 'name type');
+
+    res.json({
+      ...populated.toObject(),
+      detectedBranch: {
+        name: branch.name,
+        type: branch.type,
+        distance: Math.round(d),
+      },
+    });
   } catch (err) {
     console.error('checkOut error:', err);
     res.status(500).json({ msg: err.message });
@@ -133,7 +198,7 @@ async function todayHandler(req, res) {
     const att = await Attendance.findOne({
       user: req.user.id,
       date: { $gte: today, $lt: tomorrow },
-    });
+    }).populate('branch', 'name type');
 
     if (!att) {
       return res.json({
@@ -142,6 +207,7 @@ async function todayHandler(req, res) {
         status: 'absent',
         lateMinutes: 0,
         verification: null,
+        branch: null,
       });
     }
 
@@ -154,6 +220,7 @@ async function todayHandler(req, res) {
       lateMinutes: att.lateMinutes || 0,
       method: att.method,
       verification: att.verification || null,
+      branch: att.branch || null,
       checkInLocation: att.checkInLocation || null,
       checkOutLocation: att.checkOutLocation || null,
     });
@@ -164,9 +231,53 @@ async function todayHandler(req, res) {
 }
 
 // ============================================
+// ✅ Route: التحقق من النطاق الجغرافي
+// POST /api/attendance/check-range
+// ============================================
+router.post('/check-range', auth, async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ 
+        inRange: false,
+        msg: 'الموقع مطلوب' 
+      });
+    }
+
+    const branch = await Branch.findById(req.user.branch || req.body.branch);
+    if (!branch) {
+      return res.status(400).json({
+        inRange: false,
+        msg: 'الفرع غير موجود',
+      });
+    }
+
+    const d = distance(lat, lng, branch.location.lat, branch.location.lng);
+    const inRange = d <= branch.radius;
+
+    res.json({
+      inRange,
+      distance: Math.round(d),
+      radius: branch.radius,
+      branchName: branch.name,
+      branchType: branch.type,
+      msg: inRange
+        ? `أنت داخل نطاق ${branch.name}`
+        : `أنت بعيد بـ ${Math.round(d)} متر عن ${branch.name}`,
+    });
+  } catch (err) {
+    console.error('check-range error:', err);
+    res.status(500).json({
+      inRange: false,
+      msg: err.message,
+    });
+  }
+});
+
+// ============================================
 // ✅ Routes
 // ============================================
-
 router.post('/check-in', auth, checkInHandler);
 router.post('/checkin', auth, checkInHandler);
 router.post('/check-out', auth, checkOutHandler);
@@ -178,13 +289,17 @@ router.get('/today', auth, todayHandler);
 // ============================================
 router.get('/my', auth, async (req, res) => {
   try {
-    const list = await Attendance.find({ user: req.user.id }).sort({
-      date: -1,
-    });
+    const list = await Attendance.find({ user: req.user.id })
+      .sort({ date: -1 })
+      .populate('branch', 'name type');
+
     const totalDays = list.filter((a) => a.status !== 'absent').length;
     const totalLate = list.reduce((s, a) => s + (a.lateMinutes || 0), 0);
     const biometricCount = list.filter(
       (a) => a.verification?.biometricUsed
+    ).length;
+    const faceCount = list.filter(
+      (a) => a.verification?.faceVerified
     ).length;
 
     res.json({
@@ -192,6 +307,7 @@ router.get('/my', auth, async (req, res) => {
       totalDays,
       totalLate,
       biometricCount,
+      faceCount,
     });
   } catch (err) {
     res.status(500).json({ msg: err.message });

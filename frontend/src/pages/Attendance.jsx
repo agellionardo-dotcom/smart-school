@@ -14,7 +14,6 @@ import { GlassCard, GradientButton } from '../components/ui';
 import FaceEnroll from '../components/FaceEnroll';
 import FaceVerify from '../components/FaceVerify';
 
-// ✅ Biometric — import مباشر (Webpack بيعرفه)
 import { BiometricAuth } from '@aparajita/capacitor-biometric-auth';
 import { Capacitor } from '@capacitor/core';
 
@@ -28,17 +27,31 @@ export default function Attendance() {
   const [online, setOnline] = useState(true);
   const [detectedBranch, setDetectedBranch] = useState(null);
 
-  // ✅ جديد — حالة البصمة
+  // ✅ حالة البصمة
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricType, setBiometricType] = useState(null);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
 
-  // ✅ جديد — Face Recognition
-  const [faceMode, setFaceMode] = useState(null); // 'enroll' | 'verify' | null
+  // ✅ حالة Face
+  const [faceMode, setFaceMode] = useState(null);
   const [faceEnrolled, setFaceEnrolled] = useState(false);
+
+  // ✅ حالة النطاق الجغرافي
+  const [inRange, setInRange] = useState(null);
+  const [rangeInfo, setRangeInfo] = useState(null);
+  const [rangeLoading, setRangeLoading] = useState(false);
 
   const userRef = useRef(JSON.parse(localStorage.getItem('user') || '{}'));
   const user = userRef.current;
+
+  // ============================================
+  // ✅ عرض رسالة
+  // ============================================
+  const showMsg = useCallback((text, type = 'info') => {
+    setMsg(text);
+    setMsgType(type);
+    setTimeout(() => setMsg(''), 5000);
+  }, []);
 
   // ============================================
   // ✅ فحص توفر البصمة
@@ -90,6 +103,33 @@ export default function Attendance() {
   }, []);
 
   // ============================================
+  // ✅ التحقق من النطاق الجغرافي
+  // ============================================
+  const checkRange = useCallback(async () => {
+    try {
+      setRangeLoading(true);
+      const location = await getLocation();
+
+      const { data } = await api.post('/attendance/check-range', {
+        lat: location.lat,
+        lng: location.lng,
+      });
+
+      setInRange(data.inRange);
+      setRangeInfo(data);
+
+      return { ...data, location };
+    } catch (err) {
+      console.warn('Range check error:', err);
+      setInRange(null);
+      setRangeInfo(null);
+      return null;
+    } finally {
+      setRangeLoading(false);
+    }
+  }, [getLocation]);
+
+  // ============================================
   // ✅ التحقق بالبصمة
   // ============================================
   const authenticateBiometric = useCallback(
@@ -116,15 +156,6 @@ export default function Attendance() {
     },
     [biometricAvailable]
   );
-
-  // ============================================
-  // ✅ عرض رسالة
-  // ============================================
-  const showMsg = useCallback((text, type = 'info') => {
-    setMsg(text);
-    setMsgType(type);
-    setTimeout(() => setMsg(''), 5000);
-  }, []);
 
   // ============================================
   // ✅ تحميل حضور اليوم
@@ -199,17 +230,29 @@ export default function Attendance() {
   }, []);
 
   // ============================================
-  // ✅ useEffect
+  // ✅ useEffect — Initial Load
   // ============================================
   useEffect(() => {
     loadToday();
     loadQueueCount();
     checkBiometric();
     checkFaceStatus();
+    checkRange(); // ← فحص النطاق عند التحميل
 
     const interval = setInterval(loadQueueCount, 5000);
     return () => clearInterval(interval);
-  }, [loadToday, loadQueueCount, checkBiometric, checkFaceStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ============================================
+  // ✅ إعادة فحص النطاق لما يرجع Online
+  // ============================================
+  useEffect(() => {
+    if (online && !loading) {
+      checkRange();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
 
   // ============================================
   // ✅ Face Handlers
@@ -224,14 +267,19 @@ export default function Attendance() {
     async (data) => {
       setFaceMode(null);
 
-      // ✅ بعد نجاح Face، نكمل تسجيل الحضور
-      let location = null;
-      try {
-        location = await getLocation();
-      } catch (err) {
-        showMsg('⚠️ فشل الحصول على الموقع', 'warning');
+      // ✅ 1. التحقق من النطاق أولاً
+      const rangeCheck = await checkRange();
+      if (!rangeCheck?.inRange) {
+        showMsg(
+          `❌ أنت خارج النطاق (${rangeCheck?.distance || '?'}م) — قرب من الفرع`,
+          'error'
+        );
+        return;
       }
 
+      const location = rangeCheck.location;
+
+      // ✅ 2. المزامنة / الحفظ
       const isConn = await isOnline();
       setOnline(isConn);
 
@@ -266,19 +314,11 @@ export default function Attendance() {
           );
         }
       } else {
-        await addToQueue({
-          type: 'checkin',
-          lat: location?.lat,
-          lng: location?.lng,
-          user: user._id,
-          faceVerified: true,
-          faceDistance: data.distance,
-        });
-        await loadQueueCount();
-        showMsg('📴 تم الحفظ محلياً — سيتم المزامنة لاحقاً', 'warning');
+        // ✅ Face في offline — ممنوع، نرفض
+        showMsg('❌ Face Recognition يحتاج إنترنت — استخدم البصمة أو GPS', 'error');
       }
     },
-    [getLocation, showMsg, user._id, loadQueueCount]
+    [checkRange, showMsg, user._id]
   );
 
   // ============================================
@@ -288,13 +328,31 @@ export default function Attendance() {
     setActionLoading(true);
     setDetectedBranch(null);
     try {
+      // ✅ 1. الموقع
       let location = null;
       try {
         location = await getLocation();
       } catch (err) {
         showMsg('⚠️ فشل الحصول على الموقع: ' + err.message, 'warning');
+        return;
       }
 
+      // ✅ 2. التحقق من النطاق (في online فقط)
+      const isConn = await isOnline();
+      setOnline(isConn);
+
+      if (isConn) {
+        const rangeCheck = await checkRange();
+        if (!rangeCheck?.inRange) {
+          showMsg(
+            `❌ أنت خارج النطاق (${rangeCheck?.distance || '?'}م) — قرب من الفرع`,
+            'error'
+          );
+          return;
+        }
+      }
+
+      // ✅ 3. البصمة
       let biometricUsed = false;
       let bioType = null;
 
@@ -308,9 +366,7 @@ export default function Attendance() {
         }
       }
 
-      const isConn = await isOnline();
-      setOnline(isConn);
-
+      // ✅ 4. الحفظ / المزامنة
       if (isConn) {
         const payload = {
           lat: location?.lat,
@@ -361,6 +417,7 @@ export default function Attendance() {
     }
   }, [
     getLocation,
+    checkRange,
     loadQueueCount,
     showMsg,
     user._id,
@@ -376,13 +433,31 @@ export default function Attendance() {
   const handleCheckOut = useCallback(async () => {
     setActionLoading(true);
     try {
+      // ✅ 1. الموقع
       let location = null;
       try {
         location = await getLocation();
       } catch (err) {
         showMsg('⚠️ فشل الحصول على الموقع', 'warning');
+        return;
       }
 
+      // ✅ 2. النطاق
+      const isConn = await isOnline();
+      setOnline(isConn);
+
+      if (isConn) {
+        const rangeCheck = await checkRange();
+        if (!rangeCheck?.inRange) {
+          showMsg(
+            `❌ أنت خارج النطاق (${rangeCheck?.distance || '?'}م) — قرب من الفرع`,
+            'error'
+          );
+          return;
+        }
+      }
+
+      // ✅ 3. البصمة
       let biometricUsed = false;
       let bioType = null;
 
@@ -392,15 +467,14 @@ export default function Attendance() {
         bioType = bio.used ? biometricType : null;
       }
 
-      const isConn = await isOnline();
-      setOnline(isConn);
-
+      // ✅ 4. الحفظ
       if (isConn) {
         const payload = {
           lat: location?.lat,
           lng: location?.lng,
           biometricUsed,
           biometricType: bioType,
+          deviceId: user._id,
         };
 
         const { data } = await api.post('/attendance/checkout', payload);
@@ -441,6 +515,7 @@ export default function Attendance() {
     }
   }, [
     getLocation,
+    checkRange,
     loadQueueCount,
     showMsg,
     user._id,
@@ -457,7 +532,7 @@ export default function Attendance() {
           <p
             style={{
               textAlign: 'center',
-              color: 'rgba(255,255,255,0.7)',
+              color: 'var(--ss-text-muted)',
               margin: 0,
             }}
           >
@@ -471,6 +546,7 @@ export default function Attendance() {
   const checkedIn = todayAttendance?.checkIn;
   const checkedOut = todayAttendance?.checkOut;
   const usedBiometric = todayAttendance?.verification?.biometricUsed;
+  const usedFace = todayAttendance?.verification?.faceVerified;
 
   return (
     <div className="dashboard">
@@ -481,7 +557,7 @@ export default function Attendance() {
             marginBottom: 8,
             fontSize: 28,
             fontWeight: 800,
-            background: 'linear-gradient(135deg, #00e5ff, #a855f7)',
+            background: 'var(--ss-grad-primary)',
             WebkitBackgroundClip: 'text',
             backgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -490,12 +566,12 @@ export default function Attendance() {
         >
           📍 الحضور والانصراف
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.7)', margin: 0, fontSize: 14 }}>
+        <p style={{ color: 'var(--ss-text-secondary)', margin: 0, fontSize: 14 }}>
           الفرع: {user.branch?.name || 'غير محدد'}
         </p>
       </div>
 
-      {/* حالة الشبكة + البصمة */}
+      {/* ✅ حالة الشبكة + البصمة + النطاق */}
       <div
         className="ss-glass"
         style={{
@@ -526,8 +602,8 @@ export default function Attendance() {
               style={{
                 background: biometricEnabled
                   ? 'rgba(168, 85, 247, 0.15)'
-                  : 'rgba(255,255,255,0.05)',
-                color: biometricEnabled ? '#a78bfa' : 'rgba(255,255,255,0.5)',
+                  : 'var(--ss-bg-surface)',
+                color: biometricEnabled ? '#a78bfa' : 'var(--ss-text-muted)',
                 padding: '4px 10px',
                 borderRadius: 8,
                 fontSize: 11,
@@ -535,7 +611,7 @@ export default function Attendance() {
                 border: `1px solid ${
                   biometricEnabled
                     ? 'rgba(168, 85, 247, 0.3)'
-                    : 'rgba(255,255,255,0.1)'
+                    : 'var(--ss-border-subtle)'
                 }`,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
@@ -561,6 +637,79 @@ export default function Attendance() {
           )}
         </div>
       </div>
+
+      {/* ✅ حالة النطاق الجغرافي */}
+      {online && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 12,
+            marginBottom: 16,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 8,
+            background:
+              inRange === true
+                ? 'rgba(16, 185, 129, 0.1)'
+                : inRange === false
+                ? 'rgba(239, 68, 68, 0.1)'
+                : 'var(--ss-bg-surface)',
+            border: `1px solid ${
+              inRange === true
+                ? 'rgba(16, 185, 129, 0.3)'
+                : inRange === false
+                ? 'rgba(239, 68, 68, 0.3)'
+                : 'var(--ss-border-subtle)'
+            }`,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 13,
+              fontWeight: 700,
+              color:
+                inRange === true
+                  ? '#34d399'
+                  : inRange === false
+                  ? '#fca5a5'
+                  : 'var(--ss-text-muted)',
+            }}
+          >
+            {rangeLoading ? (
+              <>⏳ جاري التحقق من الموقع...</>
+            ) : inRange === true ? (
+              <>✅ داخل نطاق {rangeInfo?.branchName || 'الفرع'}</>
+            ) : inRange === false ? (
+              <>❌ خارج النطاق — {rangeInfo?.distance}م</>
+            ) : (
+              <>📍 لم يتم التحقق من النطاق</>
+            )}
+          </div>
+
+          <button
+            onClick={checkRange}
+            disabled={rangeLoading}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              background: 'var(--ss-bg-surface)',
+              color: 'var(--ss-text-primary)',
+              fontSize: 11,
+              fontWeight: 700,
+              border: '1px solid var(--ss-border-glass)',
+              cursor: rangeLoading ? 'wait' : 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            🔄 فحص
+          </button>
+        </div>
+      )}
 
       {/* رسالة */}
       {msg && (
@@ -615,10 +764,10 @@ export default function Attendance() {
               {detectedBranch.type === 'main' ? '🏛️' : '🏬'}
             </span>
             <div>
-              <div style={{ color: '#67e8f9', fontSize: 13, fontWeight: 700 }}>
+              <div style={{ color: 'var(--ss-text-accent)', fontSize: 13, fontWeight: 700 }}>
                 ✅ تم اكتشاف الفرع
               </div>
-              <div style={{ color: '#f8fafc', fontSize: 14, fontWeight: 600 }}>
+              <div style={{ color: 'var(--ss-text-primary)', fontSize: 14, fontWeight: 600 }}>
                 {detectedBranch.name}
               </div>
             </div>
@@ -627,7 +776,7 @@ export default function Attendance() {
             <div
               style={{
                 background: 'rgba(0, 229, 255, 0.15)',
-                color: '#67e8f9',
+                color: 'var(--ss-text-accent)',
                 padding: '4px 10px',
                 borderRadius: 8,
                 fontSize: 12,
@@ -655,7 +804,7 @@ export default function Attendance() {
             </div>
             <p
               style={{
-                color: checkedIn ? '#34d399' : 'rgba(255,255,255,0.85)',
+                color: checkedIn ? '#34d399' : 'var(--ss-text-primary)',
                 fontWeight: 800,
                 margin: 0,
                 fontSize: 18,
@@ -665,7 +814,7 @@ export default function Attendance() {
             </p>
             <p
               style={{
-                color: 'rgba(255,255,255,0.55)',
+                color: 'var(--ss-text-muted)',
                 marginTop: 8,
                 fontSize: 13,
               }}
@@ -675,7 +824,19 @@ export default function Attendance() {
                 : 'لم يتم التسجيل بعد'}
             </p>
 
-            {checkedIn && usedBiometric && (
+            {checkedIn && usedFace && (
+              <p
+                style={{
+                  color: '#67e8f9',
+                  marginTop: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                👤 تم التحقق بالوجه
+              </p>
+            )}
+            {checkedIn && usedBiometric && !usedFace && (
               <p
                 style={{
                   color: '#a78bfa',
@@ -687,10 +848,10 @@ export default function Attendance() {
                 🔐 تم التحقق بالبصمة
               </p>
             )}
-            {checkedIn && !usedBiometric && (
+            {checkedIn && !usedBiometric && !usedFace && (
               <p
                 style={{
-                  color: 'rgba(255,255,255,0.4)',
+                  color: 'var(--ss-text-muted)',
                   marginTop: 6,
                   fontSize: 11,
                 }}
@@ -714,7 +875,7 @@ export default function Attendance() {
             </div>
             <p
               style={{
-                color: checkedOut ? '#a78bfa' : 'rgba(255,255,255,0.85)',
+                color: checkedOut ? '#a78bfa' : 'var(--ss-text-primary)',
                 fontWeight: 800,
                 margin: 0,
                 fontSize: 18,
@@ -724,7 +885,7 @@ export default function Attendance() {
             </p>
             <p
               style={{
-                color: 'rgba(255,255,255,0.55)',
+                color: 'var(--ss-text-muted)',
                 marginTop: 8,
                 fontSize: 13,
               }}
@@ -737,7 +898,7 @@ export default function Attendance() {
         </GlassCard>
       </div>
 
-      {/* أزرار */}
+      {/* أزرار الحضور/الانصراف */}
       <div
         style={{
           display: 'flex',
@@ -775,8 +936,8 @@ export default function Attendance() {
         </GradientButton>
       </div>
 
-      {/* ✅ زر Face Recognition */}
-      {!checkedIn && (
+      {/* ✅ زر Face Recognition — Online فقط */}
+      {online && !checkedIn && (
         <div style={{ marginTop: 16 }}>
           <button
             onClick={() => setFaceMode(faceEnrolled ? 'verify' : 'enroll')}
@@ -788,7 +949,7 @@ export default function Attendance() {
               border: '1px solid rgba(0, 229, 255, 0.4)',
               background:
                 'linear-gradient(135deg, rgba(0,229,255,0.15), rgba(168,85,247,0.15))',
-              color: '#67e8f9',
+              color: 'var(--ss-text-accent)',
               fontSize: 15,
               fontWeight: 700,
               cursor: 'pointer',
@@ -807,6 +968,29 @@ export default function Attendance() {
                 : 'سجّل وجهك أولاً (Face Recognition)'}
             </span>
           </button>
+        </div>
+      )}
+
+      {/* ✅ تنبيه: Face غير متاح في Offline */}
+      {!online && !checkedIn && (
+        <div
+          style={{
+            marginTop: 16,
+            padding: 14,
+            background: 'rgba(251, 191, 36, 0.1)',
+            border: '1px solid rgba(251, 191, 36, 0.3)',
+            borderRadius: 12,
+            fontSize: 13,
+            color: '#fcd34d',
+            fontWeight: 600,
+            textAlign: 'center',
+          }}
+        >
+          📴 وضع Offline — Face Recognition يحتاج إنترنت
+          <br />
+          <span style={{ fontSize: 11, opacity: 0.8 }}>
+            استخدم البصمة أو GPS
+          </span>
         </div>
       )}
 
@@ -855,7 +1039,7 @@ export default function Attendance() {
             border: '1px solid rgba(168, 85, 247, 0.2)',
             borderRadius: 10,
             fontSize: 12,
-            color: 'rgba(255,255,255,0.7)',
+            color: 'var(--ss-text-secondary)',
             textAlign: 'center',
           }}
         >
@@ -864,20 +1048,20 @@ export default function Attendance() {
         </div>
       )}
 
-      {!biometricAvailable && (
+      {!biometricAvailable && online && (
         <div
           style={{
             marginTop: 16,
             padding: 12,
-            background: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            background: 'var(--ss-bg-surface)',
+            border: '1px solid var(--ss-border-subtle)',
             borderRadius: 10,
             fontSize: 12,
-            color: 'rgba(255,255,255,0.5)',
+            color: 'var(--ss-text-muted)',
             textAlign: 'center',
           }}
         >
-          📍 سيتم التسجيل بالموقع فقط (البصمة غير متاحة على هذا الجهاز)
+          📍 سيتم التسجيل بالموقع فقط (البصمة غير متاحة على هذا المتصفح)
         </div>
       )}
     </div>
