@@ -2,10 +2,10 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import './styles/theme.css';
 import './styles/theme-light.css';
 import './styles/theme-dark.css';
-import './index.css';   // ✅ مضاف
+import './index.css';
 import AdminFloatingButton from './components/AdminFloatingButton';
 import EmployeeProfile from './pages/EmployeeProfile';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -21,8 +21,7 @@ import AIChat from './components/AIChat';
 import NotificationPermission from './components/NotificationPermission';
 import { AnimatedBackground } from './components/ui';
 import { startNetworkMonitoring } from './services/networkStatus';
-import { getQueue, removeFromQueue } from './services/offlineStorage';
-import api from './api';
+import { syncQueue, syncOnAppOpen } from './services/syncService';
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -30,42 +29,58 @@ const PrivateRoute = ({ children }) => {
 };
 
 export default function App() {
-  useEffect(() => {
-    let listenerHandle = null;
-    let isMounted = true;
+  const networkListenerRef = useRef(null);
+  const isMountedRef = useRef(true);
 
+  // ============================================
+  // ✅ الطبقة 2: مزامنة عند فتح التطبيق
+  // ============================================
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    // ✅ ننتظر شوية عشان التطبيق يجهز
+    const timer = setTimeout(async () => {
+      try {
+        console.log('[App] 🔄 فحص طلبات معلقة عند الفتح...');
+        const result = await syncOnAppOpen();
+
+        if (result.syncedItems?.length > 0) {
+          console.log(
+            `[App] ✅ تمت مزامنة ${result.success}/${result.total}`
+          );
+        }
+      } catch (err) {
+        console.warn('[App] فشل المزامنة عند الفتح:', err);
+      }
+    }, 3000); // 3 ثواني بعد الفتح
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // ============================================
+  // ✅ الطبقة 1: مزامنة عند رجوع الاتصال
+  // ============================================
+  useEffect(() => {
     const setup = async () => {
       try {
         const handle = await startNetworkMonitoring(async (isConnected) => {
-          if (!isMounted) return;
+          if (!isMountedRef.current) return;
 
           console.log('[Network] Connected:', isConnected);
 
           if (isConnected) {
-            const queue = await getQueue();
-            if (queue.length > 0) {
-              console.log(`[Sync] Syncing ${queue.length} items...`);
+            // ✅ نزامن كل الطلبات المعلقة
+            const result = await syncQueue({ silent: false });
 
-              for (const item of queue) {
-                try {
-                  const endpoint = item.type === 'checkin' ? 'checkin' : 'checkout';
-
-                  await api.post(`/attendance/${endpoint}`, {
-                    lat: item.lat,
-                    lng: item.lng,
-                  });
-
-                  await removeFromQueue(item.id);
-                  console.log(`[Sync] ✅ ${item.type}`);
-                } catch (e) {
-                  console.warn(`[Sync] ❌ ${item.type}`, e.message);
-                }
-              }
+            if (result.total > 0) {
+              console.log(
+                `[App] 🔄 مزامنة تلقائية: ${result.success}/${result.total}`
+              );
             }
           }
         });
 
-        listenerHandle = handle;
+        networkListenerRef.current = handle;
       } catch (err) {
         console.warn('Network monitoring setup failed:', err);
       }
@@ -74,9 +89,12 @@ export default function App() {
     setup();
 
     return () => {
-      isMounted = false;
-      if (listenerHandle && typeof listenerHandle.remove === 'function') {
-        listenerHandle.remove();
+      isMountedRef.current = false;
+      if (
+        networkListenerRef.current &&
+        typeof networkListenerRef.current.remove === 'function'
+      ) {
+        networkListenerRef.current.remove();
       }
     };
   }, []);

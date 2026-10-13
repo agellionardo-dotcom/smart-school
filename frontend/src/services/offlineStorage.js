@@ -1,3 +1,4 @@
+// frontend/src/services/offlineStorage.js
 import { Preferences } from '@capacitor/preferences';
 
 // ==================== حفظ/قراءة/حذف ====================
@@ -102,6 +103,68 @@ export const updateQueueItem = async (id, updates) => {
   }
 };
 
+// ==================== ✅ جديد — دوال مساعدة ====================
+
+// ✅ تحديث حالة طلب — syncing
+export const markAsSyncing = async (id) => {
+  return updateQueueItem(id, {
+    status: 'syncing',
+    lastAttempt: new Date().toISOString(),
+  });
+};
+
+// ✅ تحديث حالة طلب — failed
+export const markAsFailed = async (id, error) => {
+  const queue = await getQueue();
+  const item = queue.find((i) => i.id === id);
+  return updateQueueItem(id, {
+    status: 'failed',
+    attempts: (item?.attempts || 0) + 1,
+    error,
+    lastAttempt: new Date().toISOString(),
+  });
+};
+
+// ✅ حذف الطلبات اللي فشلت أكثر من 5 مرات
+export const cleanupFailedItems = async (maxAttempts = 5) => {
+  try {
+    const queue = await getQueue();
+    const filtered = queue.filter(
+      (item) => !(item.status === 'failed' && item.attempts >= maxAttempts)
+    );
+    await saveData('sync_queue', filtered);
+    return queue.length - filtered.length;
+  } catch (error) {
+    console.error('Error cleaning queue:', error);
+    return 0;
+  }
+};
+
+// ✅ الحصول على الطلبات الفاشلة
+export const getFailedItems = async () => {
+  const queue = await getQueue();
+  return queue.filter((item) => item.status === 'failed');
+};
+
+// ✅ إعادة تعيين طلب فاشل إلى pending
+export const retryFailedItem = async (id) => {
+  return updateQueueItem(id, {
+    status: 'pending',
+    error: null,
+  });
+};
+
+// ✅ معلومات Queue شاملة
+export const getQueueStats = async () => {
+  const queue = await getQueue();
+  return {
+    total: queue.length,
+    pending: queue.filter((i) => i.status === 'pending').length,
+    syncing: queue.filter((i) => i.status === 'syncing').length,
+    failed: queue.filter((i) => i.status === 'failed').length,
+  };
+};
+
 // ==================== كاش البيانات ====================
 export const cacheData = async (key, data) => {
   return await saveData(`cache_${key}`, {
@@ -115,7 +178,7 @@ export const getCachedData = async (key, maxAgeMinutes = 60) => {
   if (!cached) return null;
 
   const age = (Date.now() - new Date(cached.timestamp).getTime()) / (1000 * 60);
-  if (age > maxAgeMinutes) return null; // الكاش قديم
+  if (age > maxAgeMinutes) return null;
 
   return cached.data;
 };
