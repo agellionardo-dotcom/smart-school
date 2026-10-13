@@ -7,8 +7,8 @@ export default function SettingsTab() {
     logoText: '🎓',
     primaryColor: '#0a1f44',
     secondaryColor: '#8b95a7',
-    workStartTime: '08:30',
-    workEndTime: '17:00',
+    workStartTime: '08:00',       // ← تغيّر من 08:30
+    workEndTime: '14:00',         // ← تغيّر من 17:00
     lateGraceMinutes: 0,
     enableQRCode: false,
     enableFaceRecognition: false,

@@ -6,8 +6,8 @@ const settingsSchema = new mongoose.Schema({
   logoText: { type: String, default: '🎓' },
   primaryColor: { type: String, default: '#0a1f44' },
   secondaryColor: { type: String, default: '#8b95a7' },
-  workStartTime: { type: String, default: '08:30' },
-  workEndTime: { type: String, default: '17:00' },
+  workStartTime: { type: String, default: '08:00' },    // ← جديد
+  workEndTime: { type: String, default: '14:00' },      // ← جديد
   lateGraceMinutes: { type: Number, default: 0 },
   enableQRCode: { type: Boolean, default: false },
   enableFaceRecognition: { type: Boolean, default: false },
