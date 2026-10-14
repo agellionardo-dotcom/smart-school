@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import Map, { Marker, Popup, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import api from '../../api';
 
+// ✅ خارج المكون — ثابت
 const DEFAULT_VIEW = {
   longitude: 30.7503,
   latitude: 28.1099,
   zoom: 10,
 };
 
+// ✅ خارج المكون
 const MAP_STYLES = {
   satellite: {
     name: '🛰️ قمر صناعي',
@@ -113,17 +115,39 @@ export default function BranchesMap() {
   const [viewState, setViewState] = useState(DEFAULT_VIEW);
   const mapRef = useRef(null);
   const hasFitted = useRef(false);
+  const isMounted = useRef(true);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // ✅ Cleanup
   useEffect(() => {
-    api.get('/branches')
-      .then(r => setBranches(r.data))
-      .catch((err) => console.error('loadBranches error:', err))
-      .finally(() => setLoading(false));
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch (e) {
+          console.warn('Map cleanup:', e);
+        }
+      }
+    };
   }, []);
 
+  // ✅ Load branches
+  useEffect(() => {
+    api.get('/branches')
+      .then(r => {
+        if (isMounted.current) setBranches(r.data);
+      })
+      .catch((err) => console.error('loadBranches error:', err))
+      .finally(() => {
+        if (isMounted.current) setLoading(false);
+      });
+  }, []);
+
+  // ✅ Fit view
   useEffect(() => {
     if (hasFitted.current) return;
     if (!branches || branches.length === 0) return;
@@ -139,6 +163,7 @@ export default function BranchesMap() {
     const mainBranch = valid.find(b => b.type === 'main') || valid[0];
 
     const timer = setTimeout(() => {
+      if (!isMounted.current) return;
       setViewState({
         longitude: mainBranch.location.lng,
         latitude: mainBranch.location.lat,
@@ -150,6 +175,12 @@ export default function BranchesMap() {
     return () => clearTimeout(timer);
   }, [branches]);
 
+  // ✅ onMove محسّن
+  const handleMove = useCallback((evt) => {
+    setViewState(evt.viewState);
+  }, []);
+
+  // ✅ locate me
   const handleLocateMe = useCallback(() => {
     if (!navigator.geolocation) {
       alert('المتصفح لا يدعم تحديد الموقع');
@@ -166,44 +197,28 @@ export default function BranchesMap() {
     );
   }, []);
 
-  if (loading) {
-    return (
-      <div className="ss-glass" style={{ padding: 40, textAlign: 'center' }}>
-        <p style={{ color: 'rgba(255,255,255,0.6)', margin: 0 }}>
-          ⏳ جاري تحميل الخريطة...
-        </p>
-      </div>
+  // ✅ validBranches memoized
+  const validBranches = useMemo(() => {
+    return branches.filter(b => {
+      const lat = b.location?.lat;
+      const lng = b.location?.lng;
+      return lat && lng && lat >= 22 && lat <= 32 && lng >= 24 && lng <= 37;
+    });
+  }, [branches]);
+
+  // ✅ filtered memoized
+  const filteredBranches = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.trim().toLowerCase();
+    return validBranches.filter(b =>
+      b.name?.toLowerCase().includes(q) ||
+      b.address?.toLowerCase().includes(q) ||
+      b.phone?.includes(q)
     );
-  }
+  }, [searchQuery, validBranches]);
 
-  if (branches.length === 0) {
-    return (
-      <div className="ss-glass" style={{ padding: 40, textAlign: 'center' }}>
-        <p style={{ color: 'rgba(255,255,255,0.6)', margin: 0 }}>
-          لا توجد فروع لعرضها على الخريطة
-        </p>
-      </div>
-    );
-  }
-
-  const validBranches = branches.filter(b => {
-    const lat = b.location?.lat;
-    const lng = b.location?.lng;
-    return lat && lng && lat >= 22 && lat <= 32 && lng >= 24 && lng <= 37;
-  });
-
-  const filteredBranches = searchQuery.trim()
-    ? validBranches.filter(b => {
-        const q = searchQuery.trim().toLowerCase();
-        return (
-          b.name?.toLowerCase().includes(q) ||
-          b.address?.toLowerCase().includes(q) ||
-          b.phone?.includes(q)
-        );
-      })
-    : [];
-
-  const selectBranch = (branch) => {
+  // ✅ select branch
+  const selectBranch = useCallback((branch) => {
     if (mapRef.current) {
       mapRef.current.flyTo({
         center: [branch.location.lng, branch.location.lat],
@@ -214,7 +229,27 @@ export default function BranchesMap() {
     setPopupInfo(branch);
     setSearchQuery(branch.name);
     setShowDropdown(false);
-  };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="ss-glass" style={{ padding: 40, textAlign: 'center' }}>
+        <p style={{ color: 'var(--ss-text-muted)', margin: 0 }}>
+          ⏳ جاري تحميل الخريطة...
+        </p>
+      </div>
+    );
+  }
+
+  if (branches.length === 0) {
+    return (
+      <div className="ss-glass" style={{ padding: 40, textAlign: 'center' }}>
+        <p style={{ color: 'var(--ss-text-muted)', margin: 0 }}>
+          لا توجد فروع لعرضها على الخريطة
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -234,7 +269,7 @@ export default function BranchesMap() {
             margin: 0,
             fontSize: 20,
             fontWeight: 700,
-            color: '#f8fafc',
+            color: 'var(--ss-text-primary)',
             display: 'flex',
             alignItems: 'center',
             gap: 8,
@@ -242,7 +277,7 @@ export default function BranchesMap() {
         >
           🗺️ خريطة الفروع ({validBranches.length})
         </h3>
-        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+        <span style={{ fontSize: 12, color: 'var(--ss-text-muted)' }}>
           اسحب للتنقل · عجلة الفأرة للتكبير
         </span>
       </div>
@@ -294,7 +329,7 @@ export default function BranchesMap() {
               border: 'none',
               fontSize: 18,
               cursor: 'pointer',
-              color: 'rgba(255,255,255,0.5)',
+              color: 'var(--ss-text-muted)',
             }}
             title="مسح البحث"
           >
@@ -310,7 +345,7 @@ export default function BranchesMap() {
               top: '100%',
               right: 0,
               left: 0,
-              background: 'rgba(15, 33, 56, 0.98)',
+              background: 'var(--ss-bg-glass)',
               backdropFilter: 'blur(20px)',
               borderRadius: 12,
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
@@ -318,7 +353,7 @@ export default function BranchesMap() {
               maxHeight: 300,
               overflowY: 'auto',
               zIndex: 1000,
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              border: '1px solid var(--ss-border-glass)',
             }}
           >
             {filteredBranches.length === 0 ? (
@@ -326,7 +361,7 @@ export default function BranchesMap() {
                 style={{
                   padding: 16,
                   textAlign: 'center',
-                  color: 'rgba(255,255,255,0.5)',
+                  color: 'var(--ss-text-muted)',
                   fontSize: 13,
                 }}
               >
@@ -342,20 +377,20 @@ export default function BranchesMap() {
                   }}
                   style={{
                     padding: '12px 16px',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                    borderBottom: '1px solid var(--ss-border-subtle)',
                     cursor: 'pointer',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     transition: 'background 0.2s',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--ss-bg-hover)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <div>
                     <div
                       style={{
-                        color: '#f8fafc',
+                        color: 'var(--ss-text-primary)',
                         fontWeight: 700,
                         fontSize: 14,
                         marginBottom: 2,
@@ -364,12 +399,12 @@ export default function BranchesMap() {
                       {b.type === 'main' ? '🏛️' : '🏬'} {b.name}
                     </div>
                     {b.address && (
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
+                      <div style={{ fontSize: 11, color: 'var(--ss-text-muted)' }}>
                         📍 {b.address}
                       </div>
                     )}
                     {b.phone && (
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
+                      <div style={{ fontSize: 11, color: 'var(--ss-text-muted)' }}>
                         📞 {b.phone}
                       </div>
                     )}
@@ -421,12 +456,21 @@ export default function BranchesMap() {
         <Map
           ref={mapRef}
           {...viewState}
-          onMove={evt => setViewState(evt.viewState)}
+          onMove={handleMove}
           mapStyle={MAP_STYLES[mapStyle].style}
           style={{ width: '100%', height: '100%' }}
-          attributionControl={true}
+          attributionControl={false}
+          // ✅ Fixes for Capacitor
+          antialias={false}
+          preserveDrawingBuffer={false}
+          failIfMajorPerformanceCaveat={false}
+          cooperativeGestures={false}
+          touchPitch={false}
+          dragRotate={false}
+          pitchWithRotate={false}
+          maxPitch={0}
         >
-          <NavigationControl position="top-left" />
+          <NavigationControl position="top-left" showCompass={false} />
 
           {validBranches.map(b => (
             <Marker
@@ -567,20 +611,20 @@ export default function BranchesMap() {
         }}
       >
         <div>
-          <span style={{ color: '#67e8f9', fontWeight: 700 }}>🏛️ الفروع الرئيسية:</span>{' '}
-          <span style={{ color: '#f8fafc' }}>
+          <span style={{ color: 'var(--ss-text-accent)', fontWeight: 700 }}>🏛️ الفروع الرئيسية:</span>{' '}
+          <span style={{ color: 'var(--ss-text-primary)' }}>
             {validBranches.filter(b => b.type === 'main').length}
           </span>
         </div>
         <div>
           <span style={{ color: '#34d399', fontWeight: 700 }}>🏬 الفروع الفرعية:</span>{' '}
-          <span style={{ color: '#f8fafc' }}>
+          <span style={{ color: 'var(--ss-text-primary)' }}>
             {validBranches.filter(b => b.type === 'sub').length}
           </span>
         </div>
         <div>
           <span style={{ color: '#a78bfa', fontWeight: 700 }}>📍 الإجمالي:</span>{' '}
-          <span style={{ color: '#f8fafc' }}>{validBranches.length}</span>
+          <span style={{ color: 'var(--ss-text-primary)' }}>{validBranches.length}</span>
         </div>
       </div>
     </div>

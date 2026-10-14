@@ -508,3 +508,40 @@ table td { font-size: 13px; }
   .stat-card h3 { font-size: 32px; }
   .stat-card { padding: 20px; }
 }
+
+/* ============================================ */
+/* ✅ MapLibre Fix for Capacitor WebView       */
+/* ============================================ */
+
+.maplibregl-map,
+.maplibregl-canvas {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -webkit-transform: translate3d(0, 0, 0);
+}
+
+.maplibregl-canvas-container {
+  transform: translate3d(0, 0, 0);
+}
+
+.maplibregl-control-container {
+  pointer-events: auto !important;
+}
+
+.maplibregl-map:active {
+  cursor: grabbing;
+}
+
+.maplibregl-map canvas {
+  outline: none;
+}
+
+.maplibregl-canvas {
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.maplibregl-canvas-container.maplibregl-interactive {
+  touch-action: pan-x pan-y;
+}

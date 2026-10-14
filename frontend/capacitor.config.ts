@@ -6,16 +6,23 @@ const config: CapacitorConfig = {
   webDir: 'build',
   bundledWebRuntime: false,
   android: {
-    allowMixedContent: true
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: true,
+    backgroundColor: '#0a1628',
+  },
+  server: {
+    androidScheme: 'https',
+    cleartext: true,
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
       backgroundColor: '#0A1F44',
       showSpinner: false,
-      androidScaleType: 'CENTER_CROP'
-    }
-  }
+      androidScaleType: 'CENTER_CROP',
+    },
+  },
 };
 
 export default config;

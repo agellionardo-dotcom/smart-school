@@ -1,50 +1,95 @@
-# Dependencies
-node_modules/
+# ============================================
+# Smart School — .gitignore
+# ============================================
 
-# Build
+# ---------- Environment ----------
+.env
+.env.*
+*.env
+!.env.example
+
+# ---------- Keys & Certificates ----------
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+*.crt
+my-release-key.*
+frontend/android/my-release-key.jks
+frontend/android/key.properties
+frontend/android/local.properties
+
+# ---------- Firebase ----------
+google-services.json
+GoogleService-Info.plist
+firebase-service-account.json
+firebase-service-account*.json
+*-service-account*.json
+notificatio-*.json
+firebase-oneline.txt
+
+# ---------- Secrets ----------
+secrets/
+credentials/
+config/secrets/
+
+# ---------- Dependencies ----------
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+
+# ---------- Build Outputs ----------
 build/
 dist/
+*/build/
+*/dist/
+out/
 android/app/build/
 android/.gradle/
 android/build/
-
-# Environment
-.env
-.env.local
-
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-
-# Capacitor
+android/capacitor-cordova-android-plugins/
 frontend/android/app/src/main/assets/public/
 
-# Root junk
-api.js
-*.bat
-New Text Document.txt
-# Signing Key - NEVER COMMIT THIS
-my-release-key.jks
-*.jks
-*.keystore
-frontend/android/my-release-key.jks
+# ---------- Logs ----------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+._*
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---------- APK / AAB ----------
+*.apk
+*.aab
+!android/app/release/*.apk
+
+# ---------- Backups ----------
 *.backup
-backend/middleware/*.backupfirebase-service-account.json 
-*service-account*.json 
-firebase-service-account.json 
-*service-account*.json 
-# Firebase Service Accounts (حساس)
-firebase-service-account*.json
-*service-account*.json
-notificatio-*.json
-firebase-oneline.txt
+*_backup/
+*backup*
+*.bak
+backend/middleware/*.backup
+
+# ---------- Vercel ----------
 .vercel
-.env*
+
+# ---------- Misc ----------
+.cache/
+.temp/
+tmp/
+*.tmp
+New Text Document.txt
