@@ -19,6 +19,15 @@ function distance(lat1, lon1, lat2, lon2) {
 }
 
 // ============================================
+// ✅ Helper: الوقت الحالي بتوقيت القاهرة
+// ============================================
+function getCairoNow() {
+  return new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' })
+  );
+}
+
+// ============================================
 // ✅ Helper: قراءة أوقات العمل من Settings
 // ============================================
 async function getWorkHours() {
@@ -43,13 +52,46 @@ async function getWorkHours() {
 }
 
 // ============================================
-// ✅ Helper: تحويل "HH:MM" إلى Date (نفس اليوم)
+// ✅ Helper: تحويل "HH:MM" إلى Date (بتوقيت القاهرة)
 // ============================================
-function timeStringToDate(timeStr, refDate = new Date()) {
+function timeStringToCairoDate(timeStr, refCairo) {
   const [h, m] = timeStr.split(':').map(Number);
-  const d = new Date(refDate);
+  const d = new Date(refCairo);
   d.setHours(h, m, 0, 0);
   return d;
+}
+
+// ============================================
+// ✅ Helper: حساب lateMinutes
+// ============================================
+function calculateLateMinutes(workStartTime, workEndTime, graceMinutes) {
+  const nowCairo = getCairoNow();
+  const workStartCairo = timeStringToCairoDate(workStartTime, nowCairo);
+  const workEndCairo = timeStringToCairoDate(workEndTime, nowCairo);
+
+  // ✅ قبل بداية العمل
+  if (nowCairo < workStartCairo) {
+    return { lateMinutes: 0, status: 'present', reason: 'before-start' };
+  }
+
+  // ✅ في وقت العمل
+  if (nowCairo <= workEndCairo) {
+    const diffMinutes = Math.floor((nowCairo - workStartCairo) / 60000);
+    const lateMinutes = Math.max(0, diffMinutes - graceMinutes);
+    return {
+      lateMinutes,
+      status: lateMinutes > 0 ? 'late' : 'present',
+      reason: 'in-range',
+    };
+  }
+
+  // ✅ بعد نهاية العمل
+  return {
+    lateMinutes: 0,
+    status: null,
+    reason: 'after-end',
+    error: `التسجيل خارج وقت العمل (${workStartTime} — ${workEndTime})`,
+  };
 }
 
 // ============================================
@@ -94,36 +136,24 @@ async function checkInHandler(req, res) {
       return res.status(400).json({ msg: 'تم تسجيل الحضور مسبقاً' });
     }
 
-    // ✅ اقرا أوقات العمل من Settings
+    // ✅ اقرا أوقات العمل
     const { workStartTime, workEndTime, lateGraceMinutes } = await getWorkHours();
 
-    const now = new Date();
-    const workStart = timeStringToDate(workStartTime, now);
-    const workEnd = timeStringToDate(workEndTime, now);
+    // ✅ احسب lateMinutes
+    const result = calculateLateMinutes(
+      workStartTime,
+      workEndTime,
+      lateGraceMinutes
+    );
 
-    // ✅ منطق جديد
-    let lateMinutes = 0;
-    let status = 'present';
-
-    if (now < workStart) {
-      // جه قبل بداية العمل
-      lateMinutes = 0;
-      status = 'present';
-    } else if (now <= workEnd) {
-      // في وقت العمل
-      const diffMinutes = Math.floor((now - workStart) / 60000);
-      lateMinutes = Math.max(0, diffMinutes - lateGraceMinutes);
-      status = lateMinutes > 0 ? 'late' : 'present';
-    } else {
-      // بعد نهاية العمل
-      return res.status(400).json({
-        msg: `التسجيل خارج وقت العمل (${workStartTime} — ${workEndTime})`,
-        workStartTime,
-        workEndTime,
-      });
+    if (result.error) {
+      return res.status(400).json({ msg: result.error });
     }
 
-    // ✅ تحديد طريقة التحقق الرئيسية
+    const { lateMinutes, status } = result;
+    const now = new Date(); // ✅ UTC — صح في DB
+
+    // ✅ تحديد طريقة التحقق
     let mainMethod = 'gps';
     let verificationMethod = 'gps_only';
 
@@ -154,7 +184,10 @@ async function checkInHandler(req, res) {
       },
     });
 
-    const populated = await Attendance.findById(att._id).populate('branch', 'name type');
+    const populated = await Attendance.findById(att._id).populate(
+      'branch',
+      'name type'
+    );
 
     res.json({
       ...populated.toObject(),
@@ -162,6 +195,11 @@ async function checkInHandler(req, res) {
         name: branch.name,
         type: branch.type,
         distance: Math.round(d),
+      },
+      workHours: {
+        start: workStartTime,
+        end: workEndTime,
+        grace: lateGraceMinutes,
       },
     });
   } catch (err) {
@@ -226,7 +264,10 @@ async function checkOutHandler(req, res) {
 
     await att.save();
 
-    const populated = await Attendance.findById(att._id).populate('branch', 'name type');
+    const populated = await Attendance.findById(att._id).populate(
+      'branch',
+      'name type'
+    );
 
     res.json({
       ...populated.toObject(),
@@ -295,9 +336,9 @@ router.post('/check-range', auth, async (req, res) => {
     const { lat, lng } = req.body;
 
     if (!lat || !lng) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         inRange: false,
-        msg: 'الموقع مطلوب' 
+        msg: 'الموقع مطلوب',
       });
     }
 
