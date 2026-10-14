@@ -97,3 +97,7 @@ lint/temp/
 
 # Capacitor
 capacitor-cordova-android-plugins/
+
+# Capacitor build outputs
+app/src/main/assets/public/
+app/src/main/res/xml/config.xml
