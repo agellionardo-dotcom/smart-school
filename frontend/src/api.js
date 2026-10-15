@@ -39,21 +39,49 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const currentPath = window.location.pathname;
 
-    // 401 — الجلسة انتهت
+    // ============================================
+    // ✅ 401 — الجلسة انتهت
+    // ============================================
     if (status === 401) {
+      // ✅ نتحقق هل كان فيه token بالفعل
+      const hadToken = !!localStorage.getItem('token');
+
+      // ✅ نمسح الـ token والـ user
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (currentPath !== '/login') {
+
+      // ✅ نعمل redirect بس لو:
+      // 1. كان فيه token (يعني جلسة منتهية — مش أول زيارة)
+      // 2. إحنا مش على صفحة Login
+      // 3. إحنا مش على الصفحة الرئيسية
+      // 4. إحنا مش على صفحة نسيان كلمة المرور
+      const publicPaths = ['/', '/login', '/forgot-password'];
+      const isPublicPath = publicPaths.some((p) =>
+        currentPath.startsWith(p)
+      );
+
+      if (hadToken && !isPublicPath) {
         window.location.href = '/login';
       }
     }
 
-    // 403 — مفيش صلاحية
+    // ============================================
+    // ✅ 403 — مفيش صلاحية
+    // ============================================
     if (status === 403) {
       console.warn('⛔ ليس لديك صلاحية للوصول لهذا المورد');
     }
 
-    // 500+ — خطأ في السيرفر
+    // ============================================
+    // ✅ 429 — Rate Limit
+    // ============================================
+    if (status === 429) {
+      console.warn('⏳ عدد الطلبات كبير — حاول بعد قليل');
+    }
+
+    // ============================================
+    // ✅ 500+ — خطأ في السيرفر
+    // ============================================
     if (status >= 500) {
       console.error('🔥 خطأ في السيرفر:', error.response?.data);
     }
