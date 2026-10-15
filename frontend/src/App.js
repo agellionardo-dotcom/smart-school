@@ -23,9 +23,25 @@ import { AnimatedBackground } from './components/ui';
 import { startNetworkMonitoring } from './services/networkStatus';
 import { syncQueue, syncOnAppOpen } from './services/syncService';
 
+// ============================================
+// ✅ PrivateRoute — بيحمي الصفحات المحمية
+// + بيشغّل NotificationPermission بس بعد Login
+// ============================================
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/" />;
+
+  if (!token) {
+    return <Navigate to="/" />;
+  }
+
+  return (
+    <>
+      <Navbar />
+      {/* ✅ NotificationPermission يشتغل بس في الصفحات المحمية */}
+      <NotificationPermission />
+      {children}
+    </>
+  );
 };
 
 export default function App() {
@@ -106,22 +122,85 @@ export default function App() {
 
         <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
           <Routes>
+            {/* ============================================ */}
+            {/* ✅ Public Routes — مفيش Navbar ولا NotificationPermission */}
+            {/* ============================================ */}
             <Route path="/" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
-            <Route path="/dashboard" element={<PrivateRoute><Navbar /><Dashboard /></PrivateRoute>} />
-            <Route path="/attendance" element={<PrivateRoute><Navbar /><Attendance /></PrivateRoute>} />
-            <Route path="/leaves" element={<PrivateRoute><Navbar /><Leaves /></PrivateRoute>} />
-            <Route path="/scan-qr" element={<PrivateRoute><Navbar /><ScanQr /></PrivateRoute>} />
-            <Route path="/admin" element={<PrivateRoute><Navbar /><AdminDashboard /></PrivateRoute>} />
-            <Route path="/employee/:id" element={<PrivateRoute><Navbar /><EmployeeProfile /></PrivateRoute>} />
-            <Route path="/sync-queue" element={<PrivateRoute><Navbar /><SyncQueue /></PrivateRoute>} />
+
+            {/* ============================================ */}
+            {/* ✅ Private Routes — محمية + فيها Navbar + NotificationPermission */}
+            {/* ============================================ */}
+            <Route
+              path="/dashboard"
+              element={
+                <PrivateRoute>
+                  <Dashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/attendance"
+              element={
+                <PrivateRoute>
+                  <Attendance />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/leaves"
+              element={
+                <PrivateRoute>
+                  <Leaves />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/scan-qr"
+              element={
+                <PrivateRoute>
+                  <ScanQr />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <PrivateRoute>
+                  <AdminDashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/employee/:id"
+              element={
+                <PrivateRoute>
+                  <EmployeeProfile />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/sync-queue"
+              element={
+                <PrivateRoute>
+                  <SyncQueue />
+                </PrivateRoute>
+              }
+            />
+
+            {/* ============================================ */}
+            {/* ✅ Fallback — أي route مش موجود → Login */}
+            {/* ============================================ */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
 
+          {/* ============================================ */}
+          {/* ✅ Global Components — بتشتغل في كل الصفحات */}
+          {/* (ماعدا NotificationPermission اللي اتنقل للـ PrivateRoute) */}
+          {/* ============================================ */}
           <AIChat />
           <AdminFloatingButton />
-          <NotificationPermission />
         </div>
       </BrowserRouter>
     </ThemeProvider>
