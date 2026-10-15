@@ -25,4 +25,6 @@ yarn-error.log*
 # Android secrets
 android/key.properties
 android/*.jks
-android/*.keystore
+android/*.keystore 
+# Capacitor build output 
+android/app/src/main/assets/ 
