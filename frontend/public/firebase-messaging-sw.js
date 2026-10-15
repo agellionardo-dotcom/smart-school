@@ -1,156 +1,84 @@
 // ============================================
-// Smart School — Firebase Service
+// Smart School — Firebase Messaging Service Worker
 // ============================================
-// خدمة Firebase للإشعارات
-// - طلب الإذن
-// - الحصول على FCM Token
-// - الاستماع للإشعارات
+// Service Worker للإشعارات في الـ background
+// ⚠️ لازم يستخدم importScripts() مش import
+// ⚠️ الـ SW مش بيقرا process.env — القيم لازم hardcoded
 // ============================================
 
-import { initializeApp } from 'firebase/app';
-import {
-  getMessaging,
-  getToken,
-  onMessage,
-  isSupported,
-} from 'firebase/messaging';
-import { firebaseConfig, VAPID_KEY } from '../firebase-config';
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
 // ============================================
-// Firebase App (singleton)
+// Firebase Config (القيم الرسمية من Firebase Console)
 // ============================================
-let app = null;
-let messaging = null;
-
-export function initFirebase() {
-  if (app) return app;
-
-  try {
-    app = initializeApp(firebaseConfig);
-    console.log('[Firebase] Initialized');
-    return app;
-  } catch (err) {
-    console.error('[Firebase] Init error:', err);
-    return null;
-  }
-}
+const firebaseConfig = {
+  apiKey: "AIzaSyAMA1_D291g_K1lBDI-JXx9Q_9BQqPuJGg",
+  authDomain: "smart-school-notificatio-5bd03.firebaseapp.com",
+  projectId: "smart-school-notificatio-5bd03",
+  storageBucket: "smart-school-notificatio-5bd03.firebasestorage.app",
+  messagingSenderId: "840126426142",
+  appId: "1:840126426142:web:cad4f31a7d04765040d20f",
+};
 
 // ============================================
-// هل المتصفح يدعم الإشعارات؟
+// Initialize Firebase
 // ============================================
-export async function isNotificationSupported() {
-  if (typeof window === 'undefined') return false;
-  if (!('Notification' in window)) return false;
-  if (!('serviceWorker' in navigator)) return false;
-  if (!('PushManager' in window)) return false;
-
-  try {
-    const supported = await isSupported();
-    return supported;
-  } catch {
-    return false;
-  }
-}
+firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
 
 // ============================================
-// طلب إذن الإشعارات من المستخدم
+// Handle Background Messages
 // ============================================
-export async function requestNotificationPermission() {
-  if (!('Notification' in window)) {
-    return { success: false, error: 'المتصفح مش بيدعم الإشعارات' };
-  }
+messaging.onBackgroundMessage((payload) => {
+  console.log('[SW] Background message received:', payload);
 
-  try {
-    const permission = await Notification.requestPermission();
+  const notificationTitle = payload.notification?.title || 'Smart School';
+  const notificationOptions = {
+    body: payload.notification?.body || 'لديك إشعار جديد',
+    icon: '/logo192.png',
+    badge: '/logo192.png',
+    data: payload.data || {},
+    tag: payload.data?.tag || 'default',
+    requireInteraction: false,
+  };
 
-    if (permission === 'granted') {
-      return { success: true, permission };
-    } else if (permission === 'denied') {
-      return {
-        success: false,
-        permission,
-        error: 'المستخدم رفض الإشعارات — لازم تفعلها من إعدادات المتصفح',
-      };
-    } else {
-      return {
-        success: false,
-        permission,
-        error: 'المستخدم سكّر الرسالة بدون اختيار',
-      };
-    }
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-}
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
 
 // ============================================
-// الحصول على FCM Token
+// Handle Notification Click
 // ============================================
-export async function getFCMToken() {
-  try {
-    if (!messaging) {
-      initFirebase();
-      messaging = getMessaging(app);
-    }
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
 
-    const token = await getToken(messaging, {
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: await navigator.serviceWorker.register(
-        '/firebase-messaging-sw.js'
-      ),
-    });
+  const urlToOpen = event.notification.data?.url || '/';
 
-    if (token) {
-      console.log('[FCM] Token obtained');
-      return { success: true, token };
-    } else {
-      return {
-        success: false,
-        error: 'مفيش Token — جرب تطلب الإذن الأول',
-      };
-    }
-  } catch (err) {
-    console.error('[FCM] getToken error:', err);
-    return { success: false, error: err.message };
-  }
-}
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(urlToOpen);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
 
 // ============================================
-// الاستماع للإشعارات (لما التطبيق مفتوح)
+// Service Worker Lifecycle
 // ============================================
-export function onForegroundMessage(callback) {
-  try {
-    if (!messaging) {
-      initFirebase();
-      messaging = getMessaging(app);
-    }
+self.addEventListener('install', () => {
+  console.log('[SW] Installing...');
+  self.skipWaiting();
+});
 
-    const unsubscribe = onMessage(messaging, (payload) => {
-      console.log('[FCM] Foreground message:', payload);
-      callback(payload);
-    });
-
-    return unsubscribe;
-  } catch (err) {
-    console.error('[FCM] onMessage error:', err);
-    return () => {};
-  }
-}
-
-// ============================================
-// تجربة سريعة
-// ============================================
-export async function initNotifications() {
-  const supported = await isNotificationSupported();
-  if (!supported) {
-    return { success: false, error: 'الإشعارات مش مدعومة' };
-  }
-
-  const perm = await requestNotificationPermission();
-  if (!perm.success) return perm;
-
-  const tokenResult = await getFCMToken();
-  if (!tokenResult.success) return tokenResult;
-
-  return { success: true, token: tokenResult.token };
-}
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating...');
+  event.waitUntil(clients.claim());
+});
