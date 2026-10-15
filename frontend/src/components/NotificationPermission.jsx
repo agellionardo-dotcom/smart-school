@@ -5,7 +5,7 @@
 // ويظهر حالة الإشعارات
 // ============================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api';
 import {
   isNotificationSupported,
@@ -13,6 +13,12 @@ import {
   getFCMToken,
   onForegroundMessage,
 } from '../services/firebase';
+
+// ============================================
+// ✅ ثوابت
+// ============================================
+const REGISTER_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 ساعات
+const REGISTER_KEY = 'fcm_last_registered_at';
 
 export default function NotificationPermission() {
   const [supported, setSupported] = useState(null);
@@ -23,32 +29,111 @@ export default function NotificationPermission() {
   const [msgType, setMsgType] = useState('info');
   const [showBanner, setShowBanner] = useState(false);
 
+  // ✅ flag لمنع الطلبات المتزامنة
+  const registeringRef = useRef(false);
+
+  // ============================================
+  // ✅ هل محتاجين نسجل التوكن؟
+  // ============================================
+  const shouldRegister = () => {
+    try {
+      const last = localStorage.getItem(REGISTER_KEY);
+      if (!last) return true;
+      const elapsed = Date.now() - parseInt(last, 10);
+      return elapsed > REGISTER_INTERVAL_MS;
+    } catch {
+      return true;
+    }
+  };
+
+  // ============================================
+  // ✅ تسجيل التوكن في السيرفر
+  // ============================================
+  const registerToken = async () => {
+    // منع التزامن
+    if (registeringRef.current) {
+      console.log('[FCM] Already registering, skipping...');
+      return false;
+    }
+
+    // منع التكرار الزائد
+    if (!shouldRegister()) {
+      console.log('[FCM] Recently registered, skipping...');
+      setRegistered(true);
+      return true;
+    }
+
+    registeringRef.current = true;
+
+    try {
+      const result = await getFCMToken();
+      if (!result.success) {
+        console.warn('[FCM] getFCMToken failed:', result.error);
+        return false;
+      }
+
+      await api.post('/notifications/register', {
+        fcmToken: result.token,
+        platform: getPlatform(),
+      });
+
+      // ✅ حفظ وقت التسجيل
+      localStorage.setItem(REGISTER_KEY, Date.now().toString());
+      setRegistered(true);
+      return true;
+    } catch (err) {
+      // 429 = Rate Limit — مش مشكلة كبيرة، نتجاهلها بهدوء
+      if (err.response?.status === 429) {
+        console.warn('[FCM] Rate limited, will retry later');
+      } else {
+        console.error('registerToken error:', err.message);
+      }
+      return false;
+    } finally {
+      registeringRef.current = false;
+    }
+  };
+
   // ============================================
   // ✅ فحص الدعم والإذن
   // ============================================
   useEffect(() => {
+    let mounted = true;
+
     const check = async () => {
-      const isSupported = await isNotificationSupported();
-      setSupported(isSupported);
+      try {
+        const isSupported = await isNotificationSupported();
+        if (!mounted) return;
+        setSupported(isSupported);
 
-      if (!isSupported) return;
+        if (!isSupported) return;
 
-      const perm = Notification.permission;
-      setPermission(perm);
+        const perm = Notification.permission;
+        if (!mounted) return;
+        setPermission(perm);
 
-      // لو الإذن لسه default — أظهر البانر
-      if (perm === 'default') {
-        // استنى شوية قبل ما نظهر البانر
-        setTimeout(() => setShowBanner(true), 3000);
-      }
+        // لو الإذن لسه default — أظهر البانر
+        if (perm === 'default') {
+          setTimeout(() => {
+            if (mounted) setShowBanner(true);
+          }, 3000);
+        }
 
-      // لو الإذن granted — سجّل التوكن
-      if (perm === 'granted') {
-        await registerToken();
+        // لو الإذن granted — سجّل التوكن (مرة واحدة كل 6 ساعات)
+        if (perm === 'granted') {
+          await registerToken();
+        }
+      } catch (err) {
+        console.warn('[Notif] check error:', err.message);
       }
     };
 
     check();
+
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ============================================
@@ -57,34 +142,20 @@ export default function NotificationPermission() {
   useEffect(() => {
     if (permission !== 'granted') return;
 
-    const unsubscribe = onForegroundMessage((payload) => {
-      console.log('[Foreground]', payload);
-      // هنا ممكن نظهر toast
-    });
+    let unsubscribe = () => {};
 
-    return () => unsubscribe && unsubscribe();
-  }, [permission]);
-
-  // ============================================
-  // ✅ تسجيل التوكن في السيرفر
-  // ============================================
-  const registerToken = async () => {
     try {
-      const result = await getFCMToken();
-      if (!result.success) return false;
-
-      await api.post('/notifications/register', {
-        fcmToken: result.token,
-        platform: getPlatform(),
-      });
-
-      setRegistered(true);
-      return true;
+      unsubscribe = onForegroundMessage((payload) => {
+        console.log('[Foreground]', payload);
+      }) || (() => {});
     } catch (err) {
-      console.error('registerToken error:', err);
-      return false;
+      console.warn('[FCM] onForegroundMessage error:', err.message);
     }
-  };
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [permission]);
 
   // ============================================
   // ✅ اكتشاف المنصة
@@ -100,6 +171,8 @@ export default function NotificationPermission() {
   // ✅ طلب الإذن
   // ============================================
   const handleEnable = async () => {
+    if (loading) return;
+
     setLoading(true);
     setMsg('');
 
@@ -110,7 +183,6 @@ export default function NotificationPermission() {
         setMsg(permResult.error || 'فشل طلب الإذن');
         setMsgType('error');
         setPermission(permResult.permission || 'denied');
-        setLoading(false);
         return;
       }
 
