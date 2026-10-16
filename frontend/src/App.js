@@ -8,6 +8,7 @@ import EmployeeProfile from './pages/EmployeeProfile';
 import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
@@ -19,7 +20,7 @@ import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
 import AIChat from './components/AIChat';
 import NotificationPermission from './components/NotificationPermission';
-import InstallPWA from './components/InstallPWA';   // ← ✅ جديد
+import InstallPWA from './components/InstallPWA';
 import { AnimatedBackground } from './components/ui';
 import { startNetworkMonitoring } from './services/networkStatus';
 import { syncQueue, syncOnAppOpen } from './services/syncService';
@@ -115,78 +116,80 @@ export default function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <AnimatedBackground variant="fluid" />
+        <Routes>
+          {/* ============================================ */}
+          {/* Public Routes */}
+          {/* ============================================ */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-        <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password/:token" element={<ResetPassword />} />
+          {/* ============================================ */}
+          {/* Private Routes */}
+          {/* ============================================ */}
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/attendance"
+            element={
+              <PrivateRoute>
+                <Attendance />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/leaves"
+            element={
+              <PrivateRoute>
+                <Leaves />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/scan-qr"
+            element={
+              <PrivateRoute>
+                <ScanQr />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute>
+                <AdminDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/employee/:id"
+            element={
+              <PrivateRoute>
+                <EmployeeProfile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/sync-queue"
+            element={
+              <PrivateRoute>
+                <SyncQueue />
+              </PrivateRoute>
+            }
+          />
 
-            <Route
-              path="/dashboard"
-              element={
-                <PrivateRoute>
-                  <Dashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/attendance"
-              element={
-                <PrivateRoute>
-                  <Attendance />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/leaves"
-              element={
-                <PrivateRoute>
-                  <Leaves />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/scan-qr"
-              element={
-                <PrivateRoute>
-                  <ScanQr />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <PrivateRoute>
-                  <AdminDashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/employee/:id"
-              element={
-                <PrivateRoute>
-                  <EmployeeProfile />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/sync-queue"
-              element={
-                <PrivateRoute>
-                  <SyncQueue />
-                </PrivateRoute>
-              }
-            />
-
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-
-          <AIChat />
-          <AdminFloatingButton />
-          <InstallPWA />              {/* ← ✅ جديد */}
-        </div>
+          {/* ============================================ */}
+          {/* Fallback */}
+          {/* ============================================ */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
       </BrowserRouter>
     </ThemeProvider>
   );
