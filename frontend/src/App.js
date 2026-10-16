@@ -19,13 +19,13 @@ import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
 import AIChat from './components/AIChat';
 import NotificationPermission from './components/NotificationPermission';
+import InstallPWA from './components/InstallPWA';   // ← ✅ جديد
 import { AnimatedBackground } from './components/ui';
 import { startNetworkMonitoring } from './services/networkStatus';
 import { syncQueue, syncOnAppOpen } from './services/syncService';
 
 // ============================================
-// ✅ PrivateRoute — بيحمي الصفحات المحمية
-// + بيشغّل NotificationPermission بس بعد Login
+// ✅ PrivateRoute
 // ============================================
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -37,7 +37,6 @@ const PrivateRoute = ({ children }) => {
   return (
     <>
       <Navbar />
-      {/* ✅ NotificationPermission يشتغل بس في الصفحات المحمية */}
       <NotificationPermission />
       {children}
     </>
@@ -54,7 +53,6 @@ export default function App() {
   useEffect(() => {
     isMountedRef.current = true;
 
-    // ✅ ننتظر شوية عشان التطبيق يجهز
     const timer = setTimeout(async () => {
       try {
         console.log('[App] 🔄 فحص طلبات معلقة عند الفتح...');
@@ -68,7 +66,7 @@ export default function App() {
       } catch (err) {
         console.warn('[App] فشل المزامنة عند الفتح:', err);
       }
-    }, 3000); // 3 ثواني بعد الفتح
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -85,7 +83,6 @@ export default function App() {
           console.log('[Network] Connected:', isConnected);
 
           if (isConnected) {
-            // ✅ نزامن كل الطلبات المعلقة
             const result = await syncQueue({ silent: false });
 
             if (result.total > 0) {
@@ -122,16 +119,10 @@ export default function App() {
 
         <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh' }}>
           <Routes>
-            {/* ============================================ */}
-            {/* ✅ Public Routes — مفيش Navbar ولا NotificationPermission */}
-            {/* ============================================ */}
             <Route path="/" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
 
-            {/* ============================================ */}
-            {/* ✅ Private Routes — محمية + فيها Navbar + NotificationPermission */}
-            {/* ============================================ */}
             <Route
               path="/dashboard"
               element={
@@ -189,18 +180,12 @@ export default function App() {
               }
             />
 
-            {/* ============================================ */}
-            {/* ✅ Fallback — أي route مش موجود → Login */}
-            {/* ============================================ */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
 
-          {/* ============================================ */}
-          {/* ✅ Global Components — بتشتغل في كل الصفحات */}
-          {/* (ماعدا NotificationPermission اللي اتنقل للـ PrivateRoute) */}
-          {/* ============================================ */}
           <AIChat />
           <AdminFloatingButton />
+          <InstallPWA />              {/* ← ✅ جديد */}
         </div>
       </BrowserRouter>
     </ThemeProvider>
