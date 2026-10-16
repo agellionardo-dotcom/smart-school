@@ -13,6 +13,7 @@ import PayrollTab from '../components/admin/PayrollTab';
 import AttendanceReportTab from '../components/admin/AttendanceReportTab';
 import AnnouncementsTab from '../components/admin/AnnouncementsTab';
 import AnalyticsTab from '../components/admin/AnalyticsTab';
+import AuditLogs from './AuditLogs';   // ← ✅ جديد
 
 export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -44,6 +45,7 @@ export default function AdminDashboard() {
     { id: 'branches',      label: '🏢 الفروع',         roles: ['superadmin'] },
     { id: 'map',           label: '🗺️ الخريطة',        roles: ['superadmin', 'manager', 'hr', 'viewer'] },
     { id: 'qr',            label: '📱 QR Code',        roles: ['superadmin', 'manager'] },
+    { id: 'audit',         label: '📋 سجلات النظام',   roles: ['superadmin', 'manager', 'hr'] },   // ← ✅ جديد
     { id: 'settings',      label: '⚙️ الإعدادات',      roles: ['superadmin'] },
   ];
 
@@ -111,6 +113,7 @@ export default function AdminDashboard() {
         {tab === 'branches' && <BranchesTab />}
         {tab === 'map' && <BranchesMap />}
         {tab === 'qr' && <QrTab />}
+        {tab === 'audit' && <AuditLogs />}                          {/* ← ✅ جديد */}
         {tab === 'settings' && <SettingsTab />}
         {tab === 'organization' && <OrganizationTab />}
       </div>
