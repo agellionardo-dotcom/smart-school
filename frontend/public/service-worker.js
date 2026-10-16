@@ -1,80 +1,126 @@
-/* Service Worker - Smart School PWA */
-const CACHE_NAME = 'smart-school-v1';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
-  '/manifest.json',
-  '/logo.png'
-];
+// ============================================
+// Smart School — Service Worker (PWA)
+// ============================================
+// للـ Offline Mode + Cache
+// ⚠️ مختلف عن firebase-messaging-sw.js
+// ============================================
 
-// تثبيت Service Worker
+const CACHE_VERSION = 'smart-school-v1.0.0';
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
+
+// ============================================
+// Install — لا نخزّن حاجة مسبقًا
+// (نتجنب مشكلة الملفات اللي مش موجودة)
+// ============================================
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
-        console.warn('[SW] Failed to cache some assets:', err);
-      });
-    })
+    caches
+      .open(STATIC_CACHE)
+      .then((cache) =>
+        cache.addAll(['/manifest.json', '/logo.png']).catch(() => {})
+      )
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-// تفعيل Service Worker
+// ============================================
+// Activate — حذف الكاش القديم
+// ============================================
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activating...');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    })
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => !key.startsWith(CACHE_VERSION))
+            .map((key) => caches.delete(key))
+        )
+      )
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// اعتراض الطلبات
+// ============================================
+// Fetch — استراتيجية حسب نوع الطلب
+// ============================================
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // تجاهل طلبات API — نخليها تروح للـ network
-  if (url.pathname.startsWith('/api/')) {
+  // ✅ تجاهل الطلبات دي (سيبها تروح للـ network):
+  if (
+    request.method !== 'GET' ||
+    url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/socket.io') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('googleapis') ||
+    url.hostname.includes('railway') ||
+    url.hostname.includes('cloudinary') ||
+    url.protocol === 'chrome-extension:'
+  ) {
     return;
   }
 
-  // تجاهل الـ POST/PUT/DELETE
-  if (request.method !== 'GET') {
+  // ✅ للـ HTML — Network first (عشان التحديثات)
+  if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
     return;
   }
 
-  // استراتيجية: Network First ثم Cache
+  // ✅ للصور — Cache first
+  if (request.destination === 'image') {
+    event.respondWith(
+      caches.match(request).then(
+        (cached) =>
+          cached ||
+          fetch(request)
+            .then((response) => {
+              const copy = response.clone();
+              caches
+                .open(RUNTIME_CACHE)
+                .then((cache) => cache.put(request, copy));
+              return response;
+            })
+            .catch(() => caches.match('/logo.png'))
+      )
+    );
+    return;
+  }
+
+  // ✅ الافتراضي — Network first ثم Cache
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // خزّن نسخة في الـ cache
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, responseClone);
-        });
+        const copy = response.clone();
+        caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, copy));
         return response;
       })
-      .catch(() => {
-        // لو مفيش نت → استخدم الـ cache
-        return caches.match(request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // لو مفيش في cache → رجّع index.html للـ SPA
-          if (request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-          return new Response('Offline', { status: 503 });
-        });
-      })
+      .catch(() => caches.match(request))
   );
+});
+
+// ============================================
+// رسائل من الصفحة الرئيسية
+// ============================================
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data?.type === 'CLEAR_CACHE') {
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((key) => caches.delete(key)))
+    );
+  }
 });
