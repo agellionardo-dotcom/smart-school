@@ -130,7 +130,7 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/face', require('./routes/face'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/notifications', require('./routes/notifications'));
-
+app.use('/api/audit-logs', require('./routes/auditLogs'));
 // ✅ 7. 404 Handler
 app.use((req, res) => {
   res.status(404).json({ error: '❌ Route not found', path: req.originalUrl });

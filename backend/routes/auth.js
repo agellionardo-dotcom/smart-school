@@ -5,29 +5,99 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { sendResetPasswordEmail } = require('../utils/emailService');
-
+const { logAction } = require('../middleware/auditLog');
 // ==================== تسجيل الدخول ====================
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email: email.toLowerCase() }).populate('branch');
-    if (!user) return res.status(400).json({ msg: 'بيانات خاطئة' });
 
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return res.status(400).json({ msg: 'بيانات خاطئة' });
-
-    if (!user.active) {
-      return res.status(403).json({ msg: 'الحساب معطّل — راجع المدير' });
+    // ❌ مستخدم غير موجود
+    if (!user) {
+      await logAction({
+        req,
+        action: 'login_failed',
+        resource: 'auth',
+        description: `محاولة دخول فاشلة: ${email}`,
+        status: 'failed',
+        statusCode: 400,
+        details: { email, reason: 'user_not_found' },
+      });
+      return res.status(400).json({ msg: 'البريد أو كلمة المرور خطأ' });
     }
 
+    // ❌ كلمة مرور خطأ
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      await logAction({
+        req,
+        action: 'login_failed',
+        resource: 'auth',
+        description: `محاولة دخول فاشلة: ${email}`,
+        status: 'failed',
+        statusCode: 400,
+        userOverride: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        details: { email, reason: 'wrong_password' },
+      });
+      return res.status(400).json({ msg: 'البريد أو كلمة المرور خطأ' });
+    }
+
+    // ❌ حساب موقوف
+    if (!user.active) {
+      await logAction({
+        req,
+        action: 'login_failed',
+        resource: 'auth',
+        description: `محاولة دخول لحساب موقوف: ${email}`,
+        status: 'failed',
+        statusCode: 403,
+        userOverride: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        details: { email, reason: 'account_inactive' },
+      });
+      return res.status(403).json({ msg: 'الحساب موقوف ⚠️' });
+    }
+
+    // ✅ تحديث lastLogin
     user.lastLogin = new Date();
     await user.save();
 
+    // ✅ إنشاء token
     const token = jwt.sign(
       { id: user._id, role: user.role, branch: user.branch?._id },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
+
+    // ✅ تسجيل الدخول الناجح
+    await logAction({
+      req,
+      action: 'login',
+      resource: 'auth',
+      description: `تسجيل دخول ناجح`,
+      status: 'success',
+      statusCode: 200,
+      userOverride: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+      details: {
+        email: user.email,
+        role: user.role,
+        branch: user.branch?.name || null,
+      },
+    });
 
     res.json({ token, user });
   } catch (err) {
