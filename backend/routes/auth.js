@@ -601,5 +601,76 @@ router.get('/biometric/status', auth, tenant, async (req, res) => {
     res.status(500).json({ msg: 'خطأ' });
   }
 });
+// ============================================
+// ✅ 7. تغيير كلمة المرور
+// ============================================
+router.post('/change-password', auth, tenant, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
 
+    // ✅ Validation
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        msg: 'كلمة المرور الحالية والجديدة مطلوبين',
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        msg: 'كلمة المرور الجديدة 8 أحرف على الأقل',
+      });
+    }
+
+    // ✅ نجيب المستخدم
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,
+    });
+
+    if (!user) {
+      return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    }
+
+    // ✅ نتأكد من كلمة المرور الحالية
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(400).json({
+        msg: 'كلمة المرور الحالية غلط',
+      });
+    }
+
+    // ✅ نتأكد إن الجديدة مختلفة
+    const isSame = await bcrypt.compare(newPassword, user.password);
+    if (isSame) {
+      return res.status(400).json({
+        msg: 'كلمة المرور الجديدة لازم تكون مختلفة',
+      });
+    }
+
+    // ✅ نشفر ونحفظ
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    // ✅ نسجل في Audit Log
+    await logAction({
+      req,
+      action: 'update',
+      resource: 'user',
+      resourceId: user._id,
+      description: 'تغيير كلمة المرور',
+      details: {
+        userEmail: user.email,
+        changedAt: new Date(),
+      },
+    });
+
+    res.json({
+      success: true,
+      msg: '✅ تم تغيير كلمة المرور بنجاح',
+    });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
 module.exports = router;
