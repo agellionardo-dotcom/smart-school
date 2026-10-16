@@ -3,14 +3,61 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
+const Company = require('../models/Company');
 const auth = require('../middleware/auth');
+const tenant = require('../middleware/tenant');
 const { sendResetPasswordEmail } = require('../utils/emailService');
 const { logAction } = require('../middleware/auditLog');
-// ==================== تسجيل الدخول ====================
+
+// ============================================
+// ✅ Helper: إنشاء JWT
+// ============================================
+function generateToken(user, branchId = null) {
+  return jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+      companyId: user.companyId,
+      companyRole: user.companyRole,
+      branch: branchId,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+}
+
+// ============================================
+// ✅ Helper: تجهيز بيانات المستخدم للرد
+// ============================================
+async function prepareUserResponse(user) {
+  const userObj = user.toObject ? user.toObject() : { ...user };
+  delete userObj.password;
+
+  // جلب بيانات الشركة
+  if (user.companyId) {
+    const company = await Company.findById(user.companyId)
+      .select('name slug logo type subscription.plan subscription.status subscription.isTrial subscription.endDate');
+    userObj.company = company;
+  }
+
+  return userObj;
+}
+
+// ============================================
+// ✅ 1. تسجيل الدخول
+// ============================================
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email: email.toLowerCase() }).populate('branch');
+
+    if (!email || !password) {
+      return res.status(400).json({ msg: 'البريد وكلمة المرور مطلوبين' });
+    }
+
+    // ✅ 1. نجيب المستخدم (بدون شرط companyId — عشان نقدر نسجل الـ login_failed)
+    const user = await User.findOne({ email: email.toLowerCase() })
+      .populate('branch')
+      .populate('companyId', 'name slug logo type active subscription');
 
     // ❌ مستخدم غير موجود
     if (!user) {
@@ -21,8 +68,9 @@ router.post('/login', async (req, res) => {
         description: `محاولة دخول فاشلة: ${email}`,
         status: 'failed',
         statusCode: 400,
+        companyIdOverride: null, // ← مفيش شركة
         details: { email, reason: 'user_not_found' },
-      });
+      }).catch(() => {}); // ← مش مهم لو فشل
       return res.status(400).json({ msg: 'البريد أو كلمة المرور خطأ' });
     }
 
@@ -36,6 +84,7 @@ router.post('/login', async (req, res) => {
         description: `محاولة دخول فاشلة: ${email}`,
         status: 'failed',
         statusCode: 400,
+        companyIdOverride: user.companyId?._id,
         userOverride: {
           id: user._id,
           email: user.email,
@@ -56,6 +105,7 @@ router.post('/login', async (req, res) => {
         description: `محاولة دخول لحساب موقوف: ${email}`,
         status: 'failed',
         statusCode: 403,
+        companyIdOverride: user.companyId?._id,
         userOverride: {
           id: user._id,
           email: user.email,
@@ -67,16 +117,35 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ msg: 'الحساب موقوف ⚠️' });
     }
 
+    // ❌ الشركة موقوفة (لو مش SuperAdmin)
+    if (user.role !== 'superadmin' && user.companyId) {
+      const company = user.companyId;
+      if (!company.active) {
+        return res.status(403).json({
+          msg: 'الشركة موقوفة — تواصل مع الدعم',
+          code: 'COMPANY_SUSPENDED',
+        });
+      }
+
+      // فحص الاشتراك
+      const status = company.subscription?.status;
+      if (['suspended', 'cancelled', 'expired'].includes(status)) {
+        return res.status(403).json({
+          msg: 'الاشتراك منتهي — تواصل مع الدعم',
+          code: 'SUBSCRIPTION_EXPIRED',
+        });
+      }
+    }
+
     // ✅ تحديث lastLogin
     user.lastLogin = new Date();
     await user.save();
 
     // ✅ إنشاء token
-    const token = jwt.sign(
-      { id: user._id, role: user.role, branch: user.branch?._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const token = generateToken(user, user.branch?._id);
+
+    // ✅ تجهيز الرد
+    const userResponse = await prepareUserResponse(user);
 
     // ✅ تسجيل الدخول الناجح
     await logAction({
@@ -86,6 +155,7 @@ router.post('/login', async (req, res) => {
       description: `تسجيل دخول ناجح`,
       status: 'success',
       statusCode: 200,
+      companyIdOverride: user.companyId?._id,
       userOverride: {
         id: user._id,
         email: user.email,
@@ -95,35 +165,118 @@ router.post('/login', async (req, res) => {
       details: {
         email: user.email,
         role: user.role,
+        companyRole: user.companyRole,
         branch: user.branch?.name || null,
       },
     });
 
-    res.json({ token, user });
+    res.json({
+      success: true,
+      token,
+      user: userResponse,
+    });
   } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ msg: err.message });
   }
 });
 
-// ==================== تسجيل مستخدم جديد ====================
-router.post('/register', async (req, res) => {
+// ============================================
+// ✅ 2. تسجيل مستخدم جديد
+// ============================================
+// ⚠️ محمي — بس للـ SuperAdmin / Company Owner
+// ============================================
+router.post('/register', auth, tenant, async (req, res) => {
   try {
-    const { name, email, password, branch, role } = req.body;
+    // ✅ فحص الصلاحيات
+    const allowedRoles = ['superadmin', 'company_owner', 'hr'];
+    const userRole = req.user.companyRole || req.user.role;
+
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({ msg: '⛔ ليس لديك صلاحية' });
+    }
+
+    const { name, email, password, branch, role, companyRole } = req.body;
+
+    // ✅ companyId إجباري
+    if (!req.companyId) {
+      return res.status(400).json({ msg: 'companyId مطلوب' });
+    }
+
+    // ✅ validation
+    if (!name || !email || !password) {
+      return res.status(400).json({ msg: 'الاسم، البريد، وكلمة المرور مطلوبين' });
+    }
+
+    // ✅ فحص الإيميل
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing) {
+      return res.status(400).json({ msg: 'البريد مستخدم بالفعل' });
+    }
+
     const hashed = await bcrypt.hash(password, 10);
+
     const user = await User.create({
+      companyId: req.companyId,
       name,
       email: email.toLowerCase(),
       password: hashed,
-      branch,
-      role: role || 'employee'
+      branch: branch || null,
+      role: role || 'employee',
+      companyRole: companyRole || 'employee',
+      createdBy: req.user.id,
     });
-    res.json(user);
+
+    await logAction({
+      req,
+      action: 'create',
+      resource: 'user',
+      resourceId: user._id,
+      description: `إنشاء مستخدم جديد: ${name}`,
+      details: { email, role, companyRole },
+    });
+
+    const userResponse = await prepareUserResponse(user);
+
+    res.status(201).json({
+      success: true,
+      message: '✅ تم إنشاء المستخدم',
+      user: userResponse,
+    });
+  } catch (err) {
+    console.error('Register error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ============================================
+// ✅ 3. معلومات المستخدم الحالي
+// ============================================
+router.get('/me', auth, tenant, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate('branch')
+      .populate('companyId');
+
+    if (!user) {
+      return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    }
+
+    const userResponse = await prepareUserResponse(user);
+
+    res.json({
+      success: true,
+      user: userResponse,
+      trialDaysLeft: req.trialDaysLeft || null,
+    });
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
 });
 
-// ==================== طلب إعادة تعيين كلمة المرور ====================
+// ============================================
+// ✅ 4. طلب إعادة تعيين كلمة المرور
+// ============================================
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -156,7 +309,7 @@ router.post('/forgot-password', async (req, res) => {
       await sendResetPasswordEmail({
         to: user.email,
         name: user.name,
-        resetUrl
+        resetUrl,
       });
       res.json({ msg: genericMsg, sent: true });
     } catch (emailErr) {
@@ -164,14 +317,16 @@ router.post('/forgot-password', async (req, res) => {
       user.resetPasswordToken = undefined;
       user.resetPasswordExpires = undefined;
       await user.save();
-      res.status(500).json({ msg: 'فشل إرسال الإيميل — تحقق من إعدادات البريد' });
+      res.status(500).json({ msg: 'فشل إرسال الإيميل' });
     }
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
 });
 
-// ==================== التحقق من صلاحية الـ token ====================
+// ============================================
+// ✅ 5. التحقق من صلاحية الـ token
+// ============================================
 router.get('/verify-reset-token/:token', async (req, res) => {
   try {
     const hashedToken = crypto
@@ -181,7 +336,7 @@ router.get('/verify-reset-token/:token', async (req, res) => {
 
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
-      resetPasswordExpires: { $gt: Date.now() }
+      resetPasswordExpires: { $gt: Date.now() },
     });
 
     if (!user) {
@@ -194,7 +349,9 @@ router.get('/verify-reset-token/:token', async (req, res) => {
   }
 });
 
-// ==================== إعادة تعيين كلمة المرور ====================
+// ============================================
+// ✅ 6. إعادة تعيين كلمة المرور
+// ============================================
 router.post('/reset-password/:token', async (req, res) => {
   try {
     const { password } = req.body;
@@ -209,7 +366,7 @@ router.post('/reset-password/:token', async (req, res) => {
 
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
-      resetPasswordExpires: { $gt: Date.now() }
+      resetPasswordExpires: { $gt: Date.now() },
     });
 
     if (!user) {
@@ -231,8 +388,8 @@ router.post('/reset-password/:token', async (req, res) => {
 // ✅ Biometric Login
 // ============================================
 
-// ==================== 1. تفعيل البصمة (بعد login عادي) ====================
-router.post('/biometric/enable', auth, async (req, res) => {
+// ==================== 1. تفعيل البصمة ====================
+router.post('/biometric/enable', auth, tenant, async (req, res) => {
   try {
     const { deviceId, deviceName, deviceModel, platform, biometricType } = req.body;
 
@@ -243,12 +400,15 @@ router.post('/biometric/enable', auth, async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ msg: 'المستخدم غير موجود' });
 
-    // ✅ تحقق إن الجهاز مش مضاف قبل كده
     const existingDevice = user.trustedDevices.find((d) => d.deviceId === deviceId);
 
-    // ✅ أنشئ refresh token طويل الأمد (60 يوم)
     const refreshToken = jwt.sign(
-      { id: user._id, deviceId, type: 'biometric_refresh' },
+      {
+        id: user._id,
+        companyId: user.companyId,
+        deviceId,
+        type: 'biometric_refresh',
+      },
       process.env.JWT_SECRET,
       { expiresIn: '60d' }
     );
@@ -256,7 +416,6 @@ router.post('/biometric/enable', auth, async (req, res) => {
     const hashedToken = await bcrypt.hash(refreshToken, 10);
 
     if (existingDevice) {
-      // ✅ تحديث الجهاز الموجود
       existingDevice.biometricEnabled = true;
       existingDevice.biometricType = biometricType || 'fingerprint';
       existingDevice.refreshToken = hashedToken;
@@ -265,7 +424,6 @@ router.post('/biometric/enable', auth, async (req, res) => {
       existingDevice.deviceModel = deviceModel || existingDevice.deviceModel;
       existingDevice.platform = platform || existingDevice.platform;
     } else {
-      // ✅ إضافة جهاز جديد
       user.trustedDevices.push({
         deviceId,
         deviceName,
@@ -303,7 +461,6 @@ router.post('/biometric/login', async (req, res) => {
       return res.status(400).json({ msg: 'بيانات ناقصة' });
     }
 
-    // ✅ فك الـ token
     let decoded;
     try {
       decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
@@ -317,7 +474,8 @@ router.post('/biometric/login', async (req, res) => {
 
     const user = await User.findById(decoded.id)
       .select('+trustedDevices.refreshToken')
-      .populate('branch');
+      .populate('branch')
+      .populate('companyId', 'name slug logo type active subscription');
 
     if (!user) return res.status(404).json({ msg: 'المستخدم غير موجود' });
 
@@ -325,34 +483,35 @@ router.post('/biometric/login', async (req, res) => {
       return res.status(403).json({ msg: 'الحساب معطّل — راجع المدير' });
     }
 
-    // ✅ تحقق إن الجهاز موثوق
+    // فحص الشركة
+    if (user.role !== 'superadmin' && user.companyId) {
+      const company = user.companyId;
+      if (!company.active || ['suspended', 'cancelled', 'expired'].includes(company.subscription?.status)) {
+        return res.status(403).json({ msg: 'الشركة موقوفة أو الاشتراك منتهي' });
+      }
+    }
+
     const device = user.trustedDevices.find((d) => d.deviceId === deviceId);
     if (!device || !device.biometricEnabled) {
       return res.status(401).json({ msg: 'الجهاز غير موثوق' });
     }
 
-    // ✅ تحقق من الـ token
     const isValid = await bcrypt.compare(refreshToken, device.refreshToken);
     if (!isValid) {
       return res.status(401).json({ msg: 'token غير صالح' });
     }
 
-    // ✅ تحديث lastLogin
     device.lastLogin = new Date();
     user.lastLogin = new Date();
     await user.save();
 
-    // ✅ إنشاء access token جديد (30 يوم)
-    const accessToken = jwt.sign(
-      { id: user._id, role: user.role, branch: user.branch?._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '30d' }
-    );
+    const accessToken = generateToken(user, user.branch?._id);
+    const userResponse = await prepareUserResponse(user);
 
     res.json({
       success: true,
       token: accessToken,
-      user,
+      user: userResponse,
     });
   } catch (err) {
     console.error('Biometric login error:', err);
@@ -361,7 +520,7 @@ router.post('/biometric/login', async (req, res) => {
 });
 
 // ==================== 3. إلغاء تفعيل البصمة لجهاز ====================
-router.post('/biometric/disable', auth, async (req, res) => {
+router.post('/biometric/disable', auth, tenant, async (req, res) => {
   try {
     const { deviceId } = req.body;
     const user = await User.findById(req.user.id);
@@ -372,7 +531,6 @@ router.post('/biometric/disable', auth, async (req, res) => {
       (d) => d.deviceId !== deviceId
     );
 
-    // ✅ لو مفيش أجهزة موثوقة → عطّل الخيار
     if (user.trustedDevices.length === 0) {
       user.preferences = user.preferences || {};
       user.preferences.biometricLogin = false;
@@ -386,7 +544,7 @@ router.post('/biometric/disable', auth, async (req, res) => {
 });
 
 // ==================== 4. جلب الأجهزة الموثوقة ====================
-router.get('/biometric/devices', auth, async (req, res) => {
+router.get('/biometric/devices', auth, tenant, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ msg: 'المستخدم غير موجود' });
@@ -416,7 +574,7 @@ router.get('/biometric/devices', auth, async (req, res) => {
 });
 
 // ==================== 5. حالة البصمة للمستخدم ====================
-router.get('/biometric/status', auth, async (req, res) => {
+router.get('/biometric/status', auth, tenant, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ msg: 'المستخدم غير موجود' });

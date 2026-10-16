@@ -1,20 +1,37 @@
 const mongoose = require('mongoose');
 
 const branchSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  type: { type: String, enum: ['main', 'sub'], default: 'sub' },
-  parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', default: null },
-  location: {
-    lat: { type: Number, required: true },
-    lng: { type: Number, required: true }
+  // ✅ Multi-tenant
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true,
+    index: true,
   },
-  radius: { type: Number, default: 5 },
-  manager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  qrToken: { type: String, unique: true, sparse: true },
-  phone: { type: String },
+
+  name: { type: String, required: true },
+  type: {
+    type: String,
+    enum: ['main', 'sub'],
+    default: 'sub',
+  },
   address: { type: String },
+  location: {
+    lat: Number,
+    lng: Number,
+  },
+  range: { type: Number, default: 100 }, // متر
+  phone: { type: String },
+  manager: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
   active: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now }
-});
+}, { timestamps: true });
+
+// ✅ Compound indexes
+branchSchema.index({ companyId: 1, active: 1 });
+branchSchema.index({ companyId: 1, type: 1 });
+branchSchema.index({ companyId: 1, name: 1 });
 
 module.exports = mongoose.model('Branch', branchSchema);

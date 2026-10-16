@@ -1,13 +1,16 @@
 const router = require('express').Router();
 const AuditLog = require('../models/AuditLog');
 const auth = require('../middleware/auth');
+const tenant = require('../middleware/tenant');
 
 // ============================================
-// ✅ Middleware: superadmin / hr فقط
+// ✅ Middleware: superadmin / hr / manager
 // ============================================
 function requireAdmin(req, res, next) {
-  const allowed = ['superadmin', 'hr', 'manager'];
-  if (!allowed.includes(req.user?.role)) {
+  const role = req.user?.companyRole || req.user?.role;
+  const allowed = ['superadmin', 'company_owner', 'hr', 'manager'];
+
+  if (!allowed.includes(role) && !req.isSuperAdmin) {
     return res.status(403).json({ msg: '⛔ ليس لديك صلاحية للوصول' });
   }
   next();
@@ -15,9 +18,8 @@ function requireAdmin(req, res, next) {
 
 // ============================================
 // ✅ GET /api/audit-logs
-// جلب السجلات مع فلترة + pagination
 // ============================================
-router.get('/', auth, requireAdmin, async (req, res) => {
+router.get('/', auth, tenant, requireAdmin, async (req, res) => {
   try {
     const {
       page = 1,
@@ -32,21 +34,19 @@ router.get('/', auth, requireAdmin, async (req, res) => {
     } = req.query;
 
     // ===== بناء الفلتر =====
-    const filter = {};
+    const filter = { companyId: req.companyId };   // ← ✅
 
     if (action) filter.action = action;
     if (resource) filter.resource = resource;
     if (userId) filter.user = userId;
     if (status) filter.status = status;
 
-    // فلترة بالتاريخ
     if (from || to) {
       filter.timestamp = {};
       if (from) filter.timestamp.$gte = new Date(from);
       if (to) filter.timestamp.$lte = new Date(to);
     }
 
-    // بحث نصي
     if (search) {
       filter.$or = [
         { userEmail: { $regex: search, $options: 'i' } },
@@ -56,18 +56,16 @@ router.get('/', auth, requireAdmin, async (req, res) => {
       ];
     }
 
-    // ===== Pagination =====
     const pageNum = parseInt(page, 10);
-    const limitNum = Math.min(parseInt(limit, 10), 200); // حد أقصى 200
+    const limitNum = Math.min(parseInt(limit, 10), 200);
     const skip = (pageNum - 1) * limitNum;
 
-    // ===== الاستعلام =====
     const [logs, total] = await Promise.all([
       AuditLog.find(filter)
         .sort({ timestamp: -1 })
         .skip(skip)
         .limit(limitNum)
-        .populate('user', 'name email role')
+        .populate('user', 'name email role companyRole')
         .lean(),
       AuditLog.countDocuments(filter),
     ]);
@@ -90,19 +88,18 @@ router.get('/', auth, requireAdmin, async (req, res) => {
 
 // ============================================
 // ✅ GET /api/audit-logs/stats
-// إحصائيات سريعة
 // ============================================
-router.get('/stats', auth, requireAdmin, async (req, res) => {
+router.get('/stats', auth, tenant, requireAdmin, async (req, res) => {
   try {
     const { from, to } = req.query;
 
-    const matchFilter = {};
+    const matchFilter = { companyId: req.companyId };   // ← ✅
+
     if (from || to) {
       matchFilter.timestamp = {};
       if (from) matchFilter.timestamp.$gte = new Date(from);
       if (to) matchFilter.timestamp.$lte = new Date(to);
     } else {
-      // آخر 7 أيام افتراضيًا
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       matchFilter.timestamp = { $gte: weekAgo };
@@ -155,12 +152,14 @@ router.get('/stats', auth, requireAdmin, async (req, res) => {
 
 // ============================================
 // ✅ GET /api/audit-logs/:id
-// جلب سجل واحد بالتفاصيل
 // ============================================
-router.get('/:id', auth, requireAdmin, async (req, res) => {
+router.get('/:id', auth, tenant, requireAdmin, async (req, res) => {
   try {
-    const log = await AuditLog.findById(req.params.id)
-      .populate('user', 'name email role branch')
+    const log = await AuditLog.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    })
+      .populate('user', 'name email role companyRole branch')
       .lean();
 
     if (!log) {
@@ -174,13 +173,21 @@ router.get('/:id', auth, requireAdmin, async (req, res) => {
 });
 
 // ============================================
-// ✅ DELETE /api/audit-logs/:id
-// حذف سجل (superadmin فقط)
+// ✅ DELETE /api/audit-logs/:id (superadmin فقط)
 // ============================================
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, tenant, async (req, res) => {
   try {
-    if (req.user?.role !== 'superadmin') {
+    if (req.user?.role !== 'superadmin' && !req.isSuperAdmin) {
       return res.status(403).json({ msg: '⛔ superadmin فقط' });
+    }
+
+    const log = await AuditLog.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
+    if (!log) {
+      return res.status(404).json({ msg: 'السجل غير موجود' });
     }
 
     await AuditLog.findByIdAndDelete(req.params.id);

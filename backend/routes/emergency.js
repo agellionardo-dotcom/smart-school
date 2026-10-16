@@ -1,24 +1,27 @@
 const router = require('express').Router();
 const Emergency = require('../models/Emergency');
 const User = require('../models/User');
+const Branch = require('../models/Branch');
 const auth = require('../middleware/auth');
-const { checkPermission, scopeToBranch, isHQHR } = require('../middleware/permissions');
+const tenant = require('../middleware/tenant');
+const { checkPermission } = require('../middleware/permissions');
+const { logAction } = require('../middleware/auditLog');
 
 // ==================== Helpers ====================
-const getHQBranch = async () => {
-  const Branch = require('../models/Branch');
-  return await Branch.findOne({ type: 'main' });
+const getHQBranch = async (companyId) => {
+  return await Branch.findOne({ companyId, type: 'main' });
 };
 
-const isHQHRCheck = async (user) => {
-  if (user.role !== 'hr') return false;
+const isHQHRCheck = async (user, companyId) => {
+  const role = user.companyRole || user.role;
+  if (role !== 'hr') return false;
   if (!user.branch) return false;
-  const hq = await getHQBranch();
+  const hq = await getHQBranch(companyId);
   return hq && String(user.branch) === String(hq._id);
 };
 
 // ==================== إنشاء حالة طوارئ ====================
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, tenant, async (req, res) => {
   try {
     const { type, message, location } = req.body;
 
@@ -26,20 +29,22 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ msg: 'ليس لديك فرع محدد' });
     }
 
-    // ✅ نتأكد إن مفيش حالة نشطة بالفعل لنفس المستخدم
+    // ✅ نفس الشركة
     const existing = await Emergency.findOne({
+      companyId: req.companyId,   // ← ✅
       user: req.user.id,
       status: 'active',
     });
 
     if (existing) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         msg: 'لديك حالة طوارئ نشطة بالفعل',
         emergency: existing,
       });
     }
 
     const emergency = await Emergency.create({
+      companyId: req.companyId,   // ← ✅
       user: req.user.id,
       branch: req.user.branch,
       type: type || 'other',
@@ -52,32 +57,36 @@ router.post('/', auth, async (req, res) => {
       .populate('user', 'name email phone position')
       .populate('branch', 'name location');
 
-    // ✅ إرسال إشعار فوري للمديرين
+    await logAction({
+      req,
+      action: 'create',
+      resource: 'emergency',
+      resourceId: emergency._id,
+      description: `حالة طوارئ: ${type}`,
+    });
+
     const io = req.app.get('io');
     const onlineUsers = req.app.get('onlineUsers');
 
     if (io) {
-      // نجيب كل المديرين + HR + superadmin
+      // ✅ المديرين في نفس الشركة بس
       const managers = await User.find({
-        role: { $in: ['superadmin', 'manager', 'hr'] },
+        companyId: req.companyId,   // ← ✅
+        companyRole: { $in: ['company_owner', 'manager', 'hr'] },
         active: true,
       }).select('_id');
 
-      // نبعت لكل مدير متصل
       managers.forEach((m) => {
         const socketId = onlineUsers.get(String(m._id));
         if (socketId) {
-          io.to(socketId).emit('emergency:new', {
-            emergency: populated,
-          });
+          io.to(socketId).emit('emergency:new', { emergency: populated });
         }
       });
 
-      // كمان نبعت لكل الغرفة (لو فيه room عام)
       io.emit('emergency:new', { emergency: populated });
     }
 
-    res.status(201).json({ 
+    res.status(201).json({
       msg: '✅ تم تسجيل حالة الطوارئ',
       emergency: populated,
     });
@@ -88,22 +97,20 @@ router.post('/', auth, async (req, res) => {
 });
 
 // ==================== جلب كل حالات الطوارئ ====================
-router.get('/', auth, checkPermission('users.view.branch'), async (req, res) => {
+router.get('/', auth, tenant, checkPermission('users.view.branch'), async (req, res) => {
   try {
     const { status, branch, limit = 50 } = req.query;
+    const role = req.user.companyRole || req.user.role;
 
-    let filter = {};
+    let filter = { companyId: req.companyId };   // ← ✅
 
-    // ✅ superadmin + viewer + HR في المنيا → كل الحالات
-    if (['superadmin', 'viewer'].includes(req.user.role)) {
+    if (role === 'superadmin' || req.isSuperAdmin) {
       // كل الحالات
-    } else if (req.user.role === 'hr' && await isHQHRCheck(req.user)) {
+    } else if (role === 'hr' && (await isHQHRCheck(req.user, req.companyId))) {
       // كل الحالات
-    } else if (['hr', 'manager'].includes(req.user.role)) {
-      // فرعه بس
+    } else if (['hr', 'manager', 'company_owner'].includes(role)) {
       filter.branch = req.user.branch;
     } else {
-      // الموظف يشوف حالاته بس
       filter.user = req.user.id;
     }
 
@@ -124,15 +131,16 @@ router.get('/', auth, checkPermission('users.view.branch'), async (req, res) => 
 });
 
 // ==================== جلب الحالات النشطة ====================
-router.get('/active', auth, async (req, res) => {
+router.get('/active', auth, tenant, async (req, res) => {
   try {
-    let filter = { status: 'active' };
+    const role = req.user.companyRole || req.user.role;
+    let filter = { companyId: req.companyId, status: 'active' };   // ← ✅
 
-    if (['superadmin', 'viewer'].includes(req.user.role)) {
+    if (role === 'superadmin' || req.isSuperAdmin) {
       // كل الحالات
-    } else if (req.user.role === 'hr' && await isHQHRCheck(req.user)) {
+    } else if (role === 'hr' && (await isHQHRCheck(req.user, req.companyId))) {
       // كل الحالات
-    } else if (['hr', 'manager'].includes(req.user.role)) {
+    } else if (['hr', 'manager', 'company_owner'].includes(role)) {
       filter.branch = req.user.branch;
     } else {
       filter.user = req.user.id;
@@ -150,20 +158,25 @@ router.get('/active', auth, async (req, res) => {
 });
 
 // ==================== إغلاق حالة طوارئ ====================
-router.put('/:id/resolve', auth, async (req, res) => {
+router.put('/:id/resolve', auth, tenant, async (req, res) => {
   try {
     const { notes } = req.body;
+    const role = req.user.companyRole || req.user.role;
 
-    const emergency = await Emergency.findById(req.params.id);
+    const emergency = await Emergency.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!emergency) {
       return res.status(404).json({ msg: 'الحالة غير موجودة' });
     }
 
-    // ✅ الصلاحيات: superadmin / HR في المنيا / manager فرعه
     const canResolve =
-      req.user.role === 'superadmin' ||
-      (req.user.role === 'hr' && await isHQHRCheck(req.user)) ||
-      (['hr', 'manager'].includes(req.user.role) &&
+      role === 'superadmin' ||
+      req.isSuperAdmin ||
+      (role === 'hr' && (await isHQHRCheck(req.user, req.companyId))) ||
+      (['hr', 'manager', 'company_owner'].includes(role) &&
         String(emergency.branch) === String(req.user.branch));
 
     if (!canResolve) {
@@ -182,7 +195,14 @@ router.put('/:id/resolve', auth, async (req, res) => {
       .populate('branch', 'name')
       .populate('resolvedBy', 'name');
 
-    // ✅ إشعار فوري
+    await logAction({
+      req,
+      action: 'resolve',
+      resource: 'emergency',
+      resourceId: emergency._id,
+      description: `إغلاق حالة طوارئ`,
+    });
+
     const io = req.app.get('io');
     if (io) {
       io.emit('emergency:resolved', { emergency: populated });
@@ -195,14 +215,17 @@ router.put('/:id/resolve', auth, async (req, res) => {
 });
 
 // ==================== إلغاء حالة (من صاحبها) ====================
-router.put('/:id/cancel', auth, async (req, res) => {
+router.put('/:id/cancel', auth, tenant, async (req, res) => {
   try {
-    const emergency = await Emergency.findById(req.params.id);
+    const emergency = await Emergency.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!emergency) {
       return res.status(404).json({ msg: 'الحالة غير موجودة' });
     }
 
-    // ✅ صاحب الحالة بس
     if (String(emergency.user) !== String(req.user.id)) {
       return res.status(403).json({ msg: 'غير مصرح' });
     }

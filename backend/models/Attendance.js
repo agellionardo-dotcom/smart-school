@@ -1,63 +1,62 @@
 const mongoose = require('mongoose');
 
 const attendanceSchema = new mongoose.Schema({
-  user: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+  // ✅ Multi-tenant
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true,
+    index: true,
   },
-  branch: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Branch', 
-    required: true 
+
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true,
   },
-  
+  branch: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Branch',
+  },
+  date: {
+    type: Date,
+    required: true,
+    index: true,
+  },
   checkIn: { type: Date },
   checkOut: { type: Date },
-  
-  checkInLocation: { lat: Number, lng: Number },
-  checkOutLocation: { lat: Number, lng: Number },
-  
+  status: {
+    type: String,
+    enum: ['present', 'late', 'absent', 'leave', 'holiday'],
+    default: 'present',
+  },
   lateMinutes: { type: Number, default: 0 },
-  status: { 
-    type: String, 
-    enum: ['present', 'absent', 'late'], 
-    default: 'present' 
+  earlyLeaveMinutes: { type: Number, default: 0 },
+  overtimeMinutes: { type: Number, default: 0 },
+  workHours: { type: Number, default: 0 },
+  method: {
+    type: String,
+    enum: ['qr', 'face', 'biometric', 'gps', 'manual', 'web'],
+    default: 'web',
   },
-  
-  // ✅ طريقة التسجيل الأساسية
-  method: { 
-    type: String, 
-    enum: ['gps', 'qr', 'manual', 'gps_biometric', 'face'],  // ← أضفنا 'face'
-    default: 'gps' 
+  location: {
+    lat: Number,
+    lng: Number,
+    address: String,
   },
-  
-  // ✅ تفاصيل التحقق
   verification: {
-    method: {
-      type: String,
-      enum: [
-        'gps_only', 
-        'gps_biometric', 
-        'gps_qr', 
-        'qr_only', 
-        'manual',
-        'face'              // ← أضفنا 'face'
-      ],
-      default: 'gps_only'
-    },
+    faceVerified: { type: Boolean, default: false },
     biometricUsed: { type: Boolean, default: false },
-    biometricType: { type: String, default: null },   // 'fingerprint' | 'faceId' | 'iris'
-    faceVerified: { type: Boolean, default: false },  // ← جديد
-    faceDistance: { type: Number, default: null },    // ← جديد
-    deviceId: { type: String, default: null },
+    qrUsed: { type: Boolean, default: false },
   },
-  
-  date: { type: Date, default: Date.now }
-});
+  notes: { type: String },
+}, { timestamps: true });
 
-// ✅ Index للأداء
-attendanceSchema.index({ user: 1, date: -1 });
-attendanceSchema.index({ branch: 1, date: -1 });
+// ✅ Compound indexes
+attendanceSchema.index({ companyId: 1, date: -1 });
+attendanceSchema.index({ companyId: 1, user: 1, date: -1 });
+attendanceSchema.index({ companyId: 1, branch: 1, date: -1 });
+attendanceSchema.index({ companyId: 1, status: 1, date: -1 });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

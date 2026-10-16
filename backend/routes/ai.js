@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const auth = require('../middleware/auth');
+const tenant = require('../middleware/tenant');
 const User = require('../models/User');
 const { buildUserContext, buildSystemPrompt } = require('../services/aiContext');
 
@@ -10,7 +11,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // ============================================
 // ✅ POST /api/ai/chat
 // ============================================
-router.post('/chat', auth, async (req, res) => {
+router.post('/chat', auth, tenant, async (req, res) => {
   try {
     const { message, history = [] } = req.body;
 
@@ -18,9 +19,17 @@ router.post('/chat', auth, async (req, res) => {
       return res.status(400).json({ msg: 'الرسالة مطلوبة' });
     }
 
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    // ✅ المستخدم من نفس الشركة
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,   // ← ✅
+    });
 
+    if (!user) {
+      return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    }
+
+    // ✅ نبني الـ context (ممكن نضيف companyId في المستقبل)
     const context = await buildUserContext(user);
     const systemPrompt = buildSystemPrompt(context);
 
@@ -36,23 +45,23 @@ router.post('/chat', auth, async (req, res) => {
 
     // ✅ بناء history سليم — لازم يبدأ بـ user
     let validHistory = (history || [])
-      .filter(h => h && h.content && h.content.trim())
-      .map(h => ({
+      .filter((h) => h && h.content && h.content.trim())
+      .map((h) => ({
         role: h.role === 'user' ? 'user' : 'model',
         parts: [{ text: h.content }],
       }));
 
-    // ✅ شيل أي "model" من الأول (رسالة الترحيب)
     while (validHistory.length > 0 && validHistory[0].role === 'model') {
       validHistory.shift();
     }
 
-    // ✅ شيل أي "model" من الآخر (لأن Gemini عايز آخر رسالة user)
-    while (validHistory.length > 0 && validHistory[validHistory.length - 1].role === 'model') {
+    while (
+      validHistory.length > 0 &&
+      validHistory[validHistory.length - 1].role === 'model'
+    ) {
       validHistory.pop();
     }
 
-    // ✅ لو الـ history فاضي، نستخدم generateContent مباشرة
     let response;
     if (validHistory.length === 0) {
       const result = await model.generateContent(message);
@@ -63,7 +72,6 @@ router.post('/chat', auth, async (req, res) => {
         const result = await chat.sendMessage(message);
         response = result.response.text();
       } catch (chatErr) {
-        // ✅ Fallback لو startChat فشل — نستخدم generateContent
         console.warn('startChat failed, using generateContent:', chatErr.message);
         const result = await model.generateContent(message);
         response = result.response.text();
@@ -100,10 +108,14 @@ router.post('/chat', auth, async (req, res) => {
 // ============================================
 // ✅ GET /api/ai/suggestions — اقتراحات جاهزة
 // ============================================
-router.get('/suggestions', auth, async (req, res) => {
+router.get('/suggestions', auth, tenant, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    const role = user.role;
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
+    const role = user?.companyRole || user?.role || 'employee';
 
     let suggestions = [];
 
@@ -115,7 +127,7 @@ router.get('/suggestions', auth, async (req, res) => {
         'مين المدير المباشر بتاعتي؟',
         'كام يوم تأخير عندي الشهر ده؟',
       ];
-    } else if (role === 'manager') {
+    } else if (role === 'manager' || role === 'hr') {
       suggestions = [
         'كام موظف غايب النهاردة؟',
         'مين أكتر واحد بيتأخر؟',
@@ -123,7 +135,7 @@ router.get('/suggestions', auth, async (req, res) => {
         'كام طلب إجازة معلق؟',
         'إيه ترتيب الفروع حسب الحضور؟',
       ];
-    } else if (role === 'hr' || role === 'superadmin') {
+    } else if (role === 'company_owner' || role === 'superadmin') {
       suggestions = [
         'كام موظف في الشركة؟',
         'إيه نسبة الحضور النهاردة؟',

@@ -1,4 +1,4 @@
-// ✅ ضبط التوقيت على القاهرة (لازم يكون أول سطر قبل أي require)
+// ✅ ضبط التوقيت على القاهرة
 process.env.TZ = 'Africa/Cairo';
 
 const express = require('express');
@@ -12,7 +12,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
 
-// ✅ 1. تعريف app/server أولاً
+// ✅ 1. تعريف app/server
 const app = express();
 const server = http.createServer(app);
 
@@ -28,14 +28,13 @@ const ALLOWED_ORIGINS = [
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // اسمح للطلبات اللي من غير origin (mobile apps / postman / server-to-server)
     if (!origin) return callback(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
     return callback(new Error(`❌ CORS blocked: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Company-Id'],
 };
 
 const io = new Server(server, { cors: corsOptions });
@@ -55,12 +54,12 @@ io.on('connection', (socket) => {
 app.set('io', io);
 app.set('onlineUsers', onlineUsers);
 
-// ✅ trust proxy (مهم للـ Railway / Vercel)
+// ✅ trust proxy
 app.set('trust proxy', 1);
 
 // ✅ 3. Security Middlewares
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }, // للسماح بتحميل الصور من Cloudinary
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
@@ -70,11 +69,11 @@ app.use(hpp());
 
 // ✅ Rate Limiting
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 دقيقة
+  windowMs: 15 * 60 * 1000,
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: '⚠️ عدد الطلبات كبير جدًا، حاول مرة أخرى بعد قليل' },
+  message: { error: '⚠️ عدد الطلبات كبير جدًا' },
 });
 
 const authLimiter = rateLimit({
@@ -82,15 +81,15 @@ const authLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: '⚠️ محاولات تسجيل دخول كثيرة، حاول بعد 15 دقيقة' },
+  message: { error: '⚠️ محاولات تسجيل دخول كثيرة' },
 });
 
 const faceLimiter = rateLimit({
-  windowMs: 60 * 1000, // دقيقة
+  windowMs: 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: '⚠️ محاولات Face Recognition كثيرة، حاول بعد دقيقة' },
+  message: { error: '⚠️ محاولات Face Recognition كثيرة' },
 });
 
 app.use('/api', globalLimiter);
@@ -111,11 +110,21 @@ mongoose.connect(process.env.MONGO_URI)
 
 // ✅ 5. Health check
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', service: 'Smart School API', time: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    service: 'Nabd API',
+    version: '2.0.0',
+    time: new Date().toISOString(),
+  });
 });
 
 // ✅ 6. Routes
-app.use('/api/reports', require('./routes/reports'));
+// ===== SuperAdmin Routes (قبل tenant) =====
+app.use('/api/companies', require('./routes/companies'));
+app.use('/api/superadmin', require('./routes/superadmin'));
+
+// ===== Regular Routes =====
+app.use('/api/reports', require('./routes/reports-v2'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/dashboard', require('./routes/dashboard'));
@@ -131,9 +140,13 @@ app.use('/api/face', require('./routes/face'));
 app.use('/api/documents', require('./routes/documents'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/audit-logs', require('./routes/auditLogs'));
+
 // ✅ 7. 404 Handler
 app.use((req, res) => {
-  res.status(404).json({ error: '❌ Route not found', path: req.originalUrl });
+  res.status(404).json({
+    error: '❌ Route not found',
+    path: req.originalUrl,
+  });
 });
 
 // ✅ 8. Global Error Handler

@@ -1,52 +1,45 @@
 const mongoose = require('mongoose');
 
 const emergencySchema = new mongoose.Schema({
+  // ✅ Multi-tenant
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true,
+    index: true,
+  },
+
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    index: true,
-  },
-  branch: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Branch',
-    required: true,
   },
   type: {
     type: String,
-    enum: ['fire', 'medical', 'security', 'evacuation', 'other'],
+    enum: ['fire', 'medical', 'security', 'accident', 'other'],
     default: 'other',
   },
-  message: {
-    type: String,
-    default: '',
-    maxlength: 500,
-  },
+  description: { type: String },
   location: {
     lat: Number,
     lng: Number,
+    address: String,
   },
   status: {
     type: String,
-    enum: ['active', 'resolved', 'cancelled'],
-    default: 'active',
-    index: true,
+    enum: ['pending', 'in-progress', 'resolved', 'cancelled'],
+    default: 'pending',
   },
   resolvedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   },
-  resolvedAt: Date,
-  notes: {
-    type: String,
-    default: '',
-  },
-}, {
-  timestamps: true,
-});
+  resolvedAt: { type: Date },
+  notes: { type: String },
+}, { timestamps: true });
 
-// ✅ فهرس مركب للبحث السريع
-emergencySchema.index({ status: 1, createdAt: -1 });
-emergencySchema.index({ branch: 1, status: 1 });
+// ✅ Compound indexes
+emergencySchema.index({ companyId: 1, status: 1 });
+emergencySchema.index({ companyId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Emergency', emergencySchema);

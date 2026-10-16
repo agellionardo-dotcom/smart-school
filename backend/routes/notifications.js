@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const tenant = require('../middleware/tenant');
 
 // ============================================
 // ✅ Firebase Admin (v12+ API)
@@ -23,7 +24,7 @@ try {
 
     if (getApps().length === 0) {
       initializeApp({
-        credential: cert(serviceAccount)
+        credential: cert(serviceAccount),
       });
     }
 
@@ -37,7 +38,7 @@ try {
 }
 
 // ============================================
-// ✅ Helper: إرسال إشعار لمستخدم واحد
+// ✅ Helper: إرسال لشخص واحد
 // ============================================
 async function sendToUser(userId, notification, data = {}) {
   if (!messaging) {
@@ -50,12 +51,12 @@ async function sendToUser(userId, notification, data = {}) {
       return { success: false, error: 'No tokens found' };
     }
 
-    const tokens = user.fcmTokens.map(t => t.token);
+    const tokens = user.fcmTokens.map((t) => t.token);
 
     const response = await messaging.sendEachForMulticast({
       tokens,
       notification: {
-        title: notification.title || 'Smart School',
+        title: notification.title || 'Nabd',
         body: notification.body || '',
       },
       data: {
@@ -67,8 +68,8 @@ async function sendToUser(userId, notification, data = {}) {
           link: data.url || '/dashboard',
         },
         notification: {
-          icon: '/logo.png',
-          badge: '/logo.png',
+          icon: '/nabd-icon.png',
+          badge: '/nabd-icon.png',
           vibrate: [200, 100, 200],
         },
       },
@@ -105,7 +106,7 @@ async function sendToUser(userId, notification, data = {}) {
 }
 
 // ============================================
-// ✅ Helper: إرسال جماعي
+// ✅ Helper: إرسال لمجموعة
 // ============================================
 async function sendToMany(userIds, notification, data = {}) {
   const results = [];
@@ -119,7 +120,7 @@ async function sendToMany(userIds, notification, data = {}) {
 // ============================================
 // ✅ POST /notifications/register
 // ============================================
-router.post('/register', auth, async (req, res) => {
+router.post('/register', auth, tenant, async (req, res) => {
   try {
     const { fcmToken, platform = 'web' } = req.body;
 
@@ -127,10 +128,17 @@ router.post('/register', auth, async (req, res) => {
       return res.status(400).json({ msg: 'fcmToken مطلوب' });
     }
 
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    // ✅ نضمن إن المستخدم من نفس الشركة
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,   // ← ✅
+    });
 
-    const existing = user.fcmTokens.find(t => t.token === fcmToken);
+    if (!user) {
+      return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    }
+
+    const existing = user.fcmTokens.find((t) => t.token === fcmToken);
     if (existing) {
       existing.lastUsedAt = new Date();
       existing.platform = platform;
@@ -151,7 +159,7 @@ router.post('/register', auth, async (req, res) => {
 
     res.json({
       success: true,
-      msg: 'تم تسجيل الإشعارات بنجاح',
+      msg: '✅ تم تسجيل الجهاز للإشعارات بنجاح',
       count: user.fcmTokens.length,
     });
   } catch (err) {
@@ -163,16 +171,24 @@ router.post('/register', auth, async (req, res) => {
 // ============================================
 // ✅ POST /notifications/unregister
 // ============================================
-router.post('/unregister', auth, async (req, res) => {
+router.post('/unregister', auth, tenant, async (req, res) => {
   try {
     const { fcmToken } = req.body;
-    if (!fcmToken) return res.status(400).json({ msg: 'fcmToken مطلوب' });
+    if (!fcmToken) {
+      return res.status(400).json({ msg: 'fcmToken مطلوب' });
+    }
 
-    await User.findByIdAndUpdate(req.user.id, {
-      $pull: { fcmTokens: { token: fcmToken } },
-    });
+    await User.findOneAndUpdate(
+      {
+        _id: req.user.id,
+        companyId: req.companyId,   // ← ✅
+      },
+      {
+        $pull: { fcmTokens: { token: fcmToken } },
+      }
+    );
 
-    res.json({ success: true, msg: 'تم إلغاء التسجيل' });
+    res.json({ success: true, msg: '✅ تم حذف الجهاز من الإشعارات' });
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
@@ -181,10 +197,14 @@ router.post('/unregister', auth, async (req, res) => {
 // ============================================
 // ✅ GET /notifications/prefs
 // ============================================
-router.get('/prefs', auth, async (req, res) => {
+router.get('/prefs', auth, tenant, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('notificationPrefs');
-    res.json(user.notificationPrefs || {});
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,
+    }).select('notificationPrefs');
+
+    res.json(user?.notificationPrefs || {});
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
@@ -193,10 +213,13 @@ router.get('/prefs', auth, async (req, res) => {
 // ============================================
 // ✅ PUT /notifications/prefs
 // ============================================
-router.put('/prefs', auth, async (req, res) => {
+router.put('/prefs', auth, tenant, async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
+    const user = await User.findOneAndUpdate(
+      {
+        _id: req.user.id,
+        companyId: req.companyId,   // ← ✅
+      },
       { notificationPrefs: req.body },
       { new: true }
     ).select('notificationPrefs');
@@ -210,7 +233,7 @@ router.put('/prefs', auth, async (req, res) => {
 // ============================================
 // ✅ POST /notifications/test
 // ============================================
-router.post('/test', auth, async (req, res) => {
+router.post('/test', auth, tenant, async (req, res) => {
   try {
     if (!messaging) {
       return res.status(503).json({ msg: 'Firebase Admin not initialized' });
@@ -219,8 +242,8 @@ router.post('/test', auth, async (req, res) => {
     const result = await sendToUser(
       req.user.id,
       {
-        title: '🔔 اختبار',
-        body: 'الإشعارات شغالة بنجاح!',
+        title: '🔔 اختبار الإشعارات',
+        body: 'الإشعارات مبروك! شغالة بنجاح',
       },
       { url: '/dashboard' }
     );
@@ -234,9 +257,13 @@ router.post('/test', auth, async (req, res) => {
 // ============================================
 // ✅ POST /notifications/send
 // ============================================
-router.post('/send', auth, async (req, res) => {
+router.post('/send', auth, tenant, async (req, res) => {
   try {
-    if (!['superadmin', 'manager', 'hr'].includes(req.user.role)) {
+    // ✅ فحص الصلاحيات (companyRole OR role)
+    const role = req.user.companyRole || req.user.role;
+    const allowed = ['superadmin', 'company_owner', 'manager', 'hr'];
+
+    if (!allowed.includes(role) && !req.isSuperAdmin) {
       return res.status(403).json({ msg: 'غير مصرح' });
     }
 
@@ -254,7 +281,15 @@ router.post('/send', auth, async (req, res) => {
       return res.status(400).json({ msg: 'notification.title مطلوب' });
     }
 
-    const results = await sendToMany(userIds, notification, data || {});
+    // ✅ نتأكد إن كل المستخدمين من نفس الشركة
+    const validUsers = await User.find({
+      _id: { $in: userIds },
+      companyId: req.companyId,   // ← ✅
+    }).select('_id');
+
+    const validUserIds = validUsers.map((u) => u._id);
+
+    const results = await sendToMany(validUserIds, notification, data || {});
 
     const totalSent = results.reduce((s, r) => s + (r.sent || 0), 0);
     const totalFailed = results.reduce((s, r) => s + (r.failed || 0), 0);

@@ -1,6 +1,6 @@
 // backend/routes/dashboard.js
 // ============================================
-// Dashboard Routes
+// Dashboard Routes — Multi-tenant
 // - my-stats: للموظف (إحصائياته الشخصية)
 // - team-stats: للإدارة (إحصائيات الفريق)
 // ============================================
@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const tenant = require('../middleware/tenant');
 const Attendance = require('../models/Attendance');
 const User = require('../models/User');
 const Branch = require('../models/Branch');
@@ -15,27 +16,29 @@ const Branch = require('../models/Branch');
 // ============================================
 // ✅ Helper: نطاق الفلترة حسب الدور
 // ============================================
-async function getUserScope(user) {
-  // superadmin / viewer → كل الفروع
-  if (user.role === 'superadmin' || user.role === 'viewer') {
+async function getUserScope(user, companyId) {
+  const role = user.companyRole || user.role;
+
+  // ✅ company_owner / superadmin / viewer → كل الفروع
+  if (role === 'company_owner' || role === 'superadmin' || role === 'viewer') {
     return { scope: 'all', branchIds: null };
   }
 
-  // hr → فحص الفرع الرئيسي
-  if (user.role === 'hr') {
-    const hq = await Branch.findOne({ type: 'main' });
+  // ✅ hr → فحص الفرع الرئيسي
+  if (role === 'hr') {
+    const hq = await Branch.findOne({ companyId, type: 'main' });
     if (hq && String(user.branch) === String(hq._id)) {
       return { scope: 'all', branchIds: null };
     }
     return { scope: 'branch', branchIds: [user.branch] };
   }
 
-  // manager → فرعه بس
-  if (user.role === 'manager') {
+  // ✅ manager → فرعه بس
+  if (role === 'manager') {
     return { scope: 'branch', branchIds: [user.branch] };
   }
 
-  // employee → نفسه بس
+  // ✅ employee → نفسه بس
   return { scope: 'self', branchIds: null };
 }
 
@@ -60,7 +63,7 @@ function getTodayRange() {
 // ✅ 1. GET /api/dashboard/my-stats
 // إحصائيات الموظف الشخصية
 // ============================================
-router.get('/my-stats', auth, async (req, res) => {
+router.get('/my-stats', auth, tenant, async (req, res) => {
   try {
     const today = new Date();
     const month = parseInt(req.query.month) || today.getMonth() + 1;
@@ -68,8 +71,9 @@ router.get('/my-stats', auth, async (req, res) => {
 
     const { start, end } = getMonthRange(month, year);
 
-    // ✅ جلب كل حضور الموظف في الشهر
+    // ✅ فلتر: نفس الشركة + نفس المستخدم
     const records = await Attendance.find({
+      companyId: req.companyId,   // ← ✅
       user: req.user.id,
       date: { $gte: start, $lte: end },
     })
@@ -88,12 +92,14 @@ router.get('/my-stats', auth, async (req, res) => {
     const now = new Date();
     const isCurrentMonth =
       month === now.getMonth() + 1 && year === now.getFullYear();
-    const lastDay = isCurrentMonth ? now.getDate() : new Date(year, month, 0).getDate();
+    const lastDay = isCurrentMonth
+      ? now.getDate()
+      : new Date(year, month, 0).getDate();
 
     let expectedWorkDays = 0;
     for (let d = 1; d <= lastDay; d++) {
       const day = new Date(year, month - 1, d).getDay();
-      if (day !== 5) expectedWorkDays++; // الجمعة = 5
+      if (day !== 5) expectedWorkDays++;
     }
 
     // ✅ الغياب = الأيام المتوقعة - (الحضور + التأخير)
@@ -144,23 +150,30 @@ router.get('/my-stats', auth, async (req, res) => {
 // ✅ 2. GET /api/dashboard/team-stats
 // إحصائيات الفريق للإدارة
 // ============================================
-router.get('/team-stats', auth, async (req, res) => {
+router.get('/team-stats', auth, tenant, async (req, res) => {
   try {
-    // ✅ فحص الصلاحيات
-    const allowedRoles = ['superadmin', 'hr', 'manager', 'viewer'];
-    if (!allowedRoles.includes(req.user.role)) {
+    // ✅ فحص الصلاحيات (companyRole أو role)
+    const role = req.user.companyRole || req.user.role;
+    const allowedRoles = [
+      'company_owner',
+      'superadmin',
+      'hr',
+      'manager',
+      'viewer',
+    ];
+
+    if (!allowedRoles.includes(role) && !req.isSuperAdmin) {
       return res.status(403).json({ msg: 'غير مصرح' });
     }
 
     // ✅ تحديد النطاق
-    const scope = await getUserScope(req.user);
+    const scope = await getUserScope(req.user, req.companyId);
 
     // ✅ فلتر الفروع
     let branchFilter = null;
     if (scope.scope === 'branch') {
       branchFilter = scope.branchIds;
     } else if (req.query.branch) {
-      // HR رئيسي اختار فرع معين
       branchFilter = [req.query.branch];
     }
 
@@ -172,24 +185,30 @@ router.get('/team-stats', auth, async (req, res) => {
     const todayRange = getTodayRange();
     const monthRange = getMonthRange(month, year);
 
-    // ✅ فلتر المستخدمين
-    const userFilter = { active: true, role: { $ne: 'superadmin' } };
+    // ✅ فلتر المستخدمين (بالشركة)
+    const userFilter = {
+      companyId: req.companyId,   // ← ✅
+      active: true,
+      role: { $ne: 'superadmin' },
+    };
     if (branchFilter) userFilter.branch = { $in: branchFilter };
 
     const users = await User.find(userFilter)
       .populate('branch', 'name type')
-      .select('name email position department branch role');
+      .select('name email position department branch role companyRole');
 
     const userIds = users.map((u) => u._id);
 
-    // ✅ حضور اليوم
+    // ✅ حضور اليوم (بالشركة)
     const todayAttendances = await Attendance.find({
+      companyId: req.companyId,   // ← ✅
       user: { $in: userIds },
       date: { $gte: todayRange.start, $lt: todayRange.end },
     }).populate('user', 'name position branch');
 
-    // ✅ حضور الشهر
+    // ✅ حضور الشهر (بالشركة)
     const monthAttendances = await Attendance.find({
+      companyId: req.companyId,   // ← ✅
       user: { $in: userIds },
       date: { $gte: monthRange.start, $lte: monthRange.end },
     });
@@ -244,10 +263,12 @@ router.get('/team-stats', auth, async (req, res) => {
       ),
     };
 
-    // ✅ قائمة الفروع (لو HR رئيسي)
+    // ✅ قائمة الفروع (لو company_owner / hr رئيسي)
     let branchesList = [];
     if (scope.scope === 'all') {
-      branchesList = await Branch.find().select('name type');
+      branchesList = await Branch.find({
+        companyId: req.companyId,   // ← ✅
+      }).select('name type');
     }
 
     res.json({
@@ -259,8 +280,8 @@ router.get('/team-stats', auth, async (req, res) => {
         present: presentList.length,
         absent: absentList.length,
         late: lateList.length,
-        presentList: presentList.sort((a, b) =>
-          new Date(a.checkIn) - new Date(b.checkIn)
+        presentList: presentList.sort(
+          (a, b) => new Date(a.checkIn) - new Date(b.checkIn)
         ),
         absentList: absentList.sort((a, b) =>
           a.name.localeCompare(b.name, 'ar')

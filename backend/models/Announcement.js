@@ -1,54 +1,46 @@
 const mongoose = require('mongoose');
 
 const announcementSchema = new mongoose.Schema({
-  title: {
-    type: String,
+  // ✅ Multi-tenant
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
     required: true,
-    maxlength: 200,
+    index: true,
   },
-  content: {
-    type: String,
-    required: true,
-    maxlength: 2000,
-  },
+
+  title: { type: String, required: true },
+  content: { type: String, required: true },
   type: {
     type: String,
-    enum: ['info', 'warning', 'success', 'urgent'],
+    enum: ['info', 'warning', 'urgent'],
     default: 'info',
   },
-  // ✅ الفرع المستهدف (null = كل الفروع)
+  priority: {
+    type: String,
+    enum: ['low', 'normal', 'high', 'urgent'],
+    default: 'normal',
+  },
   branch: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Branch',
-    default: null,
-    index: true,
   },
-  // ✅ من أنشأ الإعلان
+  attachments: [{ type: String }],
+  expiresAt: { type: Date },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
   },
-  // ✅ تاريخ الانتهاء (اختياري)
-  expiresAt: {
-    type: Date,
-    default: null,
-  },
-  // ✅ الإعلان نشط؟
-  active: {
-    type: Boolean,
-    default: true,
-    index: true,
-  },
-  // ✅ الموظفين اللي قرأوا الإعلان
   readBy: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    readAt: { type: Date, default: Date.now },
   }],
-}, {
-  timestamps: true,
-});
+  active: { type: Boolean, default: true },
+}, { timestamps: true });
 
-announcementSchema.index({ branch: 1, active: 1, createdAt: -1 });
+// ✅ Compound indexes
+announcementSchema.index({ companyId: 1, active: 1, createdAt: -1 });
+announcementSchema.index({ companyId: 1, branch: 1 });
+announcementSchema.index({ companyId: 1, priority: 1 });
 
 module.exports = mongoose.model('Announcement', announcementSchema);

@@ -2,10 +2,12 @@ const router = require('express').Router();
 const Attendance = require('../models/Attendance');
 const Branch = require('../models/Branch');
 const Settings = require('../models/Settings');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
+const tenant = require('../middleware/tenant');
 
 // ============================================
-// ✅ دالة حساب المسافة (Haversine)
+// ✅ Helper: المسافة (Haversine)
 // ============================================
 function distance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -30,29 +32,29 @@ function getCairoNow() {
 // ============================================
 // ✅ Helper: قراءة أوقات العمل من Settings
 // ============================================
-async function getWorkHours() {
+async function getWorkHours(companyId) {
   try {
-    let settings = await Settings.findOne();
+    let settings = await Settings.findOne({ companyId });
     if (!settings) {
-      settings = await Settings.create({});
+      settings = await Settings.create({ companyId });
     }
     return {
       workStartTime: settings.workStartTime || '08:00',
       workEndTime: settings.workEndTime || '14:00',
-      lateGraceMinutes: settings.lateGraceMinutes || 0,
+      lateGraceMinutes: settings.lateGraceMinutes || 15,
     };
   } catch (err) {
     console.warn('getWorkHours error, using defaults:', err.message);
     return {
       workStartTime: '08:00',
       workEndTime: '14:00',
-      lateGraceMinutes: 0,
+      lateGraceMinutes: 15,
     };
   }
 }
 
 // ============================================
-// ✅ Helper: تحويل "HH:MM" إلى Date (بتوقيت القاهرة)
+// ✅ Helper: تحويل "HH:MM" إلى Date
 // ============================================
 function timeStringToCairoDate(timeStr, refCairo) {
   const [h, m] = timeStr.split(':').map(Number);
@@ -69,12 +71,10 @@ function calculateLateMinutes(workStartTime, workEndTime, graceMinutes) {
   const workStartCairo = timeStringToCairoDate(workStartTime, nowCairo);
   const workEndCairo = timeStringToCairoDate(workEndTime, nowCairo);
 
-  // ✅ قبل بداية العمل
   if (nowCairo < workStartCairo) {
     return { lateMinutes: 0, status: 'present', reason: 'before-start' };
   }
 
-  // ✅ في وقت العمل
   if (nowCairo <= workEndCairo) {
     const diffMinutes = Math.floor((nowCairo - workStartCairo) / 60000);
     const lateMinutes = Math.max(0, diffMinutes - graceMinutes);
@@ -85,7 +85,6 @@ function calculateLateMinutes(workStartTime, workEndTime, graceMinutes) {
     };
   }
 
-  // ✅ بعد نهاية العمل
   return {
     lateMinutes: 0,
     status: null,
@@ -95,7 +94,7 @@ function calculateLateMinutes(workStartTime, workEndTime, graceMinutes) {
 }
 
 // ============================================
-// ✅ Helper: تسجيل الحضور
+// ✅ Helper: check-in
 // ============================================
 async function checkInHandler(req, res) {
   try {
@@ -113,8 +112,16 @@ async function checkInHandler(req, res) {
       return res.status(400).json({ msg: 'الموقع مطلوب' });
     }
 
-    const branch = await Branch.findById(req.user.branch || req.body.branch);
-    if (!branch) return res.status(400).json({ msg: 'الفرع غير موجود' });
+    // ✅ نضمن إن الفرع بتاع نفس الشركة
+    const branchId = req.user.branch || req.body.branch;
+    const branch = await Branch.findOne({
+      _id: branchId,
+      companyId: req.companyId,
+    });
+
+    if (!branch) {
+      return res.status(400).json({ msg: 'الفرع غير موجود' });
+    }
 
     const d = distance(lat, lng, branch.location.lat, branch.location.lng);
     if (d > branch.radius) {
@@ -127,7 +134,9 @@ async function checkInHandler(req, res) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // ✅ نضمن إن مفيش تسجيل مسبق في نفس الشركة
     const exists = await Attendance.findOne({
+      companyId: req.companyId,
       user: req.user.id,
       date: { $gte: today },
       checkIn: { $exists: true },
@@ -136,10 +145,10 @@ async function checkInHandler(req, res) {
       return res.status(400).json({ msg: 'تم تسجيل الحضور مسبقاً' });
     }
 
-    // ✅ اقرا أوقات العمل
-    const { workStartTime, workEndTime, lateGraceMinutes } = await getWorkHours();
+    const { workStartTime, workEndTime, lateGraceMinutes } = await getWorkHours(
+      req.companyId
+    );
 
-    // ✅ احسب lateMinutes
     const result = calculateLateMinutes(
       workStartTime,
       workEndTime,
@@ -151,9 +160,8 @@ async function checkInHandler(req, res) {
     }
 
     const { lateMinutes, status } = result;
-    const now = new Date(); // ✅ UTC — صح في DB
+    const now = new Date();
 
-    // ✅ تحديد طريقة التحقق
     let mainMethod = 'gps';
     let verificationMethod = 'gps_only';
 
@@ -166,6 +174,7 @@ async function checkInHandler(req, res) {
     }
 
     const att = await Attendance.create({
+      companyId: req.companyId,  // ← ✅
       user: req.user.id,
       branch: branch._id,
       date: today,
@@ -209,7 +218,7 @@ async function checkInHandler(req, res) {
 }
 
 // ============================================
-// ✅ Helper: تسجيل الانصراف
+// ✅ Helper: check-out
 // ============================================
 async function checkOutHandler(req, res) {
   try {
@@ -227,7 +236,10 @@ async function checkOutHandler(req, res) {
       return res.status(400).json({ msg: 'الموقع مطلوب' });
     }
 
-    const branch = await Branch.findById(req.user.branch);
+    const branch = await Branch.findOne({
+      _id: req.user.branch,
+      companyId: req.companyId,
+    });
     if (!branch) return res.status(400).json({ msg: 'الفرع غير موجود' });
 
     const d = distance(lat, lng, branch.location.lat, branch.location.lng);
@@ -242,6 +254,7 @@ async function checkOutHandler(req, res) {
     today.setHours(0, 0, 0, 0);
 
     const att = await Attendance.findOne({
+      companyId: req.companyId,  // ← ✅
       user: req.user.id,
       date: { $gte: today },
       checkOut: { $exists: false },
@@ -284,7 +297,7 @@ async function checkOutHandler(req, res) {
 }
 
 // ============================================
-// ✅ Helper: حضور اليوم
+// ✅ Helper: today
 // ============================================
 async function todayHandler(req, res) {
   try {
@@ -294,6 +307,7 @@ async function todayHandler(req, res) {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const att = await Attendance.findOne({
+      companyId: req.companyId,  // ← ✅
       user: req.user.id,
       date: { $gte: today, $lt: tomorrow },
     }).populate('branch', 'name type');
@@ -329,25 +343,24 @@ async function todayHandler(req, res) {
 }
 
 // ============================================
-// ✅ Route: التحقق من النطاق الجغرافي
+// ✅ Route: check-range
 // ============================================
-router.post('/check-range', auth, async (req, res) => {
+router.post('/check-range', auth, tenant, async (req, res) => {
   try {
     const { lat, lng } = req.body;
 
     if (!lat || !lng) {
-      return res.status(400).json({
-        inRange: false,
-        msg: 'الموقع مطلوب',
-      });
+      return res.status(400).json({ inRange: false, msg: 'الموقع مطلوب' });
     }
 
-    const branch = await Branch.findById(req.user.branch || req.body.branch);
+    const branchId = req.user.branch || req.body.branch;
+    const branch = await Branch.findOne({
+      _id: branchId,
+      companyId: req.companyId,  // ← ✅
+    });
+
     if (!branch) {
-      return res.status(400).json({
-        inRange: false,
-        msg: 'الفرع غير موجود',
-      });
+      return res.status(400).json({ inRange: false, msg: 'الفرع غير موجود' });
     }
 
     const d = distance(lat, lng, branch.location.lat, branch.location.lng);
@@ -365,28 +378,28 @@ router.post('/check-range', auth, async (req, res) => {
     });
   } catch (err) {
     console.error('check-range error:', err);
-    res.status(500).json({
-      inRange: false,
-      msg: err.message,
-    });
+    res.status(500).json({ inRange: false, msg: err.message });
   }
 });
 
 // ============================================
-// ✅ Routes
+// ✅ Routes — كلها بـ tenant middleware
 // ============================================
-router.post('/check-in', auth, checkInHandler);
-router.post('/checkin', auth, checkInHandler);
-router.post('/check-out', auth, checkOutHandler);
-router.post('/checkout', auth, checkOutHandler);
-router.get('/today', auth, todayHandler);
+router.post('/check-in', auth, tenant, checkInHandler);
+router.post('/checkin', auth, tenant, checkInHandler);
+router.post('/check-out', auth, tenant, checkOutHandler);
+router.post('/checkout', auth, tenant, checkOutHandler);
+router.get('/today', auth, tenant, todayHandler);
 
 // ============================================
 // ✅ My — كل السجل
 // ============================================
-router.get('/my', auth, async (req, res) => {
+router.get('/my', auth, tenant, async (req, res) => {
   try {
-    const list = await Attendance.find({ user: req.user.id })
+    const list = await Attendance.find({
+      companyId: req.companyId,  // ← ✅
+      user: req.user.id,
+    })
       .sort({ date: -1 })
       .populate('branch', 'name type');
 
@@ -414,22 +427,31 @@ router.get('/my', auth, async (req, res) => {
 // ============================================
 // ✅ Live — الحضور المباشر
 // ============================================
-router.get('/live', auth, async (req, res) => {
+router.get('/live', auth, tenant, async (req, res) => {
   try {
-    const User = require('../models/User');
+    // ✅ فلتر المستخدمين (بالشركة)
+    let userFilter = {
+      companyId: req.companyId,   // ← ✅
+      active: true,
+      role: { $ne: 'superadmin' },
+    };
 
-    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+    // ✅ الفلترة حسب الدور (companyRole + role)
+    const role = req.user.companyRole || req.user.role;
 
-    if (req.user.role === 'superadmin' || req.user.role === 'viewer') {
+    if (role === 'company_owner' || role === 'superadmin' || req.isSuperAdmin) {
       // كل الفروع
-    } else if (req.user.role === 'hr') {
-      const hq = await Branch.findOne({ type: 'main' });
+    } else if (role === 'hr') {
+      const hq = await Branch.findOne({
+        companyId: req.companyId,
+        type: 'main',
+      });
       if (hq && String(req.user.branch) === String(hq._id)) {
         // كل الفروع
       } else {
         userFilter.branch = req.user.branch;
       }
-    } else if (req.user.role === 'manager') {
+    } else if (role === 'manager') {
       userFilter.branch = req.user.branch;
     } else {
       userFilter._id = req.user.id;
@@ -445,6 +467,7 @@ router.get('/live', auth, async (req, res) => {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     const todayAttendances = await Attendance.find({
+      companyId: req.companyId,  // ← ✅
       date: { $gte: today, $lt: tomorrow },
     });
 

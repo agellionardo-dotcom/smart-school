@@ -1,14 +1,33 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
+  // ============================================
+  // ✅ Multi-tenant — مربوط بأي شركة
+  // ============================================
+  companyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Company',
+    required: true,
+    index: true,
+  },
+
   // ===== البيانات الأساسية =====
   name: { type: String, required: true },
   email: { type: String, unique: true, required: true },
   password: { type: String, required: true },
+  
+  // ✅ الدور العام (في المنصة)
   role: {
     type: String,
     enum: ['superadmin', 'manager', 'hr', 'employee', 'viewer'],
-    default: 'employee'
+    default: 'employee',
+  },
+
+  // ✅ الدور في الشركة (multi-tenant)
+  companyRole: {
+    type: String,
+    enum: ['company_owner', 'manager', 'hr', 'employee', 'viewer'],
+    default: 'employee',
   },
 
   // ===== البيانات الوظيفية =====
@@ -52,7 +71,7 @@ const userSchema = new mongoose.Schema({
     year: Number
   }],
 
-  // ===== الصورة والبصمة =====
+  // ===== الصورة والـ Face =====
   profileImage: { type: String },
   faceDescriptor: [{ type: Number }],
 
@@ -68,7 +87,7 @@ const userSchema = new mongoose.Schema({
     lastUsedAt: { type: Date, default: Date.now }
   }],
 
-  // ===== إعدادات الإشعارات =====
+  // ===== تفضيلات الإشعارات =====
   notificationPrefs: {
     attendanceReminder: { type: Boolean, default: true },
     lateAlert: { type: Boolean, default: true },
@@ -78,14 +97,14 @@ const userSchema = new mongoose.Schema({
     payroll: { type: Boolean, default: true }
   },
 
-  // ✅ جديد — إعدادات المستخدم
+  // ✅ التفضيلات العامة
   preferences: {
     biometricLogin: { type: Boolean, default: false },
     notifications: { type: Boolean, default: true },
     language: { type: String, default: 'ar' }
   },
 
-  // ✅ جديد — الأجهزة الموثوقة للبصمة
+  // ✅ الأجهزة الموثوقة (للبصمة)
   trustedDevices: [{
     deviceId: { type: String, required: true },
     deviceName: { type: String },
@@ -96,7 +115,7 @@ const userSchema = new mongoose.Schema({
       default: 'android'
     },
     biometricEnabled: { type: Boolean, default: false },
-    biometricType: { type: String }, // 'fingerprint' | 'faceId' | 'iris'
+    biometricType: { type: String },
     refreshToken: { type: String, select: false },
     lastLogin: { type: Date, default: Date.now },
     createdAt: { type: Date, default: Date.now }
@@ -106,7 +125,54 @@ const userSchema = new mongoose.Schema({
   lastLogin: { type: Date },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   resetPasswordToken: { type: String },
-  resetPasswordExpires: { type: Date }
+  resetPasswordExpires: { type: Date },
 }, { timestamps: true });
+
+// ============================================
+// ✅ Indexes (Multi-tenant)
+// ============================================
+userSchema.index({ companyId: 1, email: 1 });
+userSchema.index({ companyId: 1, role: 1 });
+userSchema.index({ companyId: 1, active: 1 });
+userSchema.index({ companyId: 1, branch: 1 });
+userSchema.index({ companyId: 1, employeeId: 1 });
+
+// ============================================
+// ✅ Virtuals
+// ============================================
+userSchema.virtual('isSuperAdmin').get(function () {
+  return this.role === 'superadmin';
+});
+
+userSchema.virtual('isCompanyOwner').get(function () {
+  return this.companyRole === 'company_owner';
+});
+
+// ============================================
+// ✅ Methods
+// ============================================
+userSchema.methods.hasRole = function (roles) {
+  const roleList = Array.isArray(roles) ? roles : [roles];
+  return roleList.includes(this.role) || roleList.includes(this.companyRole);
+};
+
+userSchema.methods.canManageUsers = function () {
+  return ['superadmin', 'company_owner', 'hr'].includes(this.companyRole);
+};
+
+userSchema.methods.canManagePayroll = function () {
+  return ['superadmin', 'company_owner'].includes(this.companyRole);
+};
+
+// ============================================
+// ✅ Statics
+// ============================================
+userSchema.statics.findByCompany = function (companyId, filter = {}) {
+  return this.find({ companyId, ...filter });
+};
+
+userSchema.statics.countByCompany = function (companyId) {
+  return this.countDocuments({ companyId, active: true });
+};
 
 module.exports = mongoose.model('User', userSchema);

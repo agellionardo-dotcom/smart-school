@@ -3,22 +3,12 @@ const AuditLog = require('../models/AuditLog');
 // ============================================
 // ✅ Audit Log Helper
 // ============================================
-// دالة موحدة لتسجيل الأحداث في قاعدة البيانات
+// دالة موحدة لتسجيل الأحداث
+// ✅ يدعم Multi-tenant (companyId إجباري)
 // ============================================
 
 /**
  * تسجيل حدث في الـ Audit Log
- * @param {Object} options
- * @param {Object} options.req - Express request (لاستخراج IP, User, UserAgent)
- * @param {String} options.action - نوع العملية (login, create, update, delete...)
- * @param {String} options.resource - المورد (user, attendance, payroll...)
- * @param {String} [options.resourceId] - ID المورد
- * @param {String} [options.description] - وصف مختصر
- * @param {Object} [options.details] - تفاصيل إضافية
- * @param {Object} [options.changes] - قبل / بعد
- * @param {String} [options.status] - success / failed / warning
- * @param {Number} [options.statusCode] - كود الـ HTTP
- * @param {Object} [options.userOverride] - لتجاوز user من req
  */
 async function logAction(options) {
   try {
@@ -33,31 +23,51 @@ async function logAction(options) {
       status = 'success',
       statusCode,
       userOverride,
+      companyIdOverride,
     } = options;
 
-    // ===== استخراج بيانات المستخدم =====
+    // ============================================
+    // ✅ companyId — إجباري
+    // ============================================
+    const companyId = companyIdOverride || req?.companyId;
+
+    if (!companyId) {
+      console.warn('[AuditLog] ⚠️ Missing companyId, skipping log');
+      return false;
+    }
+
+    // ============================================
+    // ✅ user
+    // ============================================
     const user = userOverride || req?.user || null;
 
-    // ===== استخراج IP =====
+    // ============================================
+    // ✅ IP
+    // ============================================
     let ip = 'unknown';
     if (req) {
       ip =
-        req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+        req.headers?.['x-forwarded-for']?.split(',')[0]?.trim() ||
         req.ip ||
         req.connection?.remoteAddress ||
         req.socket?.remoteAddress ||
         'unknown';
     }
 
-    // ===== User Agent =====
+    // ============================================
+    // ✅ User Agent
+    // ============================================
     const userAgent = req?.headers?.['user-agent'] || 'unknown';
 
-    // ===== إنشاء السجل =====
+    // ============================================
+    // ✅ إنشاء السجل
+    // ============================================
     const logData = {
+      companyId,                              // ← ✅ إجباري
       user: user?.id || user?._id || null,
       userEmail: user?.email || null,
       userName: user?.name || null,
-      userRole: user?.role || 'system',
+      userRole: user?.role || user?.companyRole || 'system',
       action,
       resource,
       resourceId: resourceId || null,
@@ -73,14 +83,14 @@ async function logAction(options) {
       timestamp: new Date(),
     };
 
-    // ===== حفظ =====
     await AuditLog.create(logData);
 
-    console.log(`📝 AuditLog: ${action} ${resource} by ${user?.email || 'system'}`);
+    console.log(
+      `📝 [AuditLog] ${action} ${resource} by ${user?.email || 'system'} @ company ${companyId}`
+    );
     return true;
   } catch (err) {
-    // ⚠️ متكسرش التطبيق لو فشل التسجيل
-    console.error('❌ AuditLog error:', err.message);
+    console.error('❌ [AuditLog] error:', err.message);
     return false;
   }
 }
@@ -88,10 +98,9 @@ async function logAction(options) {
 // ============================================
 // ✅ Middleware Factory
 // ============================================
-// يستخدم لتسجيل تلقائي لعمليات معينة
-//
 // استخدام:
 // router.post('/users',
+//   auth, tenant,
 //   auditMiddleware({
 //     action: 'create',
 //     resource: 'user',
@@ -104,19 +113,16 @@ function auditMiddleware(config) {
   return (req, res, next) => {
     const { action, resource, description } = config;
 
-    // نحتفظ بالـ response الأصلي
     const originalJson = res.json.bind(res);
 
-    // نلتقط الـ response
     res.json = function (data) {
-      // نحدد الحالة
-      const status = res.statusCode >= 200 && res.statusCode < 300
-        ? 'success'
-        : res.statusCode >= 400
-        ? 'failed'
-        : 'warning';
+      const status =
+        res.statusCode >= 200 && res.statusCode < 300
+          ? 'success'
+          : res.statusCode >= 400
+          ? 'failed'
+          : 'warning';
 
-      // نسجل بعد إرسال الـ response (لا ننتظر)
       setImmediate(() => {
         logAction({
           req,
@@ -141,7 +147,7 @@ function auditMiddleware(config) {
 }
 
 // ============================================
-// ✅ تنظيف الـ Body (إخفاء كلمات المرور)
+// ✅ sanitizeBody — إخفاء كلمات المرور
 // ============================================
 function sanitizeBody(body) {
   if (!body || typeof body !== 'object') return body;

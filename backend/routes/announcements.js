@@ -2,50 +2,49 @@ const router = require('express').Router();
 const Announcement = require('../models/Announcement');
 const Branch = require('../models/Branch');
 const auth = require('../middleware/auth');
+const tenant = require('../middleware/tenant');
 const { checkPermission } = require('../middleware/permissions');
+const { logAction } = require('../middleware/auditLog');
 
 // ==================== Helpers ====================
-const getHQBranch = async () => {
-  return await Branch.findOne({ type: 'main' });
+const getHQBranch = async (companyId) => {
+  return await Branch.findOne({ companyId, type: 'main' });
 };
 
-const isHQHRCheck = async (user) => {
-  if (user.role !== 'hr') return false;
+const isHQHRCheck = async (user, companyId) => {
+  const role = user.companyRole || user.role;
+  if (role !== 'hr') return false;
   if (!user.branch) return false;
-  const hq = await getHQBranch();
+  const hq = await getHQBranch(companyId);
   return hq && String(user.branch) === String(hq._id);
 };
 
 // ==================== جلب الإعلانات ====================
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, tenant, async (req, res) => {
   try {
     const { branch, active } = req.query;
-    const filter = {};
+    const filter = { companyId: req.companyId };   // ← ✅
+    const role = req.user.companyRole || req.user.role;
 
-    // ✅ الفلترة حسب الدور
-    if (req.user.role === 'superadmin') {
+    if (role === 'superadmin' || req.isSuperAdmin) {
       // كل الإعلانات
-    } else if (req.user.role === 'hr' && await isHQHRCheck(req.user)) {
+    } else if (role === 'hr' && (await isHQHRCheck(req.user, req.companyId))) {
       // كل الإعلانات
-    } else if (['hr', 'manager'].includes(req.user.role)) {
-      // إعلانات فرعه + الإعلانات العامة
+    } else if (['hr', 'manager', 'company_owner'].includes(role)) {
       filter.$or = [
         { branch: req.user.branch },
         { branch: null },
       ];
     } else {
-      // الموظف: إعلانات فرعه + الإعلانات العامة
       filter.$or = [
         { branch: req.user.branch },
         { branch: null },
       ];
     }
 
-    // ✅ فلترة إضافية
     if (branch) filter.branch = branch;
     if (active !== undefined) filter.active = active === 'true';
 
-    // ✅ نتجاهل الإعلانات المنتهية
     filter.$and = filter.$and || [];
     filter.$and.push({
       $or: [
@@ -67,9 +66,10 @@ router.get('/', auth, async (req, res) => {
 });
 
 // ==================== إنشاء إعلان ====================
-router.post('/', auth, checkPermission('users.create'), async (req, res) => {
+router.post('/', auth, tenant, checkPermission('users.create'), async (req, res) => {
   try {
     const { title, content, type, branch, expiresAt } = req.body;
+    const role = req.user.companyRole || req.user.role;
 
     if (!title || !content) {
       return res.status(400).json({ msg: 'العنوان والمحتوى مطلوبين' });
@@ -77,28 +77,26 @@ router.post('/', auth, checkPermission('users.create'), async (req, res) => {
 
     let targetBranch = branch;
 
-    // ✅ manager → فرعه بس (إجباري)
-    if (req.user.role === 'manager') {
+    if (role === 'manager') {
       targetBranch = req.user.branch;
     }
 
-    // ✅ hr في فرع تاني → فرعه بس
-    if (req.user.role === 'hr' && !(await isHQHRCheck(req.user))) {
+    if (role === 'hr' && !(await isHQHRCheck(req.user, req.companyId))) {
       targetBranch = req.user.branch;
     }
 
-    // ✅ superadmin + HR في المنيا → كل الفروع (branch = null) أو فرع محدد
-    // (لو مش محدد، يبقى null = كل الفروع)
-
-    // ✅ validation للفرع
     if (targetBranch) {
-      const branchExists = await Branch.findById(targetBranch);
+      const branchExists = await Branch.findOne({
+        _id: targetBranch,
+        companyId: req.companyId,   // ← ✅
+      });
       if (!branchExists) {
         return res.status(400).json({ msg: 'الفرع غير موجود' });
       }
     }
 
     const announcement = await Announcement.create({
+      companyId: req.companyId,   // ← ✅
       title,
       content,
       type: type || 'info',
@@ -112,7 +110,14 @@ router.post('/', auth, checkPermission('users.create'), async (req, res) => {
       .populate('branch', 'name')
       .populate('createdBy', 'name role');
 
-    // ✅ إشعار فوري للموظفين
+    await logAction({
+      req,
+      action: 'publish',
+      resource: 'announcement',
+      resourceId: announcement._id,
+      description: `نشر إعلان: ${title}`,
+    });
+
     const io = req.app.get('io');
     if (io) {
       io.emit('announcement:new', { announcement: populated });
@@ -125,29 +130,33 @@ router.post('/', auth, checkPermission('users.create'), async (req, res) => {
 });
 
 // ==================== تعديل إعلان ====================
-router.put('/:id', auth, checkPermission('users.edit'), async (req, res) => {
+router.put('/:id', auth, tenant, checkPermission('users.edit'), async (req, res) => {
   try {
-    const announcement = await Announcement.findById(req.params.id);
+    const role = req.user.companyRole || req.user.role;
+
+    const announcement = await Announcement.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!announcement) {
       return res.status(404).json({ msg: 'الإعلان غير موجود' });
     }
 
-    // ✅ manager → إعلانات فرعه بس
-    if (req.user.role === 'manager') {
+    if (role === 'manager') {
       if (String(announcement.branch) !== String(req.user.branch)) {
         return res.status(403).json({ msg: 'غير مصرح' });
       }
     }
 
-    // ✅ hr في فرع تاني → إعلانات فرعه بس
-    if (req.user.role === 'hr' && !(await isHQHRCheck(req.user))) {
+    if (role === 'hr' && !(await isHQHRCheck(req.user, req.companyId))) {
       if (String(announcement.branch) !== String(req.user.branch)) {
         return res.status(403).json({ msg: 'غير مصرح' });
       }
     }
 
     const allowedFields = ['title', 'content', 'type', 'expiresAt', 'active'];
-    allowedFields.forEach(field => {
+    allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         announcement[field] = req.body[field];
       }
@@ -166,21 +175,35 @@ router.put('/:id', auth, checkPermission('users.edit'), async (req, res) => {
 });
 
 // ==================== حذف إعلان ====================
-router.delete('/:id', auth, checkPermission('users.delete'), async (req, res) => {
+router.delete('/:id', auth, tenant, checkPermission('users.delete'), async (req, res) => {
   try {
-    const announcement = await Announcement.findById(req.params.id);
+    const role = req.user.companyRole || req.user.role;
+
+    const announcement = await Announcement.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!announcement) {
       return res.status(404).json({ msg: 'الإعلان غير موجود' });
     }
 
-    // ✅ manager → إعلانات فرعه بس
-    if (req.user.role === 'manager') {
+    if (role === 'manager') {
       if (String(announcement.branch) !== String(req.user.branch)) {
         return res.status(403).json({ msg: 'غير مصرح' });
       }
     }
 
     await Announcement.findByIdAndDelete(req.params.id);
+
+    await logAction({
+      req,
+      action: 'delete',
+      resource: 'announcement',
+      resourceId: announcement._id,
+      description: `حذف إعلان: ${announcement.title}`,
+    });
+
     res.json({ ok: true, msg: '✅ تم الحذف' });
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -188,9 +211,13 @@ router.delete('/:id', auth, checkPermission('users.delete'), async (req, res) =>
 });
 
 // ==================== تعليم الإعلان كمقروء ====================
-router.put('/:id/read', auth, async (req, res) => {
+router.put('/:id/read', auth, tenant, async (req, res) => {
   try {
-    const announcement = await Announcement.findById(req.params.id);
+    const announcement = await Announcement.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!announcement) {
       return res.status(404).json({ msg: 'الإعلان غير موجود' });
     }

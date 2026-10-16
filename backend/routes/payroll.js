@@ -3,30 +3,33 @@ const Payroll = require('../models/Payroll');
 const User = require('../models/User');
 const Branch = require('../models/Branch');
 const auth = require('../middleware/auth');
+const tenant = require('../middleware/tenant');
 const { checkPermission } = require('../middleware/permissions');
+const { logAction } = require('../middleware/auditLog');
 
 // ==================== Helpers ====================
-const getHQBranch = async () => {
-  return await Branch.findOne({ type: 'main' });
+const getHQBranch = async (companyId) => {
+  return await Branch.findOne({ companyId, type: 'main' });
 };
 
-const isHQHRCheck = async (user) => {
-  if (user.role !== 'hr') return false;
+const isHQHRCheck = async (user, companyId) => {
+  const role = user.companyRole || user.role;
+  if (role !== 'hr') return false;
   if (!user.branch) return false;
-  const hq = await getHQBranch();
+  const hq = await getHQBranch(companyId);
   return hq && String(user.branch) === String(hq._id);
 };
 
 // ✅ الفلتر حسب الدور
-const getFilter = async (user, query = {}) => {
-  const filter = {};
+const getFilter = async (user, companyId, query = {}) => {
+  const filter = { companyId };   // ← ✅
+  const role = user.companyRole || user.role;
 
-  // superadmin + viewer → كل الفروع
-  if (['superadmin', 'viewer'].includes(user.role)) {
+  if (role === 'superadmin' || role === 'viewer' || user.role === 'superadmin') {
     // كل حاجة
-  } else if (user.role === 'hr' && await isHQHRCheck(user)) {
+  } else if (role === 'hr' && (await isHQHRCheck(user, companyId))) {
     // كل حاجة
-  } else if (['hr', 'manager'].includes(user.role)) {
+  } else if (['hr', 'manager', 'company_owner'].includes(role)) {
     // فرعه بس
     filter.branch = user.branch;
   } else {
@@ -45,9 +48,9 @@ const getFilter = async (user, query = {}) => {
 };
 
 // ==================== جلب الرواتب ====================
-router.get('/', auth, checkPermission('users.view.branch'), async (req, res) => {
+router.get('/', auth, tenant, checkPermission('users.view.branch'), async (req, res) => {
   try {
-    const filter = await getFilter(req.user, req.query);
+    const filter = await getFilter(req.user, req.companyId, req.query);
 
     const payrolls = await Payroll.find(filter)
       .populate('user', 'name email position department employeeId')
@@ -64,14 +67,19 @@ router.get('/', auth, checkPermission('users.view.branch'), async (req, res) => 
 });
 
 // ==================== جلب رواتب موظف ====================
-router.get('/user/:userId', auth, async (req, res) => {
+router.get('/user/:userId', auth, tenant, async (req, res) => {
   try {
+    const role = req.user.companyRole || req.user.role;
+
     // الموظف يقدر يشوف راتبه بس
-    if (req.user.role === 'employee' && String(req.user.id) !== req.params.userId) {
+    if (role === 'employee' && String(req.user.id) !== req.params.userId) {
       return res.status(403).json({ msg: 'غير مصرح' });
     }
 
-    const payrolls = await Payroll.find({ user: req.params.userId })
+    const payrolls = await Payroll.find({
+      companyId: req.companyId,   // ← ✅
+      user: req.params.userId,
+    })
       .populate('branch', 'name')
       .sort({ year: -1, month: -1 });
 
@@ -82,10 +90,10 @@ router.get('/user/:userId', auth, async (req, res) => {
 });
 
 // ==================== إحصائيات ====================
-router.get('/stats/:year/:month', auth, checkPermission('users.view.branch'), async (req, res) => {
+router.get('/stats/:year/:month', auth, tenant, checkPermission('users.view.branch'), async (req, res) => {
   try {
     const { year, month } = req.params;
-    const filter = await getFilter(req.user, { year, month });
+    const filter = await getFilter(req.user, req.companyId, { year, month });
 
     const payrolls = await Payroll.find(filter);
 
@@ -108,7 +116,7 @@ router.get('/stats/:year/:month', auth, checkPermission('users.view.branch'), as
 });
 
 // ==================== إنشاء راتب ====================
-router.post('/', auth, checkPermission('users.edit'), async (req, res) => {
+router.post('/', auth, tenant, checkPermission('users.edit'), async (req, res) => {
   try {
     const {
       user: userId,
@@ -125,26 +133,39 @@ router.post('/', auth, checkPermission('users.edit'), async (req, res) => {
       return res.status(400).json({ msg: 'الموظف والشهر والسنة مطلوبين' });
     }
 
-    // ✅ نتأكد إن الموظف موجود
-    const targetUser = await User.findById(userId);
+    // ✅ الموظف من نفس الشركة
+    const targetUser = await User.findOne({
+      _id: userId,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!targetUser) {
       return res.status(404).json({ msg: 'الموظف غير موجود' });
     }
 
+    const role = req.user.companyRole || req.user.role;
+
     // ✅ manager/hr في فرع تاني → موظفي فرعهم بس
-    if (req.user.role === 'manager' || (req.user.role === 'hr' && !(await isHQHRCheck(req.user)))) {
+    if (role === 'manager' || (role === 'hr' && !(await isHQHRCheck(req.user, req.companyId)))) {
       if (String(targetUser.branch) !== String(req.user.branch)) {
         return res.status(403).json({ msg: 'غير مصرح — الموظف في فرع آخر' });
       }
     }
 
     // ✅ نتأكد إن مفيش راتب لنفس الموظف في نفس الشهر
-    const existing = await Payroll.findOne({ user: userId, month, year });
+    const existing = await Payroll.findOne({
+      companyId: req.companyId,
+      user: userId,
+      month,
+      year,
+    });
+
     if (existing) {
       return res.status(400).json({ msg: 'يوجد راتب لهذا الموظف في هذا الشهر بالفعل' });
     }
 
     const payroll = await Payroll.create({
+      companyId: req.companyId,   // ← ✅
       user: userId,
       branch: targetUser.branch,
       month,
@@ -162,6 +183,14 @@ router.post('/', auth, checkPermission('users.edit'), async (req, res) => {
       .populate('user', 'name email position')
       .populate('branch', 'name');
 
+    await logAction({
+      req,
+      action: 'create',
+      resource: 'payroll',
+      resourceId: payroll._id,
+      description: `إنشاء راتب: ${targetUser.name} - ${month}/${year}`,
+    });
+
     res.status(201).json({ msg: '✅ تم إنشاء الراتب', payroll: populated });
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -169,15 +198,21 @@ router.post('/', auth, checkPermission('users.edit'), async (req, res) => {
 });
 
 // ==================== تعديل راتب ====================
-router.put('/:id', auth, checkPermission('users.edit'), async (req, res) => {
+router.put('/:id', auth, tenant, checkPermission('users.edit'), async (req, res) => {
   try {
-    const payroll = await Payroll.findById(req.params.id);
+    const payroll = await Payroll.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!payroll) {
       return res.status(404).json({ msg: 'الراتب غير موجود' });
     }
 
+    const role = req.user.companyRole || req.user.role;
+
     // ✅ manager/hr في فرع تاني → فرعهم بس
-    if (req.user.role === 'manager' || (req.user.role === 'hr' && !(await isHQHRCheck(req.user)))) {
+    if (role === 'manager' || (role === 'hr' && !(await isHQHRCheck(req.user, req.companyId)))) {
       if (String(payroll.branch) !== String(req.user.branch)) {
         return res.status(403).json({ msg: 'غير مصرح' });
       }
@@ -189,7 +224,7 @@ router.put('/:id', auth, checkPermission('users.edit'), async (req, res) => {
     }
 
     const allowedFields = ['basicSalary', 'allowances', 'bonuses', 'deductions', 'notes'];
-    allowedFields.forEach(field => {
+    allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         payroll[field] = req.body[field];
       }
@@ -201,6 +236,14 @@ router.put('/:id', auth, checkPermission('users.edit'), async (req, res) => {
       .populate('user', 'name email position')
       .populate('branch', 'name');
 
+    await logAction({
+      req,
+      action: 'update',
+      resource: 'payroll',
+      resourceId: payroll._id,
+      description: `تعديل راتب`,
+    });
+
     res.json({ msg: '✅ تم تحديث الراتب', payroll: populated });
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -208,9 +251,13 @@ router.put('/:id', auth, checkPermission('users.edit'), async (req, res) => {
 });
 
 // ==================== اعتماد راتب ====================
-router.put('/:id/approve', auth, checkPermission('users.edit'), async (req, res) => {
+router.put('/:id/approve', auth, tenant, checkPermission('users.edit'), async (req, res) => {
   try {
-    const payroll = await Payroll.findById(req.params.id);
+    const payroll = await Payroll.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!payroll) {
       return res.status(404).json({ msg: 'الراتب غير موجود' });
     }
@@ -224,6 +271,14 @@ router.put('/:id/approve', auth, checkPermission('users.edit'), async (req, res)
     payroll.approvedAt = new Date();
     await payroll.save();
 
+    await logAction({
+      req,
+      action: 'approve',
+      resource: 'payroll',
+      resourceId: payroll._id,
+      description: `اعتماد راتب`,
+    });
+
     res.json({ msg: '✅ تم اعتماد الراتب', payroll });
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -231,9 +286,13 @@ router.put('/:id/approve', auth, checkPermission('users.edit'), async (req, res)
 });
 
 // ==================== دفع راتب ====================
-router.put('/:id/pay', auth, checkPermission('users.edit'), async (req, res) => {
+router.put('/:id/pay', auth, tenant, checkPermission('users.edit'), async (req, res) => {
   try {
-    const payroll = await Payroll.findById(req.params.id);
+    const payroll = await Payroll.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!payroll) {
       return res.status(404).json({ msg: 'الراتب غير موجود' });
     }
@@ -246,6 +305,14 @@ router.put('/:id/pay', auth, checkPermission('users.edit'), async (req, res) => 
     payroll.paidAt = new Date();
     await payroll.save();
 
+    await logAction({
+      req,
+      action: 'update',
+      resource: 'payroll',
+      resourceId: payroll._id,
+      description: `دفع راتب`,
+    });
+
     res.json({ msg: '✅ تم تسجيل دفع الراتب', payroll });
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -253,19 +320,31 @@ router.put('/:id/pay', auth, checkPermission('users.edit'), async (req, res) => 
 });
 
 // ==================== حذف راتب ====================
-router.delete('/:id', auth, checkPermission('users.delete'), async (req, res) => {
+router.delete('/:id', auth, tenant, checkPermission('users.delete'), async (req, res) => {
   try {
-    const payroll = await Payroll.findById(req.params.id);
+    const payroll = await Payroll.findOne({
+      _id: req.params.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!payroll) {
       return res.status(404).json({ msg: 'الراتب غير موجود' });
     }
 
-    // ✅ ممنوع حذف راتب مدفوع
     if (payroll.status === 'paid') {
       return res.status(400).json({ msg: 'لا يمكن حذف راتب مدفوع' });
     }
 
     await Payroll.findByIdAndDelete(req.params.id);
+
+    await logAction({
+      req,
+      action: 'delete',
+      resource: 'payroll',
+      resourceId: payroll._id,
+      description: `حذف راتب`,
+    });
+
     res.json({ ok: true, msg: '✅ تم حذف الراتب' });
   } catch (err) {
     res.status(500).json({ msg: err.message });
@@ -273,18 +352,23 @@ router.delete('/:id', auth, checkPermission('users.delete'), async (req, res) =>
 });
 
 // ==================== إنشاء رواتب جماعية ====================
-router.post('/bulk', auth, checkPermission('users.edit'), async (req, res) => {
+router.post('/bulk', auth, tenant, checkPermission('users.edit'), async (req, res) => {
   try {
     const { month, year, branch, basicSalaryDefault } = req.body;
+    const role = req.user.companyRole || req.user.role;
 
     if (!month || !year) {
       return res.status(400).json({ msg: 'الشهر والسنة مطلوبين' });
     }
 
-    // ✅ نحدد الفلتر حسب الدور
-    let userFilter = { active: true, role: { $ne: 'superadmin' } };
+    // ✅ الفلتر
+    let userFilter = {
+      companyId: req.companyId,   // ← ✅
+      active: true,
+      role: { $ne: 'superadmin' },
+    };
 
-    if (req.user.role === 'manager' || (req.user.role === 'hr' && !(await isHQHRCheck(req.user)))) {
+    if (role === 'manager' || (role === 'hr' && !(await isHQHRCheck(req.user, req.companyId)))) {
       userFilter.branch = req.user.branch;
     } else if (branch) {
       userFilter.branch = branch;
@@ -292,21 +376,24 @@ router.post('/bulk', auth, checkPermission('users.edit'), async (req, res) => {
 
     const users = await User.find(userFilter);
 
-    const results = {
-      created: 0,
-      skipped: 0,
-      errors: [],
-    };
+    const results = { created: 0, skipped: 0, errors: [] };
 
     for (const user of users) {
       try {
-        const existing = await Payroll.findOne({ user: user._id, month, year });
+        const existing = await Payroll.findOne({
+          companyId: req.companyId,
+          user: user._id,
+          month,
+          year,
+        });
+
         if (existing) {
           results.skipped++;
           continue;
         }
 
         await Payroll.create({
+          companyId: req.companyId,   // ← ✅
           user: user._id,
           branch: user.branch,
           month,
@@ -322,6 +409,14 @@ router.post('/bulk', auth, checkPermission('users.edit'), async (req, res) => {
       }
     }
 
+    await logAction({
+      req,
+      action: 'create',
+      resource: 'payroll',
+      description: `إنشاء رواتب جماعية: ${results.created} موظف - ${month}/${year}`,
+      details: { month, year, created: results.created, skipped: results.skipped },
+    });
+
     res.json({
       msg: `✅ تم إنشاء ${results.created} راتب · تم تخطي ${results.skipped}`,
       results,
@@ -330,8 +425,9 @@ router.post('/bulk', auth, checkPermission('users.edit'), async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+
 // ==================== تصدير Excel ====================
-router.get('/export/excel', auth, checkPermission('users.view.branch'), async (req, res) => {
+router.get('/export/excel', auth, tenant, checkPermission('users.view.branch'), async (req, res) => {
   try {
     const ExcelJS = require('exceljs');
     const { month, year } = req.query;
@@ -340,7 +436,7 @@ router.get('/export/excel', auth, checkPermission('users.view.branch'), async (r
       return res.status(400).json({ msg: 'الشهر والسنة مطلوبين' });
     }
 
-    const filter = await getFilter(req.user, { month, year });
+    const filter = await getFilter(req.user, req.companyId, { month, year });
     const payrolls = await Payroll.find(filter)
       .populate('user', 'name email position department employeeId')
       .populate('branch', 'name')
@@ -349,28 +445,25 @@ router.get('/export/excel', auth, checkPermission('users.view.branch'), async (r
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('المرتبات');
 
-    // ✅ RTL
     sheet.views = [{ rightToLeft: true }];
 
-    // ✅ العنوان
     sheet.mergeCells('A1:L1');
     const titleCell = sheet.getCell('A1');
     titleCell.value = `تقرير المرتبات - ${month}/${year}`;
     titleCell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A1F44' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C7CE0' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     sheet.getRow(1).height = 30;
 
-    // ✅ الرؤوس
     const headers = [
       'الاسم', 'البريد', 'الوظيفة', 'القسم', 'الفرع',
-      'الأساسي', 'البدلات', 'المكافآت', 'الخصومات', 'الصافي', 'الحالة', 'ملاحظات'
+      'الأساسي', 'البدلات', 'المكافآت', 'الخصومات', 'الصافي', 'الحالة', 'ملاحظات',
     ];
 
     const headerRow = sheet.addRow(headers);
-    headerRow.eachCell(cell => {
+    headerRow.eachCell((cell) => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF142B5C' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C7CE0' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       cell.border = {
         top: { style: 'thin' },
@@ -381,13 +474,8 @@ router.get('/export/excel', auth, checkPermission('users.view.branch'), async (r
     });
     headerRow.height = 25;
 
-    // ✅ البيانات
-    payrolls.forEach(p => {
-      const statusLabels = {
-        draft: 'مسودة',
-        approved: 'معتمد',
-        paid: 'مدفوع',
-      };
+    payrolls.forEach((p) => {
+      const statusLabels = { draft: 'مسودة', approved: 'معتمد', paid: 'مدفوع' };
 
       sheet.addRow([
         p.user?.name || '-',
@@ -405,7 +493,6 @@ router.get('/export/excel', auth, checkPermission('users.view.branch'), async (r
       ]);
     });
 
-    // ✅ الإجماليات
     const totalRow = sheet.addRow([
       'الإجمالي', '', '', '', '',
       payrolls.reduce((s, p) => s + (p.basicSalary || 0), 0),
@@ -416,17 +503,15 @@ router.get('/export/excel', auth, checkPermission('users.view.branch'), async (r
       '', '',
     ]);
 
-    totalRow.eachCell(cell => {
+    totalRow.eachCell((cell) => {
       cell.font = { bold: true };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3CD' } };
     });
 
-    // ✅ عرض الأعمدة
     sheet.columns.forEach((col, i) => {
       col.width = [20, 25, 18, 18, 18, 12, 12, 12, 12, 14, 12, 20][i] || 15;
     });
 
-    // ✅ الإرسال
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=payroll_${year}_${month}.xlsx`);
 
@@ -439,7 +524,7 @@ router.get('/export/excel', auth, checkPermission('users.view.branch'), async (r
 });
 
 // ==================== تصدير PDF ====================
-router.get('/export/pdf', auth, checkPermission('users.view.branch'), async (req, res) => {
+router.get('/export/pdf', auth, tenant, checkPermission('users.view.branch'), async (req, res) => {
   try {
     const PDFDocument = require('pdfkit');
     const { month, year } = req.query;
@@ -448,7 +533,7 @@ router.get('/export/pdf', auth, checkPermission('users.view.branch'), async (req
       return res.status(400).json({ msg: 'الشهر والسنة مطلوبين' });
     }
 
-    const filter = await getFilter(req.user, { month, year });
+    const filter = await getFilter(req.user, req.companyId, { month, year });
     const payrolls = await Payroll.find(filter)
       .populate('user', 'name position')
       .populate('branch', 'name')
@@ -461,26 +546,22 @@ router.get('/export/pdf', auth, checkPermission('users.view.branch'), async (req
 
     doc.pipe(res);
 
-    // ✅ العنوان
     doc.fontSize(18)
-       .fillColor('#0a1f44')
-       .text(`تقرير المرتبات - ${month}/${year}`, { align: 'center' });
+      .fillColor('#7C7CE0')
+      .text(`تقرير المرتبات - ${month}/${year}`, { align: 'center' });
 
     doc.moveDown();
 
-    // ✅ معلومات
     doc.fontSize(10)
-       .fillColor('#5a6478')
-       .text(`عدد الموظفين: ${payrolls.length}`, { align: 'right' })
-       .text(`إجمالي الصافي: ${payrolls.reduce((s, p) => s + (p.netSalary || 0), 0).toLocaleString('ar-EG')} ج.م`, { align: 'right' });
+      .fillColor('#5a6478')
+      .text(`عدد الموظفين: ${payrolls.length}`, { align: 'right' })
+      .text(`إجمالي الصافي: ${payrolls.reduce((s, p) => s + (p.netSalary || 0), 0).toLocaleString('ar-EG')} ج.م`, { align: 'right' });
 
     doc.moveDown();
 
-    // ✅ الجدول (بسيط بـ rows)
     const startY = doc.y;
     const rowHeight = 20;
 
-    // رؤوس الأعمدة
     const columns = [
       { label: 'الاسم', width: 120 },
       { label: 'الوظيفة', width: 90 },
@@ -496,22 +577,19 @@ router.get('/export/pdf', auth, checkPermission('users.view.branch'), async (req
     let x = 30;
     doc.fontSize(9).fillColor('#ffffff');
 
-    // خلفية الرؤوس
-    doc.rect(30, startY, 750, rowHeight).fill('#0a1f44');
+    doc.rect(30, startY, 750, rowHeight).fill('#7C7CE0');
 
-    columns.forEach(col => {
+    columns.forEach((col) => {
       doc.fillColor('#ffffff')
-         .text(col.label, x + 5, startY + 5, { width: col.width - 10, align: 'center' });
+        .text(col.label, x + 5, startY + 5, { width: col.width - 10, align: 'center' });
       x += col.width;
     });
 
     let y = startY + rowHeight;
 
-    // الصفوف
     payrolls.forEach((p, i) => {
       x = 30;
 
-      // خلفية متبادلة
       if (i % 2 === 0) {
         doc.rect(30, y, 750, rowHeight).fill('#f5f7fa');
       }
@@ -532,25 +610,23 @@ router.get('/export/pdf', auth, checkPermission('users.view.branch'), async (req
 
       columns.forEach((col, j) => {
         doc.fillColor('#0a1f44')
-           .fontSize(8)
-           .text(row[j], x + 5, y + 6, { width: col.width - 10, align: 'center' });
+          .fontSize(8)
+          .text(row[j], x + 5, y + 6, { width: col.width - 10, align: 'center' });
         x += col.width;
       });
 
       y += rowHeight;
 
-      // صفحة جديدة لو خلصت
       if (y > doc.page.height - 50) {
         doc.addPage();
         y = 30;
       }
     });
 
-    // ✅ الإجماليات
     doc.moveDown(2);
     doc.fontSize(11)
-       .fillColor('#0a1f44')
-       .text(`الإجمالي الصافي: ${payrolls.reduce((s, p) => s + (p.netSalary || 0), 0).toLocaleString('ar-EG')} ج.م`, { align: 'right' });
+      .fillColor('#7C7CE0')
+      .text(`الإجمالي الصافي: ${payrolls.reduce((s, p) => s + (p.netSalary || 0), 0).toLocaleString('ar-EG')} ج.م`, { align: 'right' });
 
     doc.end();
   } catch (err) {
@@ -558,14 +634,14 @@ router.get('/export/pdf', auth, checkPermission('users.view.branch'), async (req
     res.status(500).json({ msg: err.message });
   }
 });
+
 // ==================== استيراد موظفين من Excel ====================
-router.post('/import', auth, checkPermission('users.create'), async (req, res) => {
+router.post('/import', auth, tenant, checkPermission('users.create'), async (req, res) => {
   try {
     const multer = require('multer');
     const ExcelJS = require('exceljs');
     const bcrypt = require('bcryptjs');
 
-    // ✅ إعدادات multer
     const upload = multer({ storage: multer.memoryStorage() }).single('file');
 
     upload(req, res, async (err) => {
@@ -586,10 +662,9 @@ router.post('/import', auth, checkPermission('users.create'), async (req, res) =
           return res.status(400).json({ msg: 'الملف مش فيه شيت' });
         }
 
-        // ✅ قراءة الصفوف
         const rows = [];
         sheet.eachRow((row, rowNumber) => {
-          if (rowNumber === 1) return; // تخطي الرؤوس
+          if (rowNumber === 1) return;
           rows.push({
             name: row.getCell(1).value,
             email: row.getCell(2).value,
@@ -603,18 +678,10 @@ router.post('/import', auth, checkPermission('users.create'), async (req, res) =
           });
         });
 
-        const results = {
-          success: 0,
-          failed: 0,
-          errors: [],
-        };
-
-        const User = require('../models/User');
-        const Branch = require('../models/Branch');
+        const results = { success: 0, failed: 0, errors: [] };
 
         for (const row of rows) {
           try {
-            // ✅ validation
             if (!row.name || !row.email || !row.password) {
               results.failed++;
               results.errors.push(`صف ${row.name || 'بدون اسم'}: الاسم والبريد والباسورد مطلوبين`);
@@ -629,25 +696,27 @@ router.post('/import', auth, checkPermission('users.create'), async (req, res) =
               continue;
             }
 
-            // ✅ نحدد الفرع بالاسم
+            // ✅ نحدد الفرع بالاسم (بنفس الشركة)
             let branchId = null;
             if (row.branch) {
-              const branch = await Branch.findOne({ name: row.branch });
+              const branch = await Branch.findOne({
+                companyId: req.companyId,   // ← ✅
+                name: row.branch,
+              });
               if (branch) branchId = branch._id;
             }
 
-            // لو مش لاقي الفرع، نستخدم فرع المستخدم الحالي
             if (!branchId) branchId = req.user.branch;
 
-            // ✅ نشفر الباسورد
             const hashed = await bcrypt.hash(String(row.password), 10);
 
-            // ✅ ننشئ المستخدم
             await User.create({
+              companyId: req.companyId,   // ← ✅
               name: row.name,
               email: row.email,
               password: hashed,
               role: row.role || 'employee',
+              companyRole: row.role || 'employee',
               branch: branchId,
               phone: row.phone || '',
               position: row.position || '',
@@ -664,6 +733,14 @@ router.post('/import', auth, checkPermission('users.create'), async (req, res) =
           }
         }
 
+        await logAction({
+          req,
+          action: 'create',
+          resource: 'user',
+          description: `استيراد موظفين من Excel: ${results.success} نجح`,
+          details: { success: results.success, failed: results.failed },
+        });
+
         res.json({
           msg: `✅ تم استيراد ${results.success} موظف · فشل ${results.failed}`,
           results,
@@ -677,8 +754,8 @@ router.post('/import', auth, checkPermission('users.create'), async (req, res) =
   }
 });
 
-// ==================== تحميل قالب Excel للموظفين ====================
-router.get('/template', auth, async (req, res) => {
+// ==================== تحميل قالب Excel ====================
+router.get('/template', auth, tenant, async (req, res) => {
   try {
     const ExcelJS = require('exceljs');
     const workbook = new ExcelJS.Workbook();
@@ -686,20 +763,18 @@ router.get('/template', auth, async (req, res) => {
 
     sheet.views = [{ rightToLeft: true }];
 
-    // ✅ الرؤوس
     const headers = [
       'الاسم', 'البريد الإلكتروني', 'كلمة المرور', 'الدور',
-      'الفرع', 'رقم الهاتف', 'المسمى الوظيفي', 'القسم', 'الراتب'
+      'الفرع', 'رقم الهاتف', 'المسمى الوظيفي', 'القسم', 'الراتب',
     ];
 
     const headerRow = sheet.addRow(headers);
-    headerRow.eachCell(cell => {
+    headerRow.eachCell((cell) => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0A1F44' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C7CE0' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
-    // ✅ صف تجريبي
     sheet.addRow([
       'أحمد محمد',
       'ahmed@example.com',
@@ -709,10 +784,9 @@ router.get('/template', auth, async (req, res) => {
       '01012345678',
       'محاسب',
       'المالية',
-      5000
+      5000,
     ]);
 
-    // ✅ صف توضيحي للدور
     sheet.addRow([
       'سارة علي',
       'sara@example.com',
@@ -722,10 +796,9 @@ router.get('/template', auth, async (req, res) => {
       '01098765432',
       'أخصائي موارد بشرية',
       'الموارد البشرية',
-      7000
+      7000,
     ]);
 
-    // ✅ عرض الأعمدة
     sheet.columns.forEach((col, i) => {
       col.width = [20, 25, 15, 12, 25, 15, 20, 20, 12][i] || 15;
     });
@@ -739,4 +812,5 @@ router.get('/template', auth, async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+
 module.exports = router;

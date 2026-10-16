@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const tenant = require('../middleware/tenant');
 const User = require('../models/User');
 const {
   getFaceDescriptor,
@@ -14,7 +15,7 @@ const {
 // ============================================
 // ✅ 1. تسجيل الوجه (Enroll)
 // ============================================
-router.post('/enroll', auth, async (req, res) => {
+router.post('/enroll', auth, tenant, async (req, res) => {
   try {
     const { image, faceDescriptor } = req.body;
 
@@ -43,7 +44,12 @@ router.post('/enroll', auth, async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.user.id);
+    // ✅ المستخدم من نفس الشركة
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
     }
@@ -69,11 +75,15 @@ router.post('/enroll', auth, async (req, res) => {
 // ============================================
 // ✅ 2. التحقق من الوجه (Verify)
 // ============================================
-router.post('/verify', auth, async (req, res) => {
+router.post('/verify', auth, tenant, async (req, res) => {
   try {
     const { image, faceDescriptor } = req.body;
 
-    const user = await User.findById(req.user.id);
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
     }
@@ -146,9 +156,13 @@ router.post('/verify', auth, async (req, res) => {
 // ============================================
 // ✅ 3. حالة تسجيل الوجه
 // ============================================
-router.get('/status', auth, async (req, res) => {
+router.get('/status', auth, tenant, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
     }
@@ -164,12 +178,15 @@ router.get('/status', auth, async (req, res) => {
 });
 
 // ============================================
-// ✅ 4. فحص شامل (جديد)
-// GET /api/face/check
+// ✅ 4. فحص شامل
 // ============================================
-router.get('/check', auth, async (req, res) => {
+router.get('/check', auth, tenant, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
     }
@@ -190,9 +207,13 @@ router.get('/check', auth, async (req, res) => {
 // ============================================
 // ✅ 5. حذف الوجه
 // ============================================
-router.delete('/remove', auth, async (req, res) => {
+router.delete('/remove', auth, tenant, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findOne({
+      _id: req.user.id,
+      companyId: req.companyId,   // ← ✅
+    });
+
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
     }
