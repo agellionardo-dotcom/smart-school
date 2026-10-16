@@ -245,15 +245,15 @@ export default function Login() {
           <div className="login-logo-wrap">
             <div className="login-logo-glow" />
             <img
-              src="/logo.png"
-              alt="SMART"
+              src="/nabd-icon.png"
+              alt="Nabd"
               className="login-logo"
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           </div>
 
-          <h1 className="login-title">Smart School</h1>
-          <p className="login-subtitle">نظام الحضور والانصراف الذكي</p>
+          <h1 className="login-title">Nabd</h1>
+          <p className="login-subtitle">نبض شركتك</p>
         </div>
 
         {/* Form */}
@@ -340,7 +340,7 @@ export default function Login() {
         </form>
 
         <p className="login-footer">
-          © 2026 SMART For Computer &amp; Electronics
+          © 2026 Nabd — نبض شركتك
         </p>
       </div>
 
@@ -436,7 +436,7 @@ export default function Login() {
           position: absolute;
           inset: -20px;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(0, 229, 255, 0.3), transparent 70%);
+          background: radial-gradient(circle, rgba(124, 124, 224, 0.4), transparent 70%);
           z-index: 0;
           animation: loginGlow 3s ease-in-out infinite;
         }
@@ -453,14 +453,14 @@ export default function Login() {
           height: 130px;
           object-fit: contain;
           border-radius: 24px;
-          filter: drop-shadow(0 8px 24px rgba(0, 229, 255, 0.3));
+          filter: drop-shadow(0 8px 24px rgba(124, 124, 224, 0.4));
         }
 
         .login-title {
           margin: 0 0 6px;
           font-size: 32px;
           font-weight: 800;
-          background: linear-gradient(135deg, #00e5ff 0%, #a855f7 50%, #ec4899 100%);
+          background: linear-gradient(135deg, #7C7CE0 0%, #a855f7 100%);
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -514,8 +514,8 @@ export default function Login() {
 
         .login-input:focus {
           background: rgba(255, 255, 255, 0.1);
-          border-color: rgba(0, 229, 255, 0.5);
-          box-shadow: 0 0 0 4px rgba(0, 229, 255, 0.12);
+          border-color: rgba(124, 124, 224, 0.5);
+          box-shadow: 0 0 0 4px rgba(124, 124, 224, 0.12);
         }
 
         .login-remember {
@@ -531,7 +531,7 @@ export default function Login() {
           width: 18px;
           height: 18px;
           cursor: pointer;
-          accent-color: #00e5ff;
+          accent-color: #7C7CE0;
           flex-shrink: 0;
         }
 
@@ -574,19 +574,19 @@ export default function Login() {
           margin-top: 6px;
           border: none;
           border-radius: 14px;
-          background: linear-gradient(135deg, #00e5ff 0%, #a855f7 100%);
+          background: linear-gradient(135deg, #7C7CE0 0%, #a855f7 100%);
           color: #fff;
           font-family: inherit;
           font-size: 16px;
           font-weight: 700;
           cursor: pointer;
           transition: all 0.25s;
-          box-shadow: 0 8px 24px rgba(0, 229, 255, 0.3);
+          box-shadow: 0 8px 24px rgba(124, 124, 224, 0.3);
         }
 
         .login-btn:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 12px 32px rgba(0, 229, 255, 0.5);
+          box-shadow: 0 12px 32px rgba(124, 124, 224, 0.5);
         }
 
         .login-btn:active:not(:disabled) {
@@ -644,7 +644,7 @@ export default function Login() {
         }
 
         .login-forgot-link {
-          color: #67e8f9;
+          color: #a5b4fc;
           font-size: 14px;
           font-weight: 600;
           text-decoration: none;
@@ -652,8 +652,8 @@ export default function Login() {
         }
 
         .login-forgot-link:hover {
-          color: #00e5ff;
-          text-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
+          color: #7C7CE0;
+          text-shadow: 0 0 12px rgba(124, 124, 224, 0.5);
         }
 
         .login-footer {

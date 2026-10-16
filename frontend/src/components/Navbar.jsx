@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getQueueCount } from '../services/offlineStorage';
 import ThemeToggle from './ThemeToggle';
-import NavbarActions from './NavbarActions';   // ← جديد
+import NavbarActions from './NavbarActions';
 
 export default function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -59,12 +59,12 @@ export default function Navbar() {
         </button>
         <div className="ss-navbar-brand">
           <img
-            src="/logo.png"
-            alt="SMART"
+            src="/nabd-icon.png"
+            alt="Nabd"
             className="ss-navbar-logo"
             onError={(e) => { e.target.style.display = 'none'; }}
           />
-          <h2 className="ss-navbar-title">Smart School</h2>
+          <h2 className="ss-navbar-title">Nabd</h2>
         </div>
 
         {/* ✅ أزرار الإدارة/العودة + تبديل الوضع */}
@@ -82,13 +82,13 @@ export default function Navbar() {
             {/* Header */}
             <div className="ss-drawer-header">
               <img
-                src="/logo.png"
-                alt="SMART"
+                src="/nabd-icon.png"
+                alt="Nabd"
                 className="ss-drawer-logo"
                 onError={(e) => { e.target.style.display = 'none'; }}
               />
-              <h3>Smart School</h3>
-              <p>نظام الحضور والانصراف</p>
+              <h3>Nabd</h3>
+              <p>نبض شركتك</p>
             </div>
 
             {/* User Info */}
@@ -152,7 +152,7 @@ export default function Navbar() {
             </div>
 
             <div className="ss-drawer-footer">
-              © 2026 SMART For Computer & Electronics
+              © 2026 Nabd — نبض شركتك
               <br />
               v2.9
             </div>
@@ -194,8 +194,8 @@ export default function Navbar() {
           flex-shrink: 0;
         }
         .ss-navbar-toggle:hover {
-          background: rgba(0, 229, 255, 0.15);
-          border-color: rgba(0, 229, 255, 0.4);
+          background: rgba(124, 124, 224, 0.15);
+          border-color: rgba(124, 124, 224, 0.4);
         }
 
         .ss-navbar-brand {
@@ -215,7 +215,7 @@ export default function Navbar() {
           color: var(--ss-text-primary, #fff);
           font-size: 20px;
           font-weight: 700;
-          background: linear-gradient(135deg, #00e5ff, #a855f7);
+          background: linear-gradient(135deg, #7C7CE0, #a855f7);
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
@@ -263,7 +263,7 @@ export default function Navbar() {
           padding: 24px 20px;
           text-align: center;
           border-bottom: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.08));
-          background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(168, 85, 247, 0.08));
+          background: linear-gradient(135deg, rgba(124, 124, 224, 0.08), rgba(168, 85, 247, 0.08));
         }
         .ss-drawer-logo {
           width: 70px;
@@ -297,7 +297,7 @@ export default function Navbar() {
           margin-bottom: 4px;
         }
         .ss-drawer-user-role {
-          color: #67e8f9;
+          color: #a5b4fc;
           font-size: 12px;
           font-weight: 500;
         }
@@ -333,8 +333,8 @@ export default function Navbar() {
           color: var(--ss-text-primary, #fff);
         }
         .ss-drawer-link.active {
-          background: linear-gradient(90deg, rgba(0, 229, 255, 0.15), transparent);
-          border-right-color: #00e5ff;
+          background: linear-gradient(90deg, rgba(124, 124, 224, 0.15), transparent);
+          border-right-color: #7C7CE0;
           color: var(--ss-text-primary, #fff);
         }
 
