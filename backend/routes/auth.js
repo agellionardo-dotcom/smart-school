@@ -622,10 +622,7 @@ router.post('/change-password', auth, tenant, async (req, res) => {
     }
 
     // ✅ نجيب المستخدم
-    const user = await User.findOne({
-      _id: req.user.id,
-      companyId: req.companyId,
-    });
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
