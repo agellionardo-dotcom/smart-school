@@ -1,3 +1,6 @@
+// 📁 backend/routes/auth.js
+// ⬅️ استبدل الملف بالكامل
+
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -6,7 +9,7 @@ const User = require('../models/User');
 const Company = require('../models/Company');
 const auth = require('../middleware/auth');
 const tenant = require('../middleware/tenant');
-const { sendResetPasswordEmail } = require('../utils/emailService');
+const { sendResetPasswordEmail, sendWelcomeEmail } = require('../utils/emailService');
 const { logAction } = require('../middleware/auditLog');
 
 // ============================================
@@ -27,16 +30,16 @@ function generateToken(user, branchId = null) {
 }
 
 // ============================================
-// ✅ Helper: تجهيز بيانات المستخدم للرد
+// ✅ Helper: تجهيز بيانات المستخدم
 // ============================================
 async function prepareUserResponse(user) {
   const userObj = user.toObject ? user.toObject() : { ...user };
   delete userObj.password;
 
-  // جلب بيانات الشركة
   if (user.companyId) {
-    const company = await Company.findById(user.companyId)
-      .select('name slug logo type subscription.plan subscription.status subscription.isTrial subscription.endDate');
+    const company = await Company.findById(user.companyId).select(
+      'name slug logo type subscription.plan subscription.status subscription.isTrial subscription.endDate'
+    );
     userObj.company = company;
   }
 
@@ -44,7 +47,202 @@ async function prepareUserResponse(user) {
 }
 
 // ============================================
-// ✅ 1. تسجيل الدخول
+// ✅ 1. تسجيل شركة جديدة (Self-Service SignUp)
+// ============================================
+router.post('/signup', async (req, res) => {
+  try {
+    const { companyName, slug, email, phone, password, plan } = req.body;
+
+    if (!companyName || !email || !password) {
+      return res.status(400).json({ msg: 'الاسم، البريد، وكلمة المرور مطلوبين' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ msg: 'كلمة المرور 6 أحرف على الأقل' });
+    }
+
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ msg: 'البريد مستخدم بالفعل' });
+    }
+
+    let finalSlug = slug?.toLowerCase().replace(/[^a-z0-9-]/g, '') ||
+      companyName.toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_]+/g, '-')
+        .replace(/-+/g, '-')
+        .substring(0, 30);
+
+    if (!finalSlug) finalSlug = `company-${Date.now()}`;
+
+    const existingCompany = await Company.findOne({ slug: finalSlug });
+    if (existingCompany) {
+      finalSlug = `${finalSlug}-${Date.now().toString().slice(-4)}`;
+    }
+
+    const company = new Company({
+      name: companyName,
+      slug: finalSlug,
+      contactEmail: email.toLowerCase(),
+      contactPhone: phone || null,
+      type: 'external',
+      subscription: {
+        plan: plan || 'trial',
+        status: 'pending_verification',
+        isTrial: true,
+        maxEmployees: plan === 'basic' ? 25 : plan === 'pro' ? 100 : 999999,
+        endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const verificationToken = company.generateEmailVerificationToken();
+    await company.save();
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({
+  companyId: company._id,
+  name: companyName,
+  email: email.toLowerCase(),
+  password: hashedPassword,
+  role: 'employee',            // ✅ صح
+  companyRole: 'company_owner',
+  active: true,
+});
+
+    company.ownerId = user._id;
+    await company.save();
+
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email/${verificationToken}`;
+
+    try {
+      await sendWelcomeEmail({
+        to: email,
+        name: companyName,
+        companyName,
+        username: email,
+        password,
+        plan: plan || 'trial',
+        trialEndsAt: company.subscription.endDate,
+      });
+
+      console.log('📧 Verification URL:', verificationUrl);
+    } catch (emailErr) {
+      console.error('Email error:', emailErr.message);
+    }
+
+    await logAction({
+      req,
+      action: 'signup',
+      resource: 'company',
+      resourceId: company._id,
+      description: `تسجيل شركة جديدة: ${companyName}`,
+      status: 'success',
+      statusCode: 201,
+      userOverride: { id: user._id, email: user.email, name: user.name, role: user.role },
+      details: { companyName, plan, email },
+    }).catch(() => {});
+
+    res.status(201).json({
+      success: true,
+      msg: '✅ تم إنشاء الحساب! تم إرسال بيانات الدخول على بريدك الإلكتروني.',
+      company: {
+        _id: company._id,
+        name: company.name,
+        slug: company.slug,
+        status: company.subscription.status,
+      },
+    });
+  } catch (err) {
+    console.error('SignUp error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ============================================
+// ✅ 2. تفعيل الإيميل
+// ============================================
+router.get('/verify-email/:token', async (req, res) => {
+  try {
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(req.params.token)
+      .digest('hex');
+
+    const company = await Company.findOne({
+      emailVerificationToken: hashedToken,
+      emailVerificationExpires: { $gt: Date.now() },
+    });
+
+    if (!company) {
+      return res.status(400).json({
+        success: false,
+        msg: 'رابط التفعيل غير صالح أو منتهي',
+      });
+    }
+
+    company.isEmailVerified = true;
+    company.emailVerificationToken = null;
+    company.emailVerificationExpires = null;
+    company.subscription.status = 'trial';
+    await company.save();
+
+    res.json({
+      success: true,
+      msg: '✅ تم تفعيل الحساب بنجاح! يمكنك تسجيل الدخول الآن.',
+      company: { name: company.name, slug: company.slug },
+    });
+  } catch (err) {
+    console.error('Verify email error:', err);
+    res.status(500).json({ success: false, msg: err.message });
+  }
+});
+
+// ============================================
+// ✅ 3. إعادة إرسال رابط التفعيل
+// ============================================
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ msg: 'البريد غير موجود' });
+    }
+
+    const company = await Company.findById(user.companyId);
+    if (!company) {
+      return res.status(404).json({ msg: 'الشركة غير موجودة' });
+    }
+
+    if (company.isEmailVerified) {
+      return res.status(400).json({ msg: 'الحساب مفعل بالفعل' });
+    }
+
+    const verificationToken = company.generateEmailVerificationToken();
+    await company.save();
+
+    try {
+      await sendWelcomeEmail({
+        to: email,
+        name: company.name,
+        companyName: company.name,
+        username: email,
+        password: '••••••••',
+        plan: company.subscription.plan,
+        trialEndsAt: company.subscription.endDate,
+      });
+    } catch (emailErr) {
+      return res.status(500).json({ msg: 'فشل إرسال الإيميل' });
+    }
+
+    res.json({ success: true, msg: '✅ تم إعادة إرسال رابط التفعيل' });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ============================================
+// ✅ 4. تسجيل الدخول
 // ============================================
 router.post('/login', async (req, res) => {
   try {
@@ -54,12 +252,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ msg: 'البريد وكلمة المرور مطلوبين' });
     }
 
-    // ✅ 1. نجيب المستخدم (بدون شرط companyId — عشان نقدر نسجل الـ login_failed)
     const user = await User.findOne({ email: email.toLowerCase() })
       .populate('branch')
       .populate('companyId', 'name slug logo type active subscription');
 
-    // ❌ مستخدم غير موجود
     if (!user) {
       await logAction({
         req,
@@ -68,13 +264,12 @@ router.post('/login', async (req, res) => {
         description: `محاولة دخول فاشلة: ${email}`,
         status: 'failed',
         statusCode: 400,
-        companyIdOverride: null, // ← مفيش شركة
+        companyIdOverride: null,
         details: { email, reason: 'user_not_found' },
-      }).catch(() => {}); // ← مش مهم لو فشل
+      }).catch(() => {});
       return res.status(400).json({ msg: 'البريد أو كلمة المرور خطأ' });
     }
 
-    // ❌ كلمة مرور خطأ
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) {
       await logAction({
@@ -96,7 +291,6 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ msg: 'البريد أو كلمة المرور خطأ' });
     }
 
-    // ❌ حساب موقوف
     if (!user.active) {
       await logAction({
         req,
@@ -117,7 +311,6 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ msg: 'الحساب موقوف ⚠️' });
     }
 
-    // ❌ الشركة موقوفة (لو مش SuperAdmin)
     if (user.role !== 'superadmin' && user.companyId) {
       const company = user.companyId;
       if (!company.active) {
@@ -127,7 +320,6 @@ router.post('/login', async (req, res) => {
         });
       }
 
-      // فحص الاشتراك
       const status = company.subscription?.status;
       if (['suspended', 'cancelled', 'expired'].includes(status)) {
         return res.status(403).json({
@@ -137,17 +329,12 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    // ✅ تحديث lastLogin
     user.lastLogin = new Date();
     await user.save();
 
-    // ✅ إنشاء token
     const token = generateToken(user, user.branch?._id);
-
-    // ✅ تجهيز الرد
     const userResponse = await prepareUserResponse(user);
 
-    // ✅ تسجيل الدخول الناجح
     await logAction({
       req,
       action: 'login',
@@ -182,13 +369,10 @@ router.post('/login', async (req, res) => {
 });
 
 // ============================================
-// ✅ 2. تسجيل مستخدم جديد
-// ============================================
-// ⚠️ محمي — بس للـ SuperAdmin / Company Owner
+// ✅ 5. تسجيل مستخدم جديد (من داخل الشركة)
 // ============================================
 router.post('/register', auth, tenant, async (req, res) => {
   try {
-    // ✅ فحص الصلاحيات
     const allowedRoles = ['superadmin', 'company_owner', 'hr'];
     const userRole = req.user.companyRole || req.user.role;
 
@@ -198,17 +382,14 @@ router.post('/register', auth, tenant, async (req, res) => {
 
     const { name, email, password, branch, role, companyRole } = req.body;
 
-    // ✅ companyId إجباري
     if (!req.companyId) {
       return res.status(400).json({ msg: 'companyId مطلوب' });
     }
 
-    // ✅ validation
     if (!name || !email || !password) {
       return res.status(400).json({ msg: 'الاسم، البريد، وكلمة المرور مطلوبين' });
     }
 
-    // ✅ فحص الإيميل
     const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
       return res.status(400).json({ msg: 'البريد مستخدم بالفعل' });
@@ -250,7 +431,7 @@ router.post('/register', auth, tenant, async (req, res) => {
 });
 
 // ============================================
-// ✅ 3. معلومات المستخدم الحالي
+// ✅ 6. معلومات المستخدم الحالي
 // ============================================
 router.get('/me', auth, tenant, async (req, res) => {
   try {
@@ -275,7 +456,7 @@ router.get('/me', auth, tenant, async (req, res) => {
 });
 
 // ============================================
-// ✅ 4. طلب إعادة تعيين كلمة المرور
+// ✅ 7. طلب إعادة تعيين كلمة المرور
 // ============================================
 router.post('/forgot-password', async (req, res) => {
   try {
@@ -325,7 +506,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 // ============================================
-// ✅ 5. التحقق من صلاحية الـ token
+// ✅ 8. التحقق من صلاحية الـ token
 // ============================================
 router.get('/verify-reset-token/:token', async (req, res) => {
   try {
@@ -350,7 +531,7 @@ router.get('/verify-reset-token/:token', async (req, res) => {
 });
 
 // ============================================
-// ✅ 6. إعادة تعيين كلمة المرور
+// ✅ 9. إعادة تعيين كلمة المرور
 // ============================================
 router.post('/reset-password/:token', async (req, res) => {
   try {
@@ -385,10 +566,8 @@ router.post('/reset-password/:token', async (req, res) => {
 });
 
 // ============================================
-// ✅ Biometric Login
+// ✅ 10. Biometric Login (Enable)
 // ============================================
-
-// ==================== 1. تفعيل البصمة ====================
 router.post('/biometric/enable', auth, tenant, async (req, res) => {
   try {
     const { deviceId, deviceName, deviceModel, platform, biometricType } = req.body;
@@ -452,7 +631,9 @@ router.post('/biometric/enable', auth, tenant, async (req, res) => {
   }
 });
 
-// ==================== 2. تسجيل الدخول بالبصمة ====================
+// ============================================
+// ✅ 11. Biometric Login (Login)
+// ============================================
 router.post('/biometric/login', async (req, res) => {
   try {
     const { deviceId, refreshToken } = req.body;
@@ -483,7 +664,6 @@ router.post('/biometric/login', async (req, res) => {
       return res.status(403).json({ msg: 'الحساب معطّل — راجع المدير' });
     }
 
-    // فحص الشركة
     if (user.role !== 'superadmin' && user.companyId) {
       const company = user.companyId;
       if (!company.active || ['suspended', 'cancelled', 'expired'].includes(company.subscription?.status)) {
@@ -519,7 +699,9 @@ router.post('/biometric/login', async (req, res) => {
   }
 });
 
-// ==================== 3. إلغاء تفعيل البصمة لجهاز ====================
+// ============================================
+// ✅ 12. Biometric Login (Disable)
+// ============================================
 router.post('/biometric/disable', auth, tenant, async (req, res) => {
   try {
     const { deviceId } = req.body;
@@ -543,7 +725,9 @@ router.post('/biometric/disable', auth, tenant, async (req, res) => {
   }
 });
 
-// ==================== 4. جلب الأجهزة الموثوقة ====================
+// ============================================
+// ✅ 13. Biometric Devices
+// ============================================
 router.get('/biometric/devices', auth, tenant, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -573,7 +757,9 @@ router.get('/biometric/devices', auth, tenant, async (req, res) => {
   }
 });
 
-// ==================== 5. حالة البصمة للمستخدم ====================
+// ============================================
+// ✅ 14. Biometric Status
+// ============================================
 router.get('/biometric/status', auth, tenant, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -601,14 +787,14 @@ router.get('/biometric/status', auth, tenant, async (req, res) => {
     res.status(500).json({ msg: 'خطأ' });
   }
 });
+
 // ============================================
-// ✅ 7. تغيير كلمة المرور
+// ✅ 15. تغيير كلمة المرور
 // ============================================
 router.post('/change-password', auth, tenant, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    // ✅ Validation
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         msg: 'كلمة المرور الحالية والجديدة مطلوبين',
@@ -621,14 +807,12 @@ router.post('/change-password', auth, tenant, async (req, res) => {
       });
     }
 
-    // ✅ نجيب المستخدم
     const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
     }
 
-    // ✅ نتأكد من كلمة المرور الحالية
     const isValid = await bcrypt.compare(currentPassword, user.password);
     if (!isValid) {
       return res.status(400).json({
@@ -636,7 +820,6 @@ router.post('/change-password', auth, tenant, async (req, res) => {
       });
     }
 
-    // ✅ نتأكد إن الجديدة مختلفة
     const isSame = await bcrypt.compare(newPassword, user.password);
     if (isSame) {
       return res.status(400).json({
@@ -644,11 +827,9 @@ router.post('/change-password', auth, tenant, async (req, res) => {
       });
     }
 
-    // ✅ نشفر ونحفظ
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
-    // ✅ نسجل في Audit Log
     await logAction({
       req,
       action: 'update',
@@ -670,4 +851,8 @@ router.post('/change-password', auth, tenant, async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+
+// ============================================
+// ✅ EXPORT
+// ============================================
 module.exports = router;

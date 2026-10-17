@@ -15,8 +15,13 @@ import {
 } from '../services/biometric';
 
 // ✅ دالة مساعدة: تحديد المسار حسب الدور
+// ✅ دالة مساعدة: تحديد المسار حسب الدور
 const getRedirectPath = (user) => {
-  if (user?.role === 'superadmin') return '/superadmin';
+  // ✅ سوبر أدمن المنصة (مش مربوط بشركة) → المنصة
+  if (user?.role === 'superadmin' && !user.companyId) {
+    return '/superadmin';
+  }
+  // ✅ أي حد تاني (أدمن شركة أو موظف) → الداشبورد
   return '/dashboard';
 };
 
@@ -178,12 +183,10 @@ export default function Login() {
             await saveData('saved_credentials', null);
           }
 
-          // ✅ لو البصمة متوفرة ومش مفعّلة → اسأل المستخدم
           if (biometricAvailable && !biometricEnabled) {
             setShowEnablePrompt(true);
             setLoading(false);
           } else {
-            // ✅ توجيه حسب الدور
             nav(getRedirectPath(data.user));
           }
           return;
@@ -208,7 +211,6 @@ export default function Login() {
         }
       }
 
-      // ✅ وضع أوفلاين
       const cached = await getData('cached_user');
 
       if (cached && cached.user && cached.token) {
@@ -228,7 +230,6 @@ export default function Login() {
           setMsg('📴 وضع أوفلاين — تم تسجيل الدخول من البيانات المخزنة');
 
           setTimeout(() => {
-            // ✅ توجيه حسب الدور
             nav(getRedirectPath(cached.user));
           }, 800);
           return;
@@ -247,13 +248,9 @@ export default function Login() {
     }
   };
 
-  // ============================================
-  // ✅ Render
-  // ============================================
   return (
     <div className="login-page">
       <div className="login-card">
-        {/* Logo + Title */}
         <div className="login-header">
           <div className="login-logo-wrap">
             <div className="login-logo-glow" />
@@ -271,7 +268,6 @@ export default function Login() {
           <p className="login-subtitle">نبض شركتك</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={submit} className="login-form">
           <div className="login-field">
             <span className="login-field-icon">📧</span>
@@ -326,7 +322,6 @@ export default function Login() {
             )}
           </button>
 
-          {/* ✅ زر البصمة */}
           {biometricAvailable && biometricEnabled && (
             <button
               type="button"
@@ -359,7 +354,6 @@ export default function Login() {
         <p className="login-footer">© 2026 Nabd — نبض شركتك</p>
       </div>
 
-      {/* ✅ Modal تفعيل البصمة */}
       {showEnablePrompt && (
         <div className="login-modal-overlay">
           <div className="login-modal">
@@ -407,7 +401,6 @@ export default function Login() {
         </div>
       )}
 
-      {/* ============ Styles ============ */}
       <style>{`
         .login-page {
           min-height: 100vh;

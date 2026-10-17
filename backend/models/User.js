@@ -5,11 +5,15 @@ const userSchema = new mongoose.Schema({
   // ✅ Multi-tenant — مربوط بأي شركة
   // ============================================
   companyId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
-    required: true,
-    index: true,
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Company',
+  required: function() {
+    // ✅ السوبر أدمن (مدير المنصة) مش لازم يكون مربوط بشركة
+    return this.role !== 'superadmin';
   },
+  index: true,
+  default: null,
+},
 
   // ===== البيانات الأساسية =====
   name: { type: String, required: true },

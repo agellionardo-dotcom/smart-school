@@ -2,25 +2,17 @@
 // ⬅️ استبدل الملف بالكامل
 
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 // ============================================
 // ✅ Company Schema
 // ============================================
-// كل شركة في منصة Nabd = Company
-// - الشركة الأولى: SMART (type: internal)
-// - باقي الشركات: عملاء (type: external)
-// ============================================
-
 const companySchema = new mongoose.Schema(
   {
     // ============================================
     // ✅ 1. معلومات أساسية
     // ============================================
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    name: { type: String, required: true, trim: true },
     slug: {
       type: String,
       required: true,
@@ -28,17 +20,9 @@ const companySchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: /^[a-z0-9-]+$/,
-      // مثال: 'smart', 'abc-company', 'xyz'
     },
-    logo: {
-      type: String,
-      default: null,
-      // URL من Cloudinary
-    },
-    description: {
-      type: String,
-      default: '',
-    },
+    logo: { type: String, default: null },
+    description: { type: String, default: '' },
 
     // ============================================
     // ✅ 2. نوع الشركة
@@ -47,151 +31,73 @@ const companySchema = new mongoose.Schema(
       type: String,
       enum: ['internal', 'external'],
       default: 'external',
-      // internal = شركتك (SMART)
-      // external = عميل (ABC، XYZ...)
     },
 
     // ============================================
     // ✅ 3. معلومات التواصل
     // ============================================
-    contactEmail: {
-      type: String,
-      lowercase: true,
-      trim: true,
-      default: null,
-    },
-    contactPhone: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-    address: {
-      type: String,
-      default: '',
-    },
+    contactEmail: { type: String, lowercase: true, trim: true, default: null },
+    contactPhone: { type: String, trim: true, default: null },
+    address: { type: String, default: '' },
 
     // ============================================
-    // ✅ 4. الإعدادات
+    // ✅ 4. التحقق من الإيميل
+    // ============================================
+    isEmailVerified: { type: Boolean, default: false },
+    emailVerificationToken: { type: String, default: null, index: true },
+    emailVerificationExpires: { type: Date, default: null },
+
+    // ============================================
+    // ✅ 5. الإعدادات
     // ============================================
     settings: {
-      workStartTime: {
-        type: String,
-        default: '08:00',
-      },
-      workEndTime: {
-        type: String,
-        default: '14:00',
-      },
-      lateGraceMinutes: {
-        type: Number,
-        default: 15,
-      },
-      weekendDays: {
-        type: [Number],
-        default: [5, 6], // الجمعة والسبت
-      },
-      timezone: {
-        type: String,
-        default: 'Africa/Cairo',
-      },
-      currency: {
-        type: String,
-        default: 'EGP',
-      },
-      language: {
-        type: String,
-        enum: ['ar', 'en'],
-        default: 'ar',
-      },
+      workStartTime: { type: String, default: '08:00' },
+      workEndTime: { type: String, default: '14:00' },
+      lateGraceMinutes: { type: Number, default: 15 },
+      weekendDays: { type: [Number], default: [5, 6] },
+      timezone: { type: String, default: 'Africa/Cairo' },
+      currency: { type: String, default: 'EGP' },
+      language: { type: String, enum: ['ar', 'en'], default: 'ar' },
     },
 
     // ============================================
-    // ✅ 5. الاشتراك
+    // ✅ 6. الاشتراك
     // ============================================
     subscription: {
-      // نوع الخطة
       plan: {
         type: String,
-        enum: ['free', 'trial', 'basic', 'pro', 'enterprise', 'internal'],  // ← ✅ تم إضافة 'free'
+        enum: ['free', 'trial', 'basic', 'pro', 'enterprise', 'internal'],
         default: 'trial',
       },
-
-      // حالة الاشتراك
       status: {
         type: String,
-        enum: ['active', 'trial', 'suspended', 'expired', 'cancelled'],
+        enum: ['pending_verification', 'active', 'trial', 'suspended', 'expired', 'cancelled'],
         default: 'trial',
       },
-
-      // هل هو Trial؟
-      isTrial: {
-        type: Boolean,
-        default: true,
-      },
-
-      // التواريخ
-      startDate: {
-        type: Date,
-        default: Date.now,
-      },
+      isTrial: { type: Boolean, default: true },
+      startDate: { type: Date, default: Date.now },
       endDate: {
         type: Date,
-        default: () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 يوم
+        default: () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
       },
-
-      // الحدود
-      maxEmployees: {
-        type: Number,
-        default: 10,
-      },
-      maxBranches: {
-        type: Number,
-        default: 2,
-      },
-      maxStorage: {
-        type: Number,
-        default: 500, // MB
-      },
-
-      // الميزات المسموح بها
+      maxEmployees: { type: Number, default: 10 },
+      maxBranches: { type: Number, default: 2 },
+      maxStorage: { type: Number, default: 500 },
       features: {
         type: [String],
-        default: [
-          'attendance',
-          'leaves',
-          'announcements',
-          'qr',
-        ],
-        // الميزات الكاملة: attendance, leaves, announcements, qr,
-        // payroll, face, documents, reports, ai, emergency
+        default: ['attendance', 'leaves', 'announcements', 'qr'],
       },
-
-      // الفواتير
       billing: {
-        amount: {
-          type: Number,
-          default: 0,
-        },
-        currency: {
-          type: String,
-          default: 'EGP',
-        },
-        cycle: {
-          type: String,
-          enum: ['monthly', 'yearly'],
-          default: 'monthly',
-        },
+        amount: { type: Number, default: 0 },
+        currency: { type: String, default: 'EGP' },
+        cycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
       },
-
-      // آخر دفعة
       lastPayment: {
         date: Date,
         amount: Number,
         method: String,
         reference: String,
       },
-
-      // سجل الدفعات
       payments: [
         {
           date: { type: Date, default: Date.now },
@@ -209,59 +115,35 @@ const companySchema = new mongoose.Schema(
     },
 
     // ============================================
-    // ✅ 6. الـ Owner
+    // ✅ 7. الـ Owner
     // ============================================
-    ownerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
-    },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
     // ============================================
-    // ✅ 7. الحالة
+    // ✅ 8. الحالة
     // ============================================
-    active: {
-      type: Boolean,
-      default: true,
-    },
+    active: { type: Boolean, default: true },
 
     // ============================================
-    // ✅ 8. إحصائيات
+    // ✅ 9. إحصائيات
     // ============================================
     stats: {
-      totalUsers: {
-        type: Number,
-        default: 0,
-      },
-      totalBranches: {
-        type: Number,
-        default: 0,
-      },
-      lastActivityAt: {
-        type: Date,
-        default: null,
-      },
+      totalUsers: { type: Number, default: 0 },
+      totalBranches: { type: Number, default: 0 },
+      lastActivityAt: { type: Date, default: null },
     },
 
     // ============================================
-    // ✅ 9. ملاحظات SuperAdmin
+    // ✅ 10. ملاحظات SuperAdmin
     // ============================================
-    notes: {
-      type: String,
-      default: '',
-    },
+    notes: { type: String, default: '' },
 
     // ============================================
-    // ✅ 10. مين أنشأ الشركة
+    // ✅ 11. مين أنشأ الشركة
     // ============================================
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 // ============================================
@@ -283,8 +165,7 @@ companySchema.virtual('isTrialing').get(function () {
 });
 
 companySchema.virtual('isSubscriptionActive').get(function () {
-  const status = this.subscription.status;
-  return ['active', 'trial', 'internal'].includes(status);
+  return ['active', 'trial', 'internal'].includes(this.subscription.status);
 });
 
 companySchema.virtual('daysLeftInTrial').get(function () {
@@ -298,23 +179,25 @@ companySchema.virtual('daysLeftInTrial').get(function () {
 // ============================================
 // ✅ Methods
 // ============================================
+companySchema.methods.generateEmailVerificationToken = function () {
+  const token = crypto.randomBytes(32).toString('hex');
+  this.emailVerificationToken = crypto.createHash('sha256').update(token).digest('hex');
+  this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000;
+  return token;
+};
 
-// فحص لو الشركة وصلت للحد الأقصى للموظفين
 companySchema.methods.canAddEmployee = function (currentCount) {
   return currentCount < this.subscription.maxEmployees;
 };
 
-// فحص لو الشركة وصلت للحد الأقصى للفروع
 companySchema.methods.canAddBranch = function (currentCount) {
   return currentCount < this.subscription.maxBranches;
 };
 
-// فحص لو الميزة متاحة
 companySchema.methods.hasFeature = function (feature) {
   return this.subscription.features.includes(feature);
 };
 
-// تفعيل اشتراك مدفوع
 companySchema.methods.activateSubscription = function ({
   plan,
   amount,
@@ -324,12 +207,8 @@ companySchema.methods.activateSubscription = function ({
 }) {
   const now = new Date();
   const endDate = new Date(now);
-
-  if (cycle === 'monthly') {
-    endDate.setMonth(endDate.getMonth() + 1);
-  } else if (cycle === 'yearly') {
-    endDate.setFullYear(endDate.getFullYear() + 1);
-  }
+  if (cycle === 'monthly') endDate.setMonth(endDate.getMonth() + 1);
+  else if (cycle === 'yearly') endDate.setFullYear(endDate.getFullYear() + 1);
 
   this.subscription.plan = plan;
   this.subscription.status = 'active';
@@ -338,12 +217,7 @@ companySchema.methods.activateSubscription = function ({
   this.subscription.endDate = endDate;
   this.subscription.billing.amount = amount;
   this.subscription.billing.cycle = cycle;
-  this.subscription.lastPayment = {
-    date: now,
-    amount,
-    method: paymentMethod,
-    reference,
-  };
+  this.subscription.lastPayment = { date: now, amount, method: paymentMethod, reference };
   this.subscription.payments.push({
     date: now,
     amount,
@@ -351,18 +225,15 @@ companySchema.methods.activateSubscription = function ({
     reference,
     status: 'paid',
   });
-
   return this.save();
 };
 
-// تعطيل اشتراك
 companySchema.methods.suspendSubscription = function (reason = '') {
   this.subscription.status = 'suspended';
   this.notes = reason ? `${this.notes}\n[${new Date().toISOString()}] ${reason}` : this.notes;
   return this.save();
 };
 
-// إلغاء اشتراك
 companySchema.methods.cancelSubscription = function (reason = '') {
   this.subscription.status = 'cancelled';
   this.active = false;
@@ -373,13 +244,10 @@ companySchema.methods.cancelSubscription = function (reason = '') {
 // ============================================
 // ✅ Statics
 // ============================================
-
-// جلب كل الشركات النشطة
 companySchema.statics.getActiveCompanies = function () {
   return this.find({ active: true }).sort({ createdAt: -1 });
 };
 
-// جلب الشركات اللي الـ Trial بتاعها خلص
 companySchema.statics.getExpiredTrials = function () {
   return this.find({
     'subscription.isTrial': true,
@@ -388,22 +256,14 @@ companySchema.statics.getExpiredTrials = function () {
   });
 };
 
-// جلب الشركات اللي الـ Trial بتاعها قرب يخلص (7 أيام)
 companySchema.statics.getTrialsEndingSoon = function (days = 7) {
   const now = new Date();
   const future = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-
   return this.find({
     'subscription.isTrial': true,
     'subscription.status': 'trial',
-    'subscription.endDate': {
-      $gte: now,
-      $lte: future,
-    },
+    'subscription.endDate': { $gte: now, $lte: future },
   });
 };
 
-// ============================================
-// ✅ Export
-// ============================================
 module.exports = mongoose.model('Company', companySchema);

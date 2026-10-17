@@ -1,3 +1,6 @@
+// 📁 frontend/src/pages/Landing.jsx
+// ⬅️ استبدل الملف بالكامل
+
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
@@ -87,7 +90,6 @@ export default function Landing() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // ✅ Navbar shadow عند الـ scroll
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -116,7 +118,6 @@ export default function Landing() {
             <span className="lp-brand-name">Nabd</span>
           </Link>
 
-          {/* Desktop Menu */}
           <div className="lp-nav-links">
             <button onClick={() => scrollTo('features')}>المميزات</button>
             <button onClick={() => scrollTo('pricing')}>الأسعار</button>
@@ -135,12 +136,12 @@ export default function Landing() {
             <Link to="/login" className="lp-btn lp-btn-outline">
               دخول
             </Link>
-            <Link to="/login" className="lp-btn lp-btn-primary">
+            {/* ✅ تعديل: SignUp بدل Login */}
+            <Link to="/signup?plan=trial" className="lp-btn lp-btn-primary">
               ابدأ مجانًا
             </Link>
           </div>
 
-          {/* Mobile Menu Toggle */}
           <button
             className="lp-menu-btn"
             onClick={() => setMenuOpen(!menuOpen)}
@@ -150,13 +151,13 @@ export default function Landing() {
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {menuOpen && (
           <div className="lp-mobile-menu">
             <button onClick={() => scrollTo('features')}>المميزات</button>
             <button onClick={() => scrollTo('pricing')}>الأسعار</button>
             <button onClick={() => scrollTo('download')}>حمّل التطبيق</button>
-            <Link to="/login" className="lp-mobile-cta">
+            {/* ✅ تعديل: SignUp بدل Login */}
+            <Link to="/signup?plan=trial" className="lp-mobile-cta">
               ابدأ مجانًا
             </Link>
           </div>
@@ -183,8 +184,9 @@ export default function Landing() {
           </p>
 
           <div className="lp-hero-cta">
+            {/* ✅ تعديل: SignUp بدل Login */}
             <button
-              onClick={() => nav('/login')}
+              onClick={() => nav('/signup?plan=trial')}
               className="lp-btn lp-btn-primary lp-btn-lg"
             >
               🚀 ابدأ مجانًا 14 يوم
@@ -274,8 +276,9 @@ export default function Landing() {
                     </li>
                   ))}
                 </ul>
+                {/* ✅ تعديل: SignUp بدل Login */}
                 <button
-                  onClick={() => nav('/login')}
+                  onClick={() => nav(`/signup?plan=${p.name.toLowerCase()}`)}
                   className={`lp-btn lp-btn-block ${
                     p.highlight ? 'lp-btn-primary' : 'lp-btn-outline'
                   }`}
@@ -342,8 +345,9 @@ export default function Landing() {
           <p className="lp-cta-subtitle">
             جرّب Nabd مجانًا لمدة 14 يوم — من غير بطاقة دفع
           </p>
+          {/* ✅ تعديل: SignUp بدل Login */}
           <button
-            onClick={() => nav('/login')}
+            onClick={() => nav('/signup?plan=trial')}
             className="lp-btn lp-btn-primary lp-btn-lg"
           >
             🚀 ابدأ مجانًا الآن

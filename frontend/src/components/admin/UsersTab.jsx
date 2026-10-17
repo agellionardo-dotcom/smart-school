@@ -1,3 +1,6 @@
+// 📁 frontend/src/components/admin/UsersTab.jsx
+// ⬅️ استبدل الملف بالكامل
+
 import { toCairo } from '../../utils/dateHelpers';
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
@@ -16,6 +19,15 @@ const ROLE_GRADIENTS = {
   hr:         'linear-gradient(135deg, #a855f7, #7e22ce)',
   employee:   'linear-gradient(135deg, #10b981, #059669)',
   viewer:     'linear-gradient(135deg, #94a3b8, #64748b)',
+};
+
+// ✅ المابنج لحل مشكلة companyRole
+const ROLE_TO_COMPANY_ROLE = {
+  superadmin: 'company_owner',
+  manager: 'manager',
+  hr: 'hr',
+  employee: 'employee',
+  viewer: 'viewer'
 };
 
 export default function UsersTab() {
@@ -69,11 +81,17 @@ export default function UsersTab() {
   const submit = async (e) => {
     e.preventDefault();
     try {
+      // ✅ تحويل الـ role للـ companyRole
+      const payload = {
+        ...form,
+        companyRole: ROLE_TO_COMPANY_ROLE[form.role] || 'employee'
+      };
+
       if (editUser) {
-        await api.put(`/admin/users/${editUser._id}`, form);
+        await api.put(`/admin/users/${editUser._id}`, payload);
         setMsg('✅ تم تحديث المستخدم');
       } else {
-        await api.post('/admin/users', form);
+        await api.post('/admin/users', payload);
         setMsg('✅ تم إنشاء المستخدم');
       }
       resetForm();
@@ -125,9 +143,7 @@ export default function UsersTab() {
 
   const downloadFile = async (endpoint, filename) => {
     try {
-      const response = await api.get(endpoint, {
-        responseType: 'blob'
-      });
+      const response = await api.get(endpoint, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;

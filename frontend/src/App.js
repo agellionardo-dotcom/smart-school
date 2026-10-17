@@ -12,6 +12,8 @@ import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Landing from './pages/Landing';
+import SignUp from './pages/SignUp';             // ✅ جديد
+import VerifyEmail from './pages/VerifyEmail';   // ✅ جديد
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
@@ -19,7 +21,7 @@ import Attendance from './pages/Attendance';
 import Leaves from './pages/Leaves';
 import ScanQr from './pages/ScanQr';
 import AdminDashboard from './pages/AdminDashboard';
-import SuperAdminDashboard from './pages/SuperAdminDashboard';   // ← ✅ جديد
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
 import AIChat from './components/AIChat';
@@ -49,7 +51,7 @@ const PrivateRoute = ({ children }) => {
 };
 
 // ============================================
-// ✅ PrivateRoute for SuperAdmin (بدون Navbar العادي)
+// ✅ SuperAdminRoute
 // ============================================
 const SuperAdminRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -150,6 +152,8 @@ export default function App() {
           {/* ============================================ */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />                      {/* ✅ جديد */}
+          <Route path="/verify-email/:token" element={<VerifyEmail />} />     {/* ✅ جديد */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
@@ -214,7 +218,7 @@ export default function App() {
           />
 
           {/* ============================================ */}
-          {/* SuperAdmin Route ← ✅ جديد */}
+          {/* SuperAdmin Route */}
           {/* ============================================ */}
           <Route
             path="/superadmin"

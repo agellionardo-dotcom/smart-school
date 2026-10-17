@@ -1,3 +1,6 @@
+// 📁 backend/routes/admin.js
+// ⬅️ استبدل الملف بالكامل
+
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
@@ -11,12 +14,10 @@ const { checkPermission, scopeToBranch, canAccessUser } = require('../middleware
 const { logAction } = require('../middleware/auditLog');
 
 // ==================== helpers ====================
-// جلب الفرع الرئيسي (type: 'main') — بنفس الشركة
 const getHQBranch = async (companyId) => {
   return await Branch.findOne({ companyId, type: 'main' });
 };
 
-// التحقق إذا كان المستخدم hr في الفرع الرئيسي
 const isHQHR = async (user, companyId) => {
   const role = user.companyRole || user.role;
   if (role !== 'hr') return false;
@@ -25,25 +26,20 @@ const isHQHR = async (user, companyId) => {
   return hq && String(user.branch) === String(hq._id);
 };
 
-// جلب الفلتر المناسب للفروع حسب الدور
 const getBranchFilter = async (user, companyId) => {
-  // ✅ نجيب كل فروع الشركة
   const companyBranches = await Branch.find({ companyId }).select('_id');
   const branchIds = companyBranches.map((b) => b._id);
 
   const role = user.companyRole || user.role;
 
-  // ✅ company_owner / superadmin / viewer → كل الفروع
   if (['company_owner', 'superadmin', 'viewer'].includes(role)) {
     return { companyId, _id: { $in: branchIds } };
   }
 
-  // ✅ hr في الفرع الرئيسي → كل الفروع
   if (role === 'hr' && (await isHQHR(user, companyId))) {
     return { companyId, _id: { $in: branchIds } };
   }
 
-  // ✅ hr في فرع تاني + manager → فرعه بس
   if (['hr', 'manager'].includes(role)) {
     return { companyId, _id: user.branch };
   }
@@ -67,7 +63,7 @@ router.post('/branches', auth, tenant, checkPermission('branches.create'), async
   try {
     const branch = await Branch.create({
       ...req.body,
-      companyId: req.companyId,  // ← ✅
+      companyId: req.companyId,
     });
 
     await logAction({
@@ -85,7 +81,7 @@ router.post('/branches', auth, tenant, checkPermission('branches.create'), async
 router.put('/branches/:id', auth, tenant, checkPermission('branches.edit'), async (req, res) => {
   try {
     const branch = await Branch.findOneAndUpdate(
-      { _id: req.params.id, companyId: req.companyId },  // ← ✅
+      { _id: req.params.id, companyId: req.companyId },
       req.body,
       { new: true }
     );
@@ -108,7 +104,7 @@ router.delete('/branches/:id', auth, tenant, checkPermission('branches.delete'),
   try {
     const branch = await Branch.findOneAndDelete({
       _id: req.params.id,
-      companyId: req.companyId,  // ← ✅
+      companyId: req.companyId,
     });
 
     if (!branch) return res.status(404).json({ msg: 'الفرع غير موجود' });
@@ -129,7 +125,6 @@ router.post('/branches/:id/assign-manager', auth, tenant, checkPermission('branc
   try {
     const { managerId } = req.body;
 
-    // ✅ نتأكد إن الفرع + المستخدم من نفس الشركة
     const branch = await Branch.findOne({
       _id: req.params.id,
       companyId: req.companyId,
@@ -169,7 +164,6 @@ router.get('/branches-stats', auth, tenant, checkPermission('branches.view.all')
     const today = new Date(); today.setHours(0,0,0,0);
 
     const result = await Promise.all(branches.map(async (b) => {
-      // ✅ كل الاستعلامات بـ companyId
       const total = await User.countDocuments({
         companyId: req.companyId,
         branch: b._id,
@@ -210,7 +204,6 @@ router.get('/users',
     try {
       const { role, branch, active } = req.query;
 
-      // ✅ نضمن إن المستخدمين من نفس الشركة
       const filter = { companyId: req.companyId };
 
       if (req.branchFilter && Object.keys(req.branchFilter).length > 0) {
@@ -237,14 +230,12 @@ router.get('/users/branch/:branchId', auth, tenant, checkPermission('users.view.
   try {
     const role = req.user.companyRole || req.user.role;
 
-    // ✅ نضمن إن الفرع من نفس الشركة
     const branch = await Branch.findOne({
       _id: req.params.branchId,
       companyId: req.companyId,
     });
     if (!branch) return res.status(404).json({ msg: 'الفرع غير موجود' });
 
-    // manager/hr مش في المنيا → يقدر يشوف فرعه بس
     if (role === 'manager') {
       if (String(req.user.branch) !== req.params.branchId) {
         return res.status(403).json({ msg: 'ممنوع - لست مدير هذا الفرع' });
@@ -257,7 +248,7 @@ router.get('/users/branch/:branchId', auth, tenant, checkPermission('users.view.
     }
 
     const users = await User.find({
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
       branch: req.params.branchId,
     }).select('-password -faceDescriptor');
 
@@ -272,12 +263,10 @@ router.post('/users', auth, tenant, checkPermission('users.create'), async (req,
     const { name, email, password, role, branch, phone, department, position } = req.body;
     const userRole = req.user.companyRole || req.user.role;
 
-    // حماية superadmin
     if (role === 'superadmin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ msg: 'لا يمكنك إنشاء مدير عام' });
     }
 
-    // ✅ فحص حد الموظفين
     const usersCount = await User.countDocuments({ companyId: req.companyId });
     if (req.company && usersCount >= req.company.subscription.maxEmployees) {
       return res.status(403).json({
@@ -286,7 +275,6 @@ router.post('/users', auth, tenant, checkPermission('users.create'), async (req,
       });
     }
 
-    // تحديد الفرع
     let targetBranch = branch;
 
     if (userRole === 'manager') {
@@ -301,7 +289,6 @@ router.post('/users', auth, tenant, checkPermission('users.create'), async (req,
       return res.status(400).json({ msg: 'الفرع مطلوب' });
     }
 
-    // ✅ نتأكد إن الفرع من نفس الشركة
     const branchExists = await Branch.findOne({
       _id: targetBranch,
       companyId: req.companyId,
@@ -310,19 +297,18 @@ router.post('/users', auth, tenant, checkPermission('users.create'), async (req,
       return res.status(404).json({ msg: 'الفرع غير موجود' });
     }
 
-    // ✅ فحص الإيميل
     const exists = await User.findOne({ email: email.toLowerCase() });
     if (exists) return res.status(400).json({ msg: 'البريد مستخدم' });
 
     const hashed = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
       name,
       email: email.toLowerCase(),
       password: hashed,
       role: role || 'employee',
-      companyRole: role || 'employee',  // ← ✅
+      companyRole: role || 'employee',
       branch: targetBranch,
       phone,
       department,
@@ -343,40 +329,67 @@ router.post('/users', auth, tenant, checkPermission('users.create'), async (req,
   } catch (err) { res.status(500).json({ msg: err.message }); }
 });
 
+// ✅ نسخة واحدة صح من تعديل المستخدم
 router.put('/users/:id', auth, tenant, checkPermission('users.edit'), async (req, res) => {
   try {
     const { password, role, ...rest } = req.body;
     const userRole = req.user.companyRole || req.user.role;
 
-    // ✅ نضمن إن المستخدم من نفس الشركة
     const target = await User.findOne({
       _id: req.params.id,
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
     });
 
-    if (!target) return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    if (!target) {
+      return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    }
 
-    // superadmin protection
     if (role === 'superadmin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ msg: 'ممنوع' });
     }
 
-    // manager/hr في فرع تاني → يعدّلوا موظفي فرعهم بس
     if (userRole === 'manager' || (userRole === 'hr' && !(await isHQHR(req.user, req.companyId)))) {
       if (String(target.branch) !== String(req.user.branch)) {
-        return res.status(403).json({ msg: 'غير مصرح — الموظف في فرع آخر' });
+        return res.status(403).json({ msg: 'ممنوع تعديل مستخدم في فرع تاني' });
       }
       if (target.role === 'superadmin') {
-        return res.status(403).json({ msg: 'غير مصرح — لا يمكنك تعديل مدير عام' });
+        return res.status(403).json({ msg: 'ممنوع تعديل مدير النظام' });
+      }
+    }
+
+    if (rest.email && rest.email.toLowerCase() !== target.email.toLowerCase()) {
+      const existingUser = await User.findOne({
+        email: rest.email.toLowerCase(),
+        _id: { $ne: target._id }
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ msg: '❌ البريد الإلكتروني مستخدم بالفعل' });
+      }
+
+      const emailRegex = /^\S+@\S+\.\S+$/;
+      if (!emailRegex.test(rest.email)) {
+        return res.status(400).json({ msg: '❌ البريد الإلكتروني غير صحيح' });
       }
     }
 
     const update = { ...rest };
+
+    if (update.email) {
+      update.email = update.email.toLowerCase();
+    }
+
     if (role) {
       update.role = role;
-      update.companyRole = role;  // ← ✅
+      update.companyRole = role;
     }
-    if (password) update.password = await bcrypt.hash(password, 10);
+
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ msg: '❌ كلمة المرور 6 أحرف على الأقل' });
+      }
+      update.password = await bcrypt.hash(password, 10);
+    }
 
     Object.assign(target, update);
     await target.save();
@@ -387,12 +400,20 @@ router.put('/users/:id', auth, tenant, checkPermission('users.edit'), async (req
       resource: 'user',
       resourceId: target._id,
       description: `تعديل مستخدم: ${target.name}`,
+      details: {
+        emailChanged: rest.email && rest.email !== target.email,
+        roleChanged: role && role !== target.role,
+      },
     });
 
     res.json({ ...target.toObject(), password: undefined });
-  } catch (err) { res.status(500).json({ msg: err.message }); }
+  } catch (err) {
+    console.error('Update user error:', err);
+    res.status(500).json({ msg: err.message });
+  }
 });
 
+// ==================== حذف مستخدم ====================
 router.delete('/users/:id', auth, tenant, checkPermission('users.delete'), async (req, res) => {
   try {
     if (req.params.id === req.user.id) {
@@ -401,15 +422,13 @@ router.delete('/users/:id', auth, tenant, checkPermission('users.delete'), async
 
     const userRole = req.user.companyRole || req.user.role;
 
-    // ✅ نضمن إن المستخدم من نفس الشركة
     const target = await User.findOne({
       _id: req.params.id,
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
     });
 
     if (!target) return res.status(404).json({ msg: 'المستخدم غير موجود' });
 
-    // hr في فرع تاني → يحذف موظفي فرعه بس
     if (userRole === 'hr' && !(await isHQHR(req.user, req.companyId))) {
       if (String(target.branch) !== String(req.user.branch)) {
         return res.status(403).json({ msg: 'غير مصرح — الموظف في فرع آخر' });
@@ -419,7 +438,6 @@ router.delete('/users/:id', auth, tenant, checkPermission('users.delete'), async
       }
     }
 
-    // manager → يحذف موظفي فرعه بس
     if (userRole === 'manager') {
       if (String(target.branch) !== String(req.user.branch)) {
         return res.status(403).json({ msg: 'غير مصرح — الموظف في فرع آخر' });
@@ -429,7 +447,6 @@ router.delete('/users/:id', auth, tenant, checkPermission('users.delete'), async
       }
     }
 
-    // hr في المنيا → يقدر يحذف اللي عايزه ما عدا superadmin
     if (userRole === 'hr' && await isHQHR(req.user, req.companyId)) {
       if (target.role === 'superadmin') {
         return res.status(403).json({ msg: 'غير مصرح بحذف مدير عام' });
@@ -451,11 +468,11 @@ router.delete('/users/:id', auth, tenant, checkPermission('users.delete'), async
   } catch (err) { res.status(500).json({ msg: err.message }); }
 });
 
+// ==================== تغيير الدور ====================
 router.put('/users/:id/role', auth, tenant, checkPermission('users.assign.roles'), async (req, res) => {
   try {
-    // ✅ نضمن إن المستخدم من نفس الشركة
     const user = await User.findOneAndUpdate(
-      { _id: req.params.id, companyId: req.companyId },  // ← ✅
+      { _id: req.params.id, companyId: req.companyId },
       { role: req.body.role, companyRole: req.body.role },
       { new: true }
     );
@@ -478,8 +495,7 @@ router.put('/users/:id/role', auth, tenant, checkPermission('users.assign.roles'
 
 router.get('/settings', auth, tenant, checkPermission('settings.view'), async (req, res) => {
   try {
-    // ✅ إعدادات الشركة الحالية
-    let settings = await Settings.findOne({ companyId: req.companyId });  // ← ✅
+    let settings = await Settings.findOne({ companyId: req.companyId });
     if (!settings) settings = await Settings.create({ companyId: req.companyId });
     res.json(settings);
   } catch (err) { res.status(500).json({ msg: err.message }); }
@@ -487,7 +503,7 @@ router.get('/settings', auth, tenant, checkPermission('settings.view'), async (r
 
 router.put('/settings', auth, tenant, checkPermission('settings.edit'), async (req, res) => {
   try {
-    let settings = await Settings.findOne({ companyId: req.companyId });  // ← ✅
+    let settings = await Settings.findOne({ companyId: req.companyId });
 
     if (!settings) {
       settings = await Settings.create({
@@ -519,7 +535,7 @@ router.get('/users/:id/profile', auth, tenant, async (req, res) => {
   try {
     const user = await User.findOne({
       _id: req.params.id,
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
     })
       .populate('branch', 'name location')
       .populate('managerId', 'name email position')
@@ -530,7 +546,6 @@ router.get('/users/:id/profile', auth, tenant, async (req, res) => {
       return res.status(404).json({ msg: 'الموظف غير موجود' });
     }
 
-    // ✅ التحقق من الصلاحيات
     const allowed = await canAccessUser(user, req.user);
     if (!allowed) {
       return res.status(403).json({ msg: 'غير مصرح لك بعرض هذا الملف' });
@@ -540,33 +555,12 @@ router.get('/users/:id/profile', auth, tenant, async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    // ✅ إحصائيات مع companyId
     const attendanceStats = {
-      totalDays: await Attendance.countDocuments({
-        companyId: req.companyId,
-        user: user._id,
-      }),
-      presentDays: await Attendance.countDocuments({
-        companyId: req.companyId,
-        user: user._id,
-        checkIn: { $exists: true },
-      }),
-      lateDays: await Attendance.countDocuments({
-        companyId: req.companyId,
-        user: user._id,
-        status: 'late',
-      }),
-      absentDays: await Attendance.countDocuments({
-        companyId: req.companyId,
-        user: user._id,
-        date: { $gte: startOfMonth },
-        checkIn: { $exists: false },
-      }),
-      thisMonth: await Attendance.countDocuments({
-        companyId: req.companyId,
-        user: user._id,
-        date: { $gte: startOfMonth },
-      }),
+      totalDays: await Attendance.countDocuments({ companyId: req.companyId, user: user._id }),
+      presentDays: await Attendance.countDocuments({ companyId: req.companyId, user: user._id, checkIn: { $exists: true } }),
+      lateDays: await Attendance.countDocuments({ companyId: req.companyId, user: user._id, status: 'late' }),
+      absentDays: await Attendance.countDocuments({ companyId: req.companyId, user: user._id, date: { $gte: startOfMonth }, checkIn: { $exists: false } }),
+      thisMonth: await Attendance.countDocuments({ companyId: req.companyId, user: user._id, date: { $gte: startOfMonth } }),
     };
 
     const leavesStats = {
@@ -576,17 +570,11 @@ router.get('/users/:id/profile', auth, tenant, async (req, res) => {
       rejected: await Leave.countDocuments({ companyId: req.companyId, user: user._id, status: 'rejected' }),
     };
 
-    const recentAttendance = await Attendance.find({
-      companyId: req.companyId,
-      user: user._id,
-    })
+    const recentAttendance = await Attendance.find({ companyId: req.companyId, user: user._id })
       .sort({ date: -1 })
       .limit(10);
 
-    const recentLeaves = await Leave.find({
-      companyId: req.companyId,
-      user: user._id,
-    })
+    const recentLeaves = await Leave.find({ companyId: req.companyId, user: user._id })
       .sort({ createdAt: -1 })
       .limit(5);
 
@@ -605,14 +593,12 @@ router.put('/users/:id/profile', auth, tenant, checkPermission('users.edit'), as
   try {
     const userRole = req.user.companyRole || req.user.role;
 
-    // ✅ نضمن إن المستخدم من نفس الشركة
     const target = await User.findOne({
       _id: req.params.id,
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
     });
     if (!target) return res.status(404).json({ msg: 'الموظف غير موجود' });
 
-    // manager/hr في فرع تاني → ملفات فرعهم بس
     if (userRole === 'manager' || (userRole === 'hr' && !(await isHQHR(req.user, req.companyId)))) {
       if (String(target.branch) !== String(req.user.branch)) {
         return res.status(403).json({ msg: 'غير مصرح' });
@@ -652,13 +638,13 @@ router.put('/users/:id/profile', auth, tenant, checkPermission('users.edit'), as
   }
 });
 
-// جلب الهيكل التنظيمي
+// ==================== الهيكل التنظيمي ====================
 router.get('/organization/tree', auth, tenant, async (req, res) => {
   try {
     const branchFilter = await getBranchFilter(req.user, req.companyId);
 
     const users = await User.find({
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
       active: true,
       ...branchFilter,
     })

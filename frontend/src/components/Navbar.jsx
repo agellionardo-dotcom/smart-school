@@ -15,7 +15,8 @@ export default function Navbar() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   // ✅ الحالات
-  const isSuperAdmin = user.role === 'superadmin';
+  // ✅ مدير الشركة (company_owner) له نفس صلاحيات السوبر أدمن في القائمة
+const isSuperAdmin = user.role === 'superadmin' || user.companyRole === 'company_owner';
   const isImpersonating = !!user.isImpersonating;
 
   // ✅ القائمة العادية تظهر لو:
