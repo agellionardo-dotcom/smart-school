@@ -1,4 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿// 📁 frontend/src/pages/Login.jsx
+// ⬅️ استبدل الملف بالكامل
+
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { saveData, getData } from '../services/offlineStorage';
@@ -10,6 +13,12 @@ import {
   isBiometricEnabled,
   getDeviceId,
 } from '../services/biometric';
+
+// ✅ دالة مساعدة: تحديد المسار حسب الدور
+const getRedirectPath = (user) => {
+  if (user?.role === 'superadmin') return '/superadmin';
+  return '/dashboard';
+};
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -33,7 +42,6 @@ export default function Login() {
   // ============================================
   useEffect(() => {
     const init = async () => {
-      // تحميل الـ credentials المحفوظة
       try {
         const saved = await getData('saved_credentials');
         if (saved && saved.email) {
@@ -45,7 +53,6 @@ export default function Login() {
         console.error('Error loading saved credentials:', err);
       }
 
-      // فحص البصمة
       try {
         const availability = await checkBiometricAvailability();
         setBiometricAvailable(availability.available);
@@ -78,13 +85,12 @@ export default function Login() {
         localStorage.setItem('user', JSON.stringify(result.user));
 
         setMsg('✅ تم تسجيل الدخول بالبصمة');
-        setTimeout(() => nav('/dashboard'), 500);
+        setTimeout(() => nav(getRedirectPath(result.user)), 500);
       }
     } catch (err) {
       console.error('Biometric login error:', err);
       setErr('❌ ' + (err.message || 'فشل تسجيل الدخول بالبصمة'));
 
-      // ✅ لو الـ token منتهي → نمسح التخزين
       if (err.message?.includes('منتهية') || err.message?.includes('غير صالح')) {
         await handleClearBiometric();
       }
@@ -106,13 +112,17 @@ export default function Login() {
         setBiometricEnabledState(true);
         setShowEnablePrompt(false);
         setMsg('✅ تم تفعيل البصمة بنجاح');
-        setTimeout(() => nav('/dashboard'), 800);
+
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        setTimeout(() => nav(getRedirectPath(user)), 800);
       }
     } catch (err) {
       console.error('Enable biometric error:', err);
       setErr('❌ ' + (err.message || 'فشل تفعيل البصمة'));
       setShowEnablePrompt(false);
-      setTimeout(() => nav('/dashboard'), 500);
+
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      setTimeout(() => nav(getRedirectPath(user)), 500);
     } finally {
       setBiometricLoading(false);
     }
@@ -173,13 +183,15 @@ export default function Login() {
             setShowEnablePrompt(true);
             setLoading(false);
           } else {
-            nav('/dashboard');
+            // ✅ توجيه حسب الدور
+            nav(getRedirectPath(data.user));
           }
           return;
         } catch (apiErr) {
           if (apiErr.response) {
             const status = apiErr.response.status;
-            let errorMsg = apiErr.response?.data?.msg || apiErr.response?.data?.message;
+            let errorMsg =
+              apiErr.response?.data?.msg || apiErr.response?.data?.message;
 
             if (!errorMsg) {
               if (status === 401) errorMsg = '❌ البريد أو كلمة المرور غلط';
@@ -216,7 +228,8 @@ export default function Login() {
           setMsg('📴 وضع أوفلاين — تم تسجيل الدخول من البيانات المخزنة');
 
           setTimeout(() => {
-            nav('/dashboard');
+            // ✅ توجيه حسب الدور
+            nav(getRedirectPath(cached.user));
           }, 800);
           return;
         } else {
@@ -248,7 +261,9 @@ export default function Login() {
               src="/nabd-icon.png"
               alt="Nabd"
               className="login-logo"
-              onError={(e) => { e.target.style.display = 'none'; }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
             />
           </div>
 
@@ -326,7 +341,9 @@ export default function Login() {
                 </>
               ) : (
                 <>
-                  {biometricType === 'faceId' ? '👤 الدخول بـ Face ID' : '🔐 الدخول بالبصمة'}
+                  {biometricType === 'faceId'
+                    ? '👤 الدخول بـ Face ID'
+                    : '🔐 الدخول بالبصمة'}
                 </>
               )}
             </button>
@@ -339,9 +356,7 @@ export default function Login() {
           </div>
         </form>
 
-        <p className="login-footer">
-          © 2026 Nabd — نبض شركتك
-        </p>
+        <p className="login-footer">© 2026 Nabd — نبض شركتك</p>
       </div>
 
       {/* ✅ Modal تفعيل البصمة */}
@@ -379,7 +394,8 @@ export default function Login() {
                 type="button"
                 onClick={() => {
                   setShowEnablePrompt(false);
-                  nav('/dashboard');
+                  const user = JSON.parse(localStorage.getItem('user') || '{}');
+                  nav(getRedirectPath(user));
                 }}
                 disabled={biometricLoading}
                 className="login-btn login-btn-ghost"
@@ -598,7 +614,6 @@ export default function Login() {
           cursor: not-allowed;
         }
 
-        /* ✅ زر البصمة */
         .login-btn-biometric {
           background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
           box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3);
@@ -662,7 +677,6 @@ export default function Login() {
           color: rgba(255, 255, 255, 0.35);
         }
 
-        /* ✅ Modal */
         .login-modal-overlay {
           position: fixed;
           inset: 0;

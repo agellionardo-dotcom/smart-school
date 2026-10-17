@@ -1,9 +1,18 @@
+// 📁 frontend/src/api.js
+// ⬅️ استبدل الملف بالكامل
+
 import axios from 'axios';
 
 // ============================================
-// ✅ Base URL — الرابط الصح (9bdf)
+// ✅ Base URL — ذكي: localhost في التطوير، Railway في Production
 // ============================================
-const API_URL = 'https://smart-school-production-9bdf.up.railway.app/api';
+const isDev =
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1';
+
+const API_URL = isDev
+  ? 'http://localhost:5000/api'                                  // ← محلي (تطوير)
+  : 'https://smart-school-production-9bdf.up.railway.app/api';   // ← Railway (production)
 
 // ============================================
 // ✅ Axios Instance
@@ -39,49 +48,29 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const currentPath = window.location.pathname;
 
-    // ============================================
     // ✅ 401 — الجلسة انتهت
-    // ============================================
     if (status === 401) {
-      // ✅ نتحقق هل كان فيه token بالفعل
       const hadToken = !!localStorage.getItem('token');
 
-      // ✅ نمسح الـ token والـ user
       localStorage.removeItem('token');
       localStorage.removeItem('user');
 
-      // ✅ نعمل redirect بس لو:
-      // 1. كان فيه token (يعني جلسة منتهية — مش أول زيارة)
-      // 2. إحنا مش على صفحة Login
-      // 3. إحنا مش على الصفحة الرئيسية
-      // 4. إحنا مش على صفحة نسيان كلمة المرور
       const publicPaths = ['/', '/login', '/forgot-password'];
-      const isPublicPath = publicPaths.some((p) =>
-        currentPath.startsWith(p)
-      );
+      const isPublicPath = publicPaths.some((p) => currentPath.startsWith(p));
 
       if (hadToken && !isPublicPath) {
         window.location.href = '/login';
       }
     }
 
-    // ============================================
-    // ✅ 403 — مفيش صلاحية
-    // ============================================
     if (status === 403) {
       console.warn('⛔ ليس لديك صلاحية للوصول لهذا المورد');
     }
 
-    // ============================================
-    // ✅ 429 — Rate Limit
-    // ============================================
     if (status === 429) {
       console.warn('⏳ عدد الطلبات كبير — حاول بعد قليل');
     }
 
-    // ============================================
-    // ✅ 500+ — خطأ في السيرفر
-    // ============================================
     if (status >= 500) {
       console.error('🔥 خطأ في السيرفر:', error.response?.data);
     }

@@ -1,3 +1,6 @@
+// 📁 backend/models/Company.js
+// ⬅️ استبدل الملف بالكامل
+
 const mongoose = require('mongoose');
 
 // ============================================
@@ -109,7 +112,7 @@ const companySchema = new mongoose.Schema(
       // نوع الخطة
       plan: {
         type: String,
-        enum: ['trial', 'basic', 'pro', 'enterprise', 'internal'],
+        enum: ['free', 'trial', 'basic', 'pro', 'enterprise', 'internal'],  // ← ✅ تم إضافة 'free'
         default: 'trial',
       },
 

@@ -1,3 +1,6 @@
+// 📁 backend/middleware/tenant.js
+// ⬅️ استبدل الملف بالكامل
+
 const Company = require('../models/Company');
 
 // ============================================
@@ -5,15 +8,16 @@ const Company = require('../models/Company');
 // ============================================
 // يحدد الشركة الحالية لكل request
 //
-// - SuperAdmin → يقدر يشوف كل الشركات
-//   + يحدد شركة معينة بـ Header: X-Company-Id
-// - الباقي → شركته بس (من JWT)
+// - SuperAdmin عادي → companyId = null (منصة)
+// - SuperAdmin impersonating → companyId من التوكن
+// - SuperAdmin يحدد شركة بـ X-Company-Id → precedence
+// - المستخدم العادي → شركته من التوكن
 // ============================================
 
 module.exports = async (req, res, next) => {
   try {
     // ============================================
-    // ✅ 1. لو مفيش user (مش مسجل دخول)
+    // ✅ 1. لو مفيش user
     // ============================================
     if (!req.user) {
       return res.status(401).json({
@@ -23,18 +27,25 @@ module.exports = async (req, res, next) => {
     }
 
     // ============================================
-    // ✅ 2. SuperAdmin → يقدر يحدد شركة
+    // ✅ 2. SuperAdmin
     // ============================================
     if (req.user.role === 'superadmin') {
-      // يحدد الشركة من الـ Header أو Query
-      const targetCompanyId =
+      req.isSuperAdmin = true;
+
+      // ✅ أولوية 1: X-Company-Id header
+      // (لو SuperAdmin عايز يشوف شركة معينة يدويًا)
+      let targetCompanyId =
         req.headers['x-company-id'] ||
         req.query.companyId ||
-        req.body?.companyId;
+        null;
+
+      // ✅ أولوية 2: لو impersonating → companyId من التوكن
+      if (!targetCompanyId && req.user.isImpersonating && req.user.companyId) {
+        targetCompanyId = req.user.companyId;
+      }
 
       if (targetCompanyId) {
-        // نتحقق إن الشركة موجودة
-        const company = await Company.findById(targetCompanyId);
+        const company = await Company.findById(targetCompanyId).lean();
 
         if (!company) {
           return res.status(404).json({
@@ -43,21 +54,28 @@ module.exports = async (req, res, next) => {
           });
         }
 
+        // لو الشركة موقوفة → نرفض (إلا لو داخلها SuperAdmin عايز يشوفها)
+        if (!company.active && !req.user.isImpersonating) {
+          return res.status(403).json({
+            msg: 'الشركة موقوفة',
+            code: 'COMPANY_SUSPENDED',
+          });
+        }
+
         req.company = company;
         req.companyId = company._id;
-        req.isSuperAdmin = true;
-      }
-      // لو مش محدد شركة → نسيبه يكمل (يشوف SuperAdmin Dashboard)
-      else {
-        req.isSuperAdmin = true;
+        req.subscription = company.subscription;
+      } else {
+        // SuperAdmin عادي → مفيش شركة محددة
         req.companyId = null;
+        req.company = null;
       }
 
       return next();
     }
 
     // ============================================
-    // ✅ 3. المستخدم العادي → شركته
+    // ✅ 3. المستخدم العادي
     // ============================================
     if (!req.user.companyId) {
       return res.status(403).json({
@@ -66,7 +84,6 @@ module.exports = async (req, res, next) => {
       });
     }
 
-    // نتحقق إن الشركة موجودة ونشطة
     const company = await Company.findById(req.user.companyId);
 
     if (!company) {
@@ -76,7 +93,6 @@ module.exports = async (req, res, next) => {
       });
     }
 
-    // لو الشركة موقوفة
     if (!company.active) {
       return res.status(403).json({
         msg: 'الشركة موقوفة، تواصل مع الإدارة',
@@ -89,7 +105,6 @@ module.exports = async (req, res, next) => {
     // ============================================
     const subscriptionStatus = company.subscription.status;
 
-    // الشركة موقوفة / ملغية / منتهية
     if (['suspended', 'cancelled', 'expired'].includes(subscriptionStatus)) {
       return res.status(403).json({
         msg: 'الاشتراك منتهي أو موقوف',
@@ -103,7 +118,6 @@ module.exports = async (req, res, next) => {
       const endDate = new Date(company.subscription.endDate);
 
       if (endDate < now) {
-        // الـ Trial خلص — نحدّث الحالة
         company.subscription.status = 'expired';
         await company.save();
 
@@ -113,11 +127,9 @@ module.exports = async (req, res, next) => {
         });
       }
 
-      // نحسب الأيام المتبقية
-      const daysLeft = Math.ceil(
+      req.trialDaysLeft = Math.ceil(
         (endDate - now) / (1000 * 60 * 60 * 24)
       );
-      req.trialDaysLeft = daysLeft;
     }
 
     // ============================================
@@ -139,16 +151,20 @@ module.exports = async (req, res, next) => {
 };
 
 // ============================================
-// ✅ Helper: فلتر بسيط حسب الشركة
+// ✅ Helper: فلتر حسب الشركة
 // ============================================
-// يستخدم في Routes عشان نضمن الفلترة
+// ⚠️ مهم: لو SuperAdmin عادي (companyId = null)
+//    → نرجّع فلتر فاضي (عشان يشوف الكل — ده مقصود)
+//    لو شركة محددة (impersonating أو عادي)
+//    → نرجّع { companyId: ... }
 // ============================================
 module.exports.companyFilter = (req, extra = {}) => {
-  // لو SuperAdmin يشوف كل الشركات → ممكن ما يفلترش
+  // SuperAdmin عادي (مش داخل شركة) → كل الشركات
   if (req.isSuperAdmin && !req.companyId) {
     return extra;
   }
 
+  // شركة محددة (impersonating أو مستخدم عادي)
   return {
     companyId: req.companyId,
     ...extra,
@@ -170,10 +186,8 @@ module.exports.requireFeature = (feature) => {
       });
     }
 
-    // الشركة internal → كل الميزات
     if (req.company.type === 'internal') return next();
 
-    // فحص الميزة
     if (!req.company.subscription.features.includes(feature)) {
       return res.status(403).json({
         msg: `الميزة "${feature}" غير متاحة في خطتك`,

@@ -1,3 +1,6 @@
+// 📁 backend/server.js
+// ⬅️ استبدل الملف بالكامل
+
 // ✅ ضبط التوقيت على القاهرة
 process.env.TZ = 'Africa/Cairo';
 
@@ -121,7 +124,10 @@ app.get('/', (req, res) => {
 // ✅ 6. Routes
 // ===== SuperAdmin Routes (قبل tenant) =====
 app.use('/api/companies', require('./routes/companies'));
+
+// ⚠️ مهم: SuperAdmin routes لازم يكونوا قبل routes التانية
 app.use('/api/superadmin', require('./routes/superadmin'));
+app.use('/api/superadmin', require('./routes/superadmin-companies'));   // ← ✅ جديد
 
 // ===== Regular Routes =====
 app.use('/api/reports', require('./routes/reports-v2'));

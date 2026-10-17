@@ -1,3 +1,6 @@
+// 📁 backend/models/AuditLog.js
+// ⬅️ استبدل الملف بالكامل
+
 const mongoose = require('mongoose');
 
 // ============================================
@@ -15,12 +18,15 @@ const mongoose = require('mongoose');
 const auditLogSchema = new mongoose.Schema(
   {
     // ============================================
-    // ✅ Multi-tenant
+    // ✅ Multi-tenant (اختياري)
     // ============================================
+    // ملاحظة: مش required لأن الـ SuperAdmin
+    // بيعمل عمليات على مستوى المنصة (مش شركة معينة)
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',
-      required: true,
+      required: false,      // ← ✅ مش required دلوقتي
+      default: null,
       index: true,
     },
 

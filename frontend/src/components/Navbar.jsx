@@ -1,4 +1,5 @@
-﻿// frontend/src/components/Navbar.jsx
+﻿// 📁 frontend/src/components/Navbar.jsx
+// ⬅️ استبدل الملف بالكامل
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -12,6 +13,15 @@ export default function Navbar() {
   const nav = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  // ✅ الحالات
+  const isSuperAdmin = user.role === 'superadmin';
+  const isImpersonating = !!user.isImpersonating;
+
+  // ✅ القائمة العادية تظهر لو:
+  // 1. موظف عادي (مش superadmin)
+  // 2. أو superadmin داخل شركة (impersonating)
+  const showRegularMenu = !isSuperAdmin || isImpersonating;
 
   useEffect(() => {
     const loadCount = async () => {
@@ -33,6 +43,32 @@ export default function Navbar() {
       localStorage.clear();
       nav('/');
     }
+  };
+
+  // ============================================
+  // ✅ الخروج من الشركة (Exit Impersonate)
+  // ============================================
+  const handleExitImpersonate = () => {
+    if (
+      !window.confirm(
+        `🚪 هل تريد الخروج من شركة "${user.companyName || ''}" والعودة لـ SuperAdmin؟`
+      )
+    ) {
+      return;
+    }
+
+    const originalToken = localStorage.getItem('originalToken');
+    const originalUser = localStorage.getItem('originalUser');
+
+    if (originalToken && originalUser) {
+      localStorage.setItem('token', originalToken);
+      localStorage.setItem('user', originalUser);
+    }
+
+    localStorage.removeItem('originalToken');
+    localStorage.removeItem('originalUser');
+
+    window.location.href = '/superadmin';
   };
 
   const closeDrawer = () => setDrawerOpen(false);
@@ -62,13 +98,78 @@ export default function Navbar() {
             src="/nabd-icon.png"
             alt="Nabd"
             className="ss-navbar-logo"
-            onError={(e) => { e.target.style.display = 'none'; }}
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
           />
           <h2 className="ss-navbar-title">Nabd</h2>
         </div>
 
         {/* ✅ أزرار الإدارة/العودة + تبديل الوضع */}
-        <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div
+          style={{
+            marginRight: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          {/* ✅ زر SuperAdmin (يظهر فقط للسوبر أدمن — مش impersonating) */}
+          {isSuperAdmin && !isImpersonating && (
+            <Link
+              to="/superadmin"
+              className="ss-superadmin-btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                borderRadius: 10,
+                background:
+                  'linear-gradient(135deg, rgba(0, 229, 255, 0.15), rgba(168, 85, 247, 0.15))',
+                border: '1px solid rgba(168, 85, 247, 0.4)',
+                color: '#a855f7',
+                fontWeight: 700,
+                fontSize: 13,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              👑 <span className="ss-superadmin-text">SuperAdmin</span>
+            </Link>
+          )}
+
+          {/* ✅ زر الخروج من الشركة (يظهر فقط لما impersonating) */}
+          {isImpersonating && (
+            <button
+              onClick={handleExitImpersonate}
+              className="ss-exit-impersonate-btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                borderRadius: 10,
+                background:
+                  'linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(239, 68, 68, 0.2))',
+                border: '1px solid rgba(251, 146, 60, 0.5)',
+                color: '#fb923c',
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              🚪{' '}
+              <span className="ss-exit-impersonate-text">
+                خروج من {user.companyName || 'الشركة'}
+              </span>
+            </button>
+          )}
+
           <NavbarActions />
           <ThemeToggle />
         </div>
@@ -85,7 +186,9 @@ export default function Navbar() {
                 src="/nabd-icon.png"
                 alt="Nabd"
                 className="ss-drawer-logo"
-                onError={(e) => { e.target.style.display = 'none'; }}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
               />
               <h3>Nabd</h3>
               <p>نبض شركتك</p>
@@ -97,51 +200,131 @@ export default function Navbar() {
               <div className="ss-drawer-user-role">
                 {roleLabels[user.role] || user.role}
               </div>
+
+              {/* ✅ بادج Impersonating */}
+              {isImpersonating && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(251, 146, 60, 0.15)',
+                    border: '1px solid rgba(251, 146, 60, 0.4)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#fb923c',
+                  }}
+                >
+                  🚪 داخل شركة: {user.companyName || '—'}
+                </div>
+              )}
             </div>
 
             {/* Menu */}
             <div className="ss-drawer-menu">
-              <Link
-                to="/dashboard"
-                className={`ss-drawer-link ${isActive('/dashboard') ? 'active' : ''}`}
-                onClick={closeDrawer}
-              >
-                <span className="ss-icon">🏠</span>
-                <span>الرئيسية</span>
-              </Link>
+              {/* ============================================ */}
+              {/* ✅ SuperAdmin Menu (لما مش impersonating) */}
+              {/* ============================================ */}
+              {isSuperAdmin && !isImpersonating && (
+                <>
+                  <Link
+                    to="/superadmin"
+                    className={`ss-drawer-link ${
+                      isActive('/superadmin') ? 'active' : ''
+                    }`}
+                    onClick={closeDrawer}
+                    style={{
+                      background:
+                        'linear-gradient(90deg, rgba(168, 85, 247, 0.12), transparent)',
+                      borderRightColor: '#a855f7',
+                    }}
+                  >
+                    <span className="ss-icon">👑</span>
+                    <span>لوحة مدير المنصة</span>
+                  </Link>
+                </>
+              )}
 
-              <Link
-                to="/attendance"
-                className={`ss-drawer-link ${isActive('/attendance') ? 'active' : ''}`}
-                onClick={closeDrawer}
-              >
-                <span className="ss-icon">📍</span>
-                <span>الحضور والانصراف</span>
-              </Link>
+              {/* ============================================ */}
+              {/* ✅ Regular Menu (للموظفين + SuperAdmin داخل شركة) */}
+              {/* ============================================ */}
+              {showRegularMenu && (
+                <>
+                  {/* زر الخروج من الشركة (لو impersonating) */}
+                  {isImpersonating && (
+                    <button
+                      onClick={() => {
+                        closeDrawer();
+                        handleExitImpersonate();
+                      }}
+                      className="ss-drawer-link"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, rgba(251, 146, 60, 0.15), transparent)',
+                        borderRightColor: '#fb923c',
+                        color: '#fb923c',
+                      }}
+                    >
+                      <span className="ss-icon">🚪</span>
+                      <span>خروج والعودة لـ SuperAdmin</span>
+                    </button>
+                  )}
 
-              <Link
-                to="/leaves"
-                className={`ss-drawer-link ${isActive('/leaves') ? 'active' : ''}`}
-                onClick={closeDrawer}
-              >
-                <span className="ss-icon">📝</span>
-                <span>الإجازات</span>
-              </Link>
+                  <Link
+                    to="/dashboard"
+                    className={`ss-drawer-link ${
+                      isActive('/dashboard') ? 'active' : ''
+                    }`}
+                    onClick={closeDrawer}
+                  >
+                    <span className="ss-icon">🏠</span>
+                    <span>الرئيسية</span>
+                  </Link>
 
-              <Link
-                to="/sync-queue"
-                className={`ss-drawer-link ${isActive('/sync-queue') ? 'active' : ''}`}
-                onClick={closeDrawer}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span className="ss-icon">🔄</span>
-                  <span>المزامنة</span>
-                </div>
-                {queueCount > 0 && (
-                  <span className="ss-badge-count">{queueCount}</span>
-                )}
-              </Link>
+                  <Link
+                    to="/attendance"
+                    className={`ss-drawer-link ${
+                      isActive('/attendance') ? 'active' : ''
+                    }`}
+                    onClick={closeDrawer}
+                  >
+                    <span className="ss-icon">📍</span>
+                    <span>الحضور والانصراف</span>
+                  </Link>
+
+                  <Link
+                    to="/leaves"
+                    className={`ss-drawer-link ${
+                      isActive('/leaves') ? 'active' : ''
+                    }`}
+                    onClick={closeDrawer}
+                  >
+                    <span className="ss-icon">📝</span>
+                    <span>الإجازات</span>
+                  </Link>
+
+                  <Link
+                    to="/sync-queue"
+                    className={`ss-drawer-link ${
+                      isActive('/sync-queue') ? 'active' : ''
+                    }`}
+                    onClick={closeDrawer}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span className="ss-icon">🔄</span>
+                      <span>المزامنة</span>
+                    </div>
+                    {queueCount > 0 && (
+                      <span className="ss-badge-count">{queueCount}</span>
+                    )}
+                  </Link>
+                </>
+              )}
 
               <div className="ss-drawer-divider"></div>
 
@@ -220,6 +403,17 @@ export default function Navbar() {
           background-clip: text;
           -webkit-text-fill-color: transparent;
           white-space: nowrap;
+        }
+
+        .ss-superadmin-btn {
+          font-family: inherit;
+          cursor: pointer;
+          text-decoration: none;
+        }
+
+        .ss-exit-impersonate-btn:hover {
+          background: linear-gradient(135deg, rgba(251, 146, 60, 0.3), rgba(239, 68, 68, 0.3)) !important;
+          transform: translateY(-1px);
         }
 
         .ss-drawer-overlay {
@@ -379,6 +573,22 @@ export default function Navbar() {
           font-size: 11px;
           border-top: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.06));
           line-height: 1.6;
+        }
+
+        /* ✅ Responsive */
+        @media (max-width: 640px) {
+          .ss-superadmin-text {
+            display: none;
+          }
+          .ss-superadmin-btn {
+            padding: 8px 10px !important;
+          }
+          .ss-exit-impersonate-text {
+            display: none;
+          }
+          .ss-exit-impersonate-btn {
+            padding: 8px 10px !important;
+          }
         }
       `}</style>
     </>

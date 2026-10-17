@@ -1,3 +1,6 @@
+// 📁 frontend/src/App.js
+// ⬅️ استبدل الملف بالكامل
+
 import { ThemeProvider } from './contexts/ThemeContext';
 import './styles/theme.css';
 import './styles/theme-light.css';
@@ -16,6 +19,7 @@ import Attendance from './pages/Attendance';
 import Leaves from './pages/Leaves';
 import ScanQr from './pages/ScanQr';
 import AdminDashboard from './pages/AdminDashboard';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';   // ← ✅ جديد
 import SyncQueue from './pages/SyncQueue';
 import Navbar from './components/Navbar';
 import AIChat from './components/AIChat';
@@ -33,6 +37,30 @@ const PrivateRoute = ({ children }) => {
 
   if (!token) {
     return <Navigate to="/" />;
+  }
+
+  return (
+    <>
+      <Navbar />
+      <NotificationPermission />
+      {children}
+    </>
+  );
+};
+
+// ============================================
+// ✅ PrivateRoute for SuperAdmin (بدون Navbar العادي)
+// ============================================
+const SuperAdminRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  if (!token) {
+    return <Navigate to="/" />;
+  }
+
+  if (user.role !== 'superadmin') {
+    return <Navigate to="/dashboard" />;
   }
 
   return (
@@ -182,6 +210,18 @@ export default function App() {
               <PrivateRoute>
                 <SyncQueue />
               </PrivateRoute>
+            }
+          />
+
+          {/* ============================================ */}
+          {/* SuperAdmin Route ← ✅ جديد */}
+          {/* ============================================ */}
+          <Route
+            path="/superadmin"
+            element={
+              <SuperAdminRoute>
+                <SuperAdminDashboard />
+              </SuperAdminRoute>
             }
           />
 
