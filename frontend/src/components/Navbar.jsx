@@ -16,7 +16,8 @@ export default function Navbar() {
 
   // ✅ الحالات
   // ✅ مدير الشركة (company_owner) له نفس صلاحيات السوبر أدمن في القائمة
-const isSuperAdmin = user.role === 'superadmin' || user.companyRole === 'company_owner';
+// ✅ SuperAdmin (المنصة) فقط، مش Company Owner
+const isSuperAdmin = user.role === 'superadmin';
   const isImpersonating = !!user.isImpersonating;
 
   // ✅ القائمة العادية تظهر لو:
