@@ -73,6 +73,27 @@ router.get('/companies', auth, requireSuperAdmin, async (req, res) => {
 });
 
 // ============================================
+// ✅ GET /api/superadmin/companies/:id/admin
+// جلب بيانات الأدمن (للتعديل من المنصة)
+// ============================================
+router.get('/companies/:id/admin', auth, requireSuperAdmin, async (req, res) => {
+  try {
+    const admin = await User.findOne({
+      companyId: req.params.id,
+      companyRole: 'company_owner',
+    }).select('name email');
+
+    if (!admin) {
+      return res.status(404).json({ msg: 'مفيش أدمن للشركة' });
+    }
+
+    res.json({ admin });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ============================================
 // ✅ POST /api/superadmin/companies
 // إنشاء شركة جديدة (+ admin اختياري)
 // ============================================
@@ -156,18 +177,19 @@ router.post('/companies', auth, requireSuperAdmin, async (req, res) => {
 
 // ============================================
 // ✅ PATCH /api/superadmin/companies/:id
-// تعديل شركة
+// تعديل شركة + تعديل بيانات الأدمن (اختياري)
 // ============================================
 router.patch('/companies/:id', auth, requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const { adminEmail, adminPassword, ...companyUpdates } = req.body;
 
-    delete updates._id;
-    delete updates.createdAt;
-    delete updates.updatedAt;
+    delete companyUpdates._id;
+    delete companyUpdates.createdAt;
+    delete companyUpdates.updatedAt;
 
-    const company = await Company.findByIdAndUpdate(id, updates, {
+    // ✅ تحديث الشركة
+    const company = await Company.findByIdAndUpdate(id, companyUpdates, {
       new: true,
       runValidators: true,
     });
@@ -176,6 +198,37 @@ router.patch('/companies/:id', auth, requireSuperAdmin, async (req, res) => {
       return res.status(404).json({ msg: 'الشركة غير موجودة' });
     }
 
+    // ✅ تحديث الأدمن (لو إيميل أو باسورد اتغير)
+    if (adminEmail || adminPassword) {
+      const admin = await User.findOne({
+        companyId: company._id,
+        companyRole: 'company_owner',
+      });
+
+      if (admin) {
+        if (adminEmail && adminEmail.toLowerCase() !== admin.email.toLowerCase()) {
+          const exists = await User.findOne({ 
+            email: adminEmail.toLowerCase(), 
+            _id: { $ne: admin._id } 
+          });
+          if (exists) {
+            return res.status(400).json({ msg: '❌ الإيميل مستخدم بالفعل' });
+          }
+          admin.email = adminEmail.toLowerCase();
+        }
+
+        if (adminPassword) {
+          if (adminPassword.length < 6) {
+            return res.status(400).json({ msg: '❌ الباسورد 6 أحرف على الأقل' });
+          }
+          admin.password = await bcrypt.hash(adminPassword, 10);
+        }
+
+        await admin.save();
+      }
+    }
+
+    // ✅ Audit Log
     await AuditLog.create({
       companyId: company._id,
       user: req.user.id || req.user._id,
@@ -249,27 +302,21 @@ router.post(
         return res.status(404).json({ msg: 'الشركة غير موجودة' });
       }
 
-      // ✅ اعمل JWT جديد
-      // - نفس الـ user
-      // - companyId الجديد (الشركة اللي بندخلها)
-      // - isImpersonating: true
-      // - originalCompanyId: الشركة الأصلية للسوبر أدمن
       const token = jwt.sign(
         {
           id: req.user.id || req.user._id,
           role: req.user.role,
           email: req.user.email,
           name: req.user.name,
-          companyId: company._id.toString(),          // ← الشركة اللي بندخلها
-          isImpersonating: true,                      // ← flag
+          companyId: company._id.toString(),
+          isImpersonating: true,
           originalCompanyId: req.user.companyId || null,
           originalRole: req.user.role,
         },
         process.env.JWT_SECRET,
-        { expiresIn: '2h' }                          // ← مؤقت (ساعتين)
+        { expiresIn: '2h' }
       );
 
-      // ✅ Audit Log
       await AuditLog.create({
         companyId: company._id,
         user: req.user.id || req.user._id,

@@ -191,3 +191,101 @@ export const setLastSync = async () => {
 export const getLastSync = async () => {
   return await getData('last_sync');
 };
+// 📁 frontend/src/services/offlineStorage.js
+// ⬅️ ضيف الدوال دي في آخر الملف
+
+// ============================================
+// ✅ Pending Attendance Queue
+// ============================================
+
+/**
+ * إضافة سجل حضور للطابور (لما يكون أوفلاين)
+ */
+export async function addPendingAttendance(attendanceData) {
+  try {
+    const pending = await getData('pending_attendance') || [];
+    pending.push({
+      ...attendanceData,
+      _localId: Date.now() + Math.random(), // ← معرف محلي فريد
+      _savedAt: new Date().toISOString(),
+    });
+    await saveData('pending_attendance', pending);
+    return { success: true };
+  } catch (err) {
+    console.error('addPendingAttendance error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * جلب كل سجلات الحضور المعلقة
+ */
+export async function getPendingAttendance() {
+  try {
+    return await getData('pending_attendance') || [];
+  } catch (err) {
+    console.error('getPendingAttendance error:', err);
+    return [];
+  }
+}
+
+/**
+ * مسح سجل حضور بعد ما اترفع بنجاح
+ */
+export async function removePendingAttendance(localId) {
+  try {
+    const pending = await getData('pending_attendance') || [];
+    const filtered = pending.filter(p => p._localId !== localId);
+    await saveData('pending_attendance', filtered);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * عدد سجلات الحضور المعلقة
+ */
+export async function getPendingAttendanceCount() {
+  try {
+    const pending = await getData('pending_attendance') || [];
+    return pending.length;
+  } catch (err) {
+    return 0;
+  }
+}
+
+// ============================================
+// ✅ Attendance History Cache (آخر 10 أيام)
+// ============================================
+
+/**
+ * حفظ آخر 10 أيام من سجل الحضور في الكاش
+ */
+export async function cacheAttendanceHistory(history) {
+  try {
+    // ← خد آخر 10 أيام بس
+    const limited = (history || []).slice(0, 10);
+    await saveData('attendance_history', {
+      data: limited,
+      cachedAt: new Date().toISOString(),
+    });
+    return { success: true };
+  } catch (err) {
+    console.error('cacheAttendanceHistory error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * جلب سجل الحضور من الكاش
+ */
+export async function getCachedAttendanceHistory() {
+  try {
+    const cached = await getData('attendance_history');
+    return cached?.data || [];
+  } catch (err) {
+    console.error('getCachedAttendanceHistory error:', err);
+    return [];
+  }
+}

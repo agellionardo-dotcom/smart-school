@@ -1,11 +1,5 @@
-// frontend/src/services/syncService.js
-// ============================================
-// خدمة المزامنة الموحّدة
-// ============================================
-// - تعمل sync للطلبات المعلقة
-// - بتبعت كل التفاصيل (biometric, face, deviceId)
-// - بترجع تفاصيل كل عملية (نجح/فشل/سبب)
-// ============================================
+// 📁 frontend/src/services/syncService.js
+// ⬅️ استبدل الملف بالكامل
 
 import api from '../api';
 import {
@@ -13,6 +7,8 @@ import {
   removeFromQueue,
   updateQueueItem,
   setLastSync,
+  getPendingAttendance,
+  removePendingAttendance,
 } from './offlineStorage';
 import { isOnline } from './networkStatus';
 
@@ -22,7 +18,6 @@ import { isOnline } from './networkStatus';
 async function sendRequest(item) {
   const endpoint = item.type === 'checkin' ? 'checkin' : 'checkout';
 
-  // ✅ نبعت كل التفاصيل الممكنة
   const payload = {
     lat: item.lat,
     lng: item.lng,
@@ -38,7 +33,7 @@ async function sendRequest(item) {
 }
 
 // ============================================
-// ✅ مزامنة كل الطلبات المعلقة
+// ✅ مزامنة كل الطلبات المعلقة (الـ Queue العادي)
 // ============================================
 export async function syncQueue(options = {}) {
   const { silent = false, onProgress = null } = options;
@@ -52,7 +47,6 @@ export async function syncQueue(options = {}) {
   };
 
   try {
-    // ✅ فحص الاتصال
     const online = await isOnline();
     if (!online) {
       if (!silent) console.log('[Sync] 📴 لا يوجد اتصال');
@@ -71,11 +65,9 @@ export async function syncQueue(options = {}) {
       console.log(`[Sync] 🚀 بدء مزامنة ${queue.length} طلب...`);
     }
 
-    // ✅ معالجة كل طلب
     for (let i = 0; i < queue.length; i++) {
       const item = queue[i];
 
-      // تحديث الحالة
       await updateQueueItem(item.id, { status: 'syncing' });
 
       if (onProgress) {
@@ -89,7 +81,6 @@ export async function syncQueue(options = {}) {
       try {
         const result = await sendRequest(item);
 
-        // ✅ نجح
         await removeFromQueue(item.id);
         results.success++;
         results.syncedItems.push({
@@ -103,7 +94,6 @@ export async function syncQueue(options = {}) {
           console.log(`[Sync] ✅ ${item.type} — نجح`);
         }
       } catch (err) {
-        // ❌ فشل
         const errMsg =
           err.response?.data?.msg ||
           err.response?.data?.message ||
@@ -118,7 +108,6 @@ export async function syncQueue(options = {}) {
           status: err.response?.status,
         });
 
-        // تحديث حالة الطلب
         await updateQueueItem(item.id, {
           status: 'failed',
           attempts: (item.attempts || 0) + 1,
@@ -132,7 +121,6 @@ export async function syncQueue(options = {}) {
       }
     }
 
-    // ✅ تحديث آخر مزامنة
     await setLastSync();
 
     if (!silent) {
@@ -183,5 +171,51 @@ export async function syncOnAppOpen() {
   } catch (err) {
     console.warn('[Sync] فشل مزامنة عند الفتح:', err);
     return { error: err.message };
+  }
+}
+
+// ============================================
+// ✅ مزامنة سجلات الحضور المعلقة (Offline Attendance)
+// ============================================
+export async function syncPendingAttendance({ silent = false } = {}) {
+  try {
+    const pending = await getPendingAttendance();
+
+    if (pending.length === 0) {
+      return { success: 0, total: 0, failed: 0 };
+    }
+
+    let success = 0;
+    let failed = 0;
+
+    for (const record of pending) {
+      try {
+        // ← نحاول نرفع السجل
+        await api.post(`/attendance/${record.type === 'in' ? 'checkin' : 'checkout'}`, {
+          lat: record.lat,
+          lng: record.lng,
+          method: record.method || 'gps',
+          biometricUsed: record.biometricUsed || false,
+          biometricType: record.biometricType || null,
+          capturedAt: record.timestamp,
+        });
+
+        // ← لو نجح، نمسحه من الـ pending
+        await removePendingAttendance(record._localId);
+        success++;
+      } catch (err) {
+        console.error(`Failed to sync attendance ${record._localId}:`, err);
+        failed++;
+      }
+    }
+
+    if (!silent && success > 0) {
+      console.log(`✅ تمت مزامنة ${success} سجل حضور أوفلاين`);
+    }
+
+    return { success, total: pending.length, failed };
+  } catch (err) {
+    console.error('syncPendingAttendance error:', err);
+    return { success: 0, total: 0, failed: 0, error: err.message };
   }
 }

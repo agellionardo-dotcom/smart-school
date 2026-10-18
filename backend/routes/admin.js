@@ -329,10 +329,10 @@ router.post('/users', auth, tenant, checkPermission('users.create'), async (req,
   } catch (err) { res.status(500).json({ msg: err.message }); }
 });
 
-// ✅ نسخة واحدة صح من تعديل المستخدم
+// ✅ النسخة المعدلة من router.put
 router.put('/users/:id', auth, tenant, checkPermission('users.edit'), async (req, res) => {
   try {
-    const { password, role, ...rest } = req.body;
+    const { password, role, companyRole, ...rest } = req.body;
     const userRole = req.user.companyRole || req.user.role;
 
     const target = await User.findOne({
@@ -344,29 +344,31 @@ router.put('/users/:id', auth, tenant, checkPermission('users.edit'), async (req
       return res.status(404).json({ msg: 'المستخدم غير موجود' });
     }
 
-    if (role === 'superadmin' && req.user.role !== 'superadmin') {
-      return res.status(403).json({ msg: 'ممنوع' });
-    }
-
-    if (userRole === 'manager' || (userRole === 'hr' && !(await isHQHR(req.user, req.companyId)))) {
-      if (String(target.branch) !== String(req.user.branch)) {
-        return res.status(403).json({ msg: 'ممنوع تعديل مستخدم في فرع تاني' });
+    // ✅ superadmin يقدر يعدل أي حد، غيره محمي
+    if (userRole !== 'superadmin') {
+      if (role === 'superadmin' && req.user.role !== 'superadmin') {
+        return res.status(403).json({ msg: 'ممنوع' });
       }
-      if (target.role === 'superadmin') {
-        return res.status(403).json({ msg: 'ممنوع تعديل مدير النظام' });
+      if (userRole === 'manager' || (userRole === 'hr' && !(await isHQHR(req.user, req.companyId)))) {
+        if (String(target.branch) !== String(req.user.branch)) {
+          return res.status(403).json({ msg: 'ممنوع تعديل مستخدم في فرع تاني' });
+        }
+        if (target.role === 'superadmin') {
+          return res.status(403).json({ msg: 'ممنوع تعديل مدير النظام' });
+        }
       }
     }
 
     if (rest.email && rest.email.toLowerCase() !== target.email.toLowerCase()) {
-      const existingUser = await User.findOne({
+      const existingUser = await User.findOne({ 
         email: rest.email.toLowerCase(),
         _id: { $ne: target._id }
       });
-
+      
       if (existingUser) {
         return res.status(400).json({ msg: '❌ البريد الإلكتروني مستخدم بالفعل' });
       }
-
+      
       const emailRegex = /^\S+@\S+\.\S+$/;
       if (!emailRegex.test(rest.email)) {
         return res.status(400).json({ msg: '❌ البريد الإلكتروني غير صحيح' });
@@ -381,7 +383,9 @@ router.put('/users/:id', auth, tenant, checkPermission('users.edit'), async (req
 
     if (role) {
       update.role = role;
-      update.companyRole = role;
+    }
+    if (companyRole) {
+      update.companyRole = companyRole;
     }
 
     if (password) {

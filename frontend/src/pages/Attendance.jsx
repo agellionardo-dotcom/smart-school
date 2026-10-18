@@ -3,11 +3,12 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import api from '../api';
 import {
-  addToQueue,
+  addPendingAttendance,
+  getPendingAttendanceCount,
   cacheData,
   getCachedData,
-  getQueueCount,
 } from '../services/offlineStorage';
+import { syncPendingAttendance } from '../services/syncService';
 import { isOnline } from '../services/networkStatus';
 import { toCairoTime } from '../utils/dateHelpers';
 import { GlassCard, GradientButton } from '../components/ui';
@@ -23,7 +24,7 @@ export default function Attendance() {
   const [actionLoading, setActionLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [msgType, setMsgType] = useState('info');
-  const [queueCount, setQueueCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
   const [online, setOnline] = useState(true);
   const [detectedBranch, setDetectedBranch] = useState(null);
 
@@ -108,17 +109,17 @@ export default function Attendance() {
   const checkRange = useCallback(async () => {
     try {
       setRangeLoading(true);
-      const location = await getLocation();
+      const pos = await getLocation();
 
       const { data } = await api.post('/attendance/check-range', {
-        lat: location.lat,
-        lng: location.lng,
+        lat: pos.lat,
+        lng: pos.lng,
       });
 
       setInRange(data.inRange);
       setRangeInfo(data);
 
-      return { ...data, location };
+      return { ...data, location: pos };
     } catch (err) {
       console.warn('Range check error:', err);
       setInRange(null);
@@ -203,14 +204,14 @@ export default function Attendance() {
   }, [showMsg]);
 
   // ============================================
-  // ✅ عدد الطلبات المعلقة
+  // ✅ عدد السجلات المعلقة
   // ============================================
-  const loadQueueCount = useCallback(async () => {
+  const loadPendingCount = useCallback(async () => {
     try {
-      const count = await getQueueCount();
-      setQueueCount(count);
+      const count = await getPendingAttendanceCount();
+      setPendingCount(count);
     } catch (err) {
-      console.warn('Queue count error:', err);
+      console.warn('Pending count error:', err);
     }
   }, []);
 
@@ -234,22 +235,37 @@ export default function Attendance() {
   // ============================================
   useEffect(() => {
     loadToday();
-    loadQueueCount();
+    loadPendingCount();
     checkBiometric();
     checkFaceStatus();
-    checkRange(); // ← فحص النطاق عند التحميل
+    checkRange();
 
-    const interval = setInterval(loadQueueCount, 5000);
+    const interval = setInterval(loadPendingCount, 5000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ============================================
-  // ✅ إعادة فحص النطاق لما يرجع Online
+  // ✅ إعادة فحص النطاق لما يرجع Online + مزامنة السجلات المعلقة
   // ============================================
   useEffect(() => {
     if (online && !loading) {
       checkRange();
+      
+      const syncPending = async () => {
+        try {
+          const result = await syncPendingAttendance({ silent: false });
+          if (result.success > 0) {
+            showMsg(`✅ تم رفع ${result.success} سجل حضور`, 'success');
+            await loadPendingCount();
+            await loadToday();
+          }
+        } catch (err) {
+          console.warn('syncPendingAttendance error:', err);
+        }
+      };
+      
+      syncPending();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);
@@ -267,7 +283,6 @@ export default function Attendance() {
     async (data) => {
       setFaceMode(null);
 
-      // ✅ 1. التحقق من النطاق أولاً
       const rangeCheck = await checkRange();
       if (!rangeCheck?.inRange) {
         showMsg(
@@ -277,16 +292,14 @@ export default function Attendance() {
         return;
       }
 
-      const location = rangeCheck.location;
-
-      // ✅ 2. المزامنة / الحفظ
+      const loc = rangeCheck.location;
       const isConn = await isOnline();
       setOnline(isConn);
 
       if (isConn) {
         const payload = {
-          lat: location?.lat,
-          lng: location?.lng,
+          lat: loc?.lat,
+          lng: loc?.lng,
           faceVerified: true,
           faceDistance: data.distance,
           deviceId: user._id,
@@ -314,7 +327,6 @@ export default function Attendance() {
           );
         }
       } else {
-        // ✅ Face في offline — ممنوع، نرفض
         showMsg('❌ Face Recognition يحتاج إنترنت — استخدم البصمة أو GPS', 'error');
       }
     },
@@ -328,18 +340,18 @@ export default function Attendance() {
     setActionLoading(true);
     setDetectedBranch(null);
     try {
-      // ✅ 1. الموقع
-      let location = null;
-      try {
-        location = await getLocation();
-      } catch (err) {
-        showMsg('⚠️ فشل الحصول على الموقع: ' + err.message, 'warning');
-        return;
-      }
-
-      // ✅ 2. التحقق من النطاق (في online فقط)
       const isConn = await isOnline();
       setOnline(isConn);
+
+      let loc = null;
+      try {
+        loc = await getLocation();
+      } catch (err) {
+        if (isConn) {
+          showMsg('⚠️ فشل الحصول على الموقع: ' + err.message, 'warning');
+          return;
+        }
+      }
 
       if (isConn) {
         const rangeCheck = await checkRange();
@@ -352,7 +364,6 @@ export default function Attendance() {
         }
       }
 
-      // ✅ 3. البصمة
       let biometricUsed = false;
       let bioType = null;
 
@@ -366,11 +377,10 @@ export default function Attendance() {
         }
       }
 
-      // ✅ 4. الحفظ / المزامنة
       if (isConn) {
         const payload = {
-          lat: location?.lat,
-          lng: location?.lng,
+          lat: loc?.lat,
+          lng: loc?.lng,
           biometricUsed,
           biometricType: bioType,
           deviceId: user._id,
@@ -394,15 +404,16 @@ export default function Attendance() {
 
         await cacheData('today_attendance', data);
       } else {
-        await addToQueue({
-          type: 'checkin',
-          lat: location?.lat,
-          lng: location?.lng,
-          user: user._id,
+        await addPendingAttendance({
+          type: 'in',
+          lat: loc?.lat,
+          lng: loc?.lng,
+          method: 'gps',
           biometricUsed,
           biometricType: bioType,
+          timestamp: new Date().toISOString(),
         });
-        await loadQueueCount();
+        await loadPendingCount();
         showMsg('📴 تم الحفظ محلياً — سيتم المزامنة عند عودة الإنترنت', 'warning');
       }
     } catch (err) {
@@ -418,7 +429,7 @@ export default function Attendance() {
   }, [
     getLocation,
     checkRange,
-    loadQueueCount,
+    loadPendingCount,
     showMsg,
     user._id,
     biometricAvailable,
@@ -433,18 +444,18 @@ export default function Attendance() {
   const handleCheckOut = useCallback(async () => {
     setActionLoading(true);
     try {
-      // ✅ 1. الموقع
-      let location = null;
-      try {
-        location = await getLocation();
-      } catch (err) {
-        showMsg('⚠️ فشل الحصول على الموقع', 'warning');
-        return;
-      }
-
-      // ✅ 2. النطاق
       const isConn = await isOnline();
       setOnline(isConn);
+
+      let loc = null;
+      try {
+        loc = await getLocation();
+      } catch (err) {
+        if (isConn) {
+          showMsg('⚠️ فشل الحصول على الموقع', 'warning');
+          return;
+        }
+      }
 
       if (isConn) {
         const rangeCheck = await checkRange();
@@ -457,7 +468,6 @@ export default function Attendance() {
         }
       }
 
-      // ✅ 3. البصمة
       let biometricUsed = false;
       let bioType = null;
 
@@ -467,11 +477,10 @@ export default function Attendance() {
         bioType = bio.used ? biometricType : null;
       }
 
-      // ✅ 4. الحفظ
       if (isConn) {
         const payload = {
-          lat: location?.lat,
-          lng: location?.lng,
+          lat: loc?.lat,
+          lng: loc?.lng,
           biometricUsed,
           biometricType: bioType,
           deviceId: user._id,
@@ -492,15 +501,16 @@ export default function Attendance() {
 
         await cacheData('today_attendance', data);
       } else {
-        await addToQueue({
-          type: 'checkout',
-          lat: location?.lat,
-          lng: location?.lng,
-          user: user._id,
+        await addPendingAttendance({
+          type: 'out',
+          lat: loc?.lat,
+          lng: loc?.lng,
+          method: 'gps',
           biometricUsed,
           biometricType: bioType,
+          timestamp: new Date().toISOString(),
         });
-        await loadQueueCount();
+        await loadPendingCount();
         showMsg('📴 تم الحفظ محلياً — سيتم المزامنة عند عودة الإنترنت', 'warning');
       }
     } catch (err) {
@@ -516,7 +526,7 @@ export default function Attendance() {
   }, [
     getLocation,
     checkRange,
-    loadQueueCount,
+    loadPendingCount,
     showMsg,
     user._id,
     biometricAvailable,
@@ -571,7 +581,7 @@ export default function Attendance() {
         </p>
       </div>
 
-      {/* ✅ حالة الشبكة + البصمة + النطاق */}
+      {/* حالة الشبكة + البصمة + عدد السجلات المعلقة */}
       <div
         className="ss-glass"
         style={{
@@ -621,7 +631,7 @@ export default function Attendance() {
             </button>
           )}
 
-          {queueCount > 0 && (
+          {pendingCount > 0 && (
             <span
               style={{
                 background: 'linear-gradient(135deg, #fb923c, #ef4444)',
@@ -632,13 +642,33 @@ export default function Attendance() {
                 fontWeight: 700,
               }}
             >
-              ⏳ {queueCount}
+              ⏳ {pendingCount} معلق
             </span>
           )}
         </div>
       </div>
 
-      {/* ✅ حالة النطاق الجغرافي */}
+      {/* Banner: سجلات معلقة */}
+      {pendingCount > 0 && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 12,
+            marginBottom: 16,
+            background: 'rgba(251, 191, 36, 0.15)',
+            border: '1px solid rgba(251, 191, 36, 0.4)',
+            color: '#fcd34d',
+            fontWeight: 600,
+            fontSize: 13,
+            textAlign: 'right',
+            direction: 'rtl',
+          }}
+        >
+          📴 لديك {pendingCount} سجل حضور في الانتظار — سيتم رفعهم تلقائيًا عند عودة الإنترنت
+        </div>
+      )}
+
+      {/* حالة النطاق الجغرافي */}
       {online && (
         <div
           style={{
@@ -936,7 +966,7 @@ export default function Attendance() {
         </GradientButton>
       </div>
 
-      {/* ✅ زر Face Recognition — Online فقط */}
+      {/* زر Face Recognition — Online فقط */}
       {online && !checkedIn && (
         <div style={{ marginTop: 16 }}>
           <button
@@ -971,7 +1001,7 @@ export default function Attendance() {
         </div>
       )}
 
-      {/* ✅ تنبيه: Face غير متاح في Offline */}
+      {/* تنبيه: Face غير متاح في Offline */}
       {!online && !checkedIn && (
         <div
           style={{
@@ -994,7 +1024,7 @@ export default function Attendance() {
         </div>
       )}
 
-      {/* ✅ Face Modal */}
+      {/* Face Modal */}
       {faceMode && (
         <div
           style={{

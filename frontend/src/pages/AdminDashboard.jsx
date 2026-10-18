@@ -1,3 +1,6 @@
+// 📁 frontend/src/pages/AdminDashboard.jsx
+// ⬅️ استبدل الملف بالكامل
+
 import DocumentsTab from '../components/admin/DocumentsTab';
 import QrTab from '../components/admin/QrTab';
 import React, { useState, useEffect } from 'react';
@@ -13,7 +16,7 @@ import PayrollTab from '../components/admin/PayrollTab';
 import AttendanceReportTab from '../components/admin/AttendanceReportTab';
 import AnnouncementsTab from '../components/admin/AnnouncementsTab';
 import AnalyticsTab from '../components/admin/AnalyticsTab';
-import AuditLogs from './AuditLogs';   // ← ✅ جديد
+import AuditLogs from './AuditLogs';
 
 export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -33,33 +36,35 @@ export default function AdminDashboard() {
   };
 
   const tabs = [
-    { id: 'overview',      label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'analytics',     label: '📈 التحليلات',      roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'emergency',     label: '🚨 الطوارئ',        roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'announcements', label: '📢 الإعلانات',      roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'payroll',       label: '💰 المرتبات',       roles: ['superadmin', 'hr'] },
-    { id: 'reports',       label: '📊 التقارير',       roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'documents',     label: '📄 المستندات',      roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'organization',  label: '📄 الهيكل التنظيمي', roles: ['superadmin', 'manager', 'hr'] },
-    { id: 'users',         label: '👥 المستخدمون',     roles: ['superadmin', 'hr'] },
-    { id: 'branches',      label: '🏢 الفروع',         roles: ['superadmin'] },
-    { id: 'map',           label: '🗺️ الخريطة',        roles: ['superadmin', 'manager', 'hr', 'viewer'] },
-    { id: 'qr',            label: '📱 QR Code',        roles: ['superadmin', 'manager'] },
-    { id: 'audit',         label: '📋 سجلات النظام',   roles: ['superadmin', 'manager', 'hr'] },   // ← ✅ جديد
-    { id: 'settings',      label: '⚙️ الإعدادات',      roles: ['superadmin'] },
+    { id: 'overview',      label: '📊 نظرة عامة',      roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
+    { id: 'analytics',     label: '📈 التحليلات',      roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
+    { id: 'emergency',     label: '🚨 الطوارئ',        roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
+    { id: 'announcements', label: '📢 الإعلانات',      roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
+    { id: 'payroll',       label: '💰 المرتبات',       roles: ['superadmin', 'hr', 'company_owner'] },
+    { id: 'reports',       label: '📊 التقارير',       roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
+    { id: 'documents',     label: '📄 المستندات',      roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
+    { id: 'organization',  label: '📄 الهيكل التنظيمي', roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
+    { id: 'users',         label: '👥 المستخدمون',     roles: ['superadmin', 'hr', 'company_owner'] },
+    { id: 'branches',      label: '🏢 الفروع',         roles: ['superadmin', 'company_owner'] },
+    { id: 'map',           label: '🗺️ الخريطة',        roles: ['superadmin', 'manager', 'hr', 'viewer', 'company_owner'] },
+    { id: 'qr',            label: '📱 QR Code',        roles: ['superadmin', 'manager', 'company_owner'] },
+    { id: 'audit',         label: '📋 سجلات النظام',   roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
+    { id: 'settings',      label: '⚙️ الإعدادات',      roles: ['superadmin', 'company_owner'] },
   ];
 
-  const allowed = tabs.filter(t => t.roles.includes(user.role));
+  // ✅ فلترة التابات: بنشوف إما role أو companyRole
+  const allowed = tabs.filter(t => 
+    t.roles.includes(user.role) || t.roles.includes(user.companyRole)
+  );
 
   useEffect(() => {
     if (allowed.length > 0 && !allowed.find(t => t.id === tab)) {
       handleTabChange('overview');
     }
-  }, [user.role]);
+  }, [user.role, user.companyRole]);
 
   return (
     <div className="dashboard">
-      {/* ✅ Header */}
       <div style={{ marginBottom: 20 }}>
         <h1
           style={{
@@ -80,7 +85,6 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* ✅ Tabs */}
       <div
         style={{
           display: 'flex',
@@ -113,7 +117,7 @@ export default function AdminDashboard() {
         {tab === 'branches' && <BranchesTab />}
         {tab === 'map' && <BranchesMap />}
         {tab === 'qr' && <QrTab />}
-        {tab === 'audit' && <AuditLogs />}                          {/* ← ✅ جديد */}
+        {tab === 'audit' && <AuditLogs />}
         {tab === 'settings' && <SettingsTab />}
         {tab === 'organization' && <OrganizationTab />}
       </div>

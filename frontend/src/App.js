@@ -12,8 +12,8 @@ import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Landing from './pages/Landing';
-import SignUp from './pages/SignUp';             // ✅ جديد
-import VerifyEmail from './pages/VerifyEmail';   // ✅ جديد
+import SignUp from './pages/SignUp';
+import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
@@ -29,7 +29,7 @@ import NotificationPermission from './components/NotificationPermission';
 import InstallPWA from './components/InstallPWA';
 import { AnimatedBackground } from './components/ui';
 import { startNetworkMonitoring } from './services/networkStatus';
-import { syncQueue, syncOnAppOpen } from './services/syncService';
+import { syncQueue, syncOnAppOpen, syncPendingAttendance } from './services/syncService';
 
 // ============================================
 // ✅ PrivateRoute
@@ -114,6 +114,17 @@ export default function App() {
           console.log('[Network] Connected:', isConnected);
 
           if (isConnected) {
+            // ✅ 1. مزامنة سجلات الحضور المعلقة أولاً
+            try {
+              const pendingResult = await syncPendingAttendance({ silent: false });
+              if (pendingResult.success > 0) {
+                console.log(`[App] ✅ تم رفع ${pendingResult.success} سجل حضور`);
+              }
+            } catch (err) {
+              console.warn('[App] فشل مزامنة الحضور المعلق:', err);
+            }
+
+            // ✅ 2. مزامنة الـ Queue العادي
             const result = await syncQueue({ silent: false });
 
             if (result.total > 0) {
@@ -152,8 +163,8 @@ export default function App() {
           {/* ============================================ */}
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />                      {/* ✅ جديد */}
-          <Route path="/verify-email/:token" element={<VerifyEmail />} />     {/* ✅ جديد */}
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/verify-email/:token" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
 
