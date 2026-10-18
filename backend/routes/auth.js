@@ -48,6 +48,25 @@ async function prepareUserResponse(user) {
     userObj.company = company;
   }
 
+async function prepareUserResponse(user) {
+  const userObj = user.toObject ? user.toObject() : { ...user };
+  delete userObj.password;
+
+  // ✅ تأكد إن role و companyRole و companyId و branch موجودين
+  userObj.role = user.role;
+  userObj.companyRole = user.companyRole;
+  userObj.companyId = user.companyId;
+  userObj.branch = user.branch; // ← ضيف ده
+
+  if (user.companyId) {
+    const company = await Company.findById(user.companyId).select(
+      'name slug logo type subscription.plan subscription.status subscription.isTrial subscription.endDate'
+    );
+    userObj.company = company;
+  }
+
+  return userObj;
+}
   return userObj;
 }
 
