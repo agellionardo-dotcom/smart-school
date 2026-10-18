@@ -45,7 +45,7 @@ export default function AdminDashboard() {
     { id: 'documents',     label: '📄 المستندات',      roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
     { id: 'organization',  label: '📄 الهيكل التنظيمي', roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
     { id: 'users',         label: '👥 المستخدمون',     roles: ['superadmin', 'hr', 'company_owner'] },
-    { id: 'branches',      label: '🏢 الفروع',         roles: ['superadmin', 'company_owner'] },
+    { id: 'branches', label: '🏢 الفروع', roles: ['superadmin', 'company_owner', 'hr'] },
     { id: 'map',           label: '🗺️ الخريطة',        roles: ['superadmin', 'manager', 'hr', 'viewer', 'company_owner'] },
     { id: 'qr',            label: '📱 QR Code',        roles: ['superadmin', 'manager', 'company_owner'] },
     { id: 'audit',         label: '📋 سجلات النظام',   roles: ['superadmin', 'manager', 'hr', 'company_owner'] },
