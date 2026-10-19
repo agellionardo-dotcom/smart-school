@@ -199,18 +199,48 @@ router.get('/users',
   auth,
   tenant,
   checkPermission('users.view.branch'),
-  scopeToBranch(),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
-      const { role, branch, active } = req.query;
+      const role = req.user.companyRole || req.user.role;
+      const isHQ = role === 'hr' && (await isHQHR(req.user, req.companyId));
+      const isAdmin = ['superadmin', 'company_owner'].includes(role);
 
-      const filter = { companyId: req.companyId };
-
-      if (req.branchFilter && Object.keys(req.branchFilter).length > 0) {
-        Object.assign(filter, req.branchFilter);
+      // ✅ لو HR في الفرع الرئيسي، أو SuperAdmin/Company Owner، نتجاهل scopeToBranch
+      if (isHQ || isAdmin) {
+        return next();
       }
 
-      if (role) filter.role = role;
+      // ✅ غير كده، نطبق scopeToBranch (يفلتر على الفرع)
+      scopeToBranch()(req, res, async () => {
+        try {
+          const { role: filterRole, branch, active } = req.query;
+          const filter = { companyId: req.companyId };
+          if (req.branchFilter && Object.keys(req.branchFilter).length > 0) {
+            Object.assign(filter, req.branchFilter);
+          }
+          if (filterRole) filter.role = filterRole;
+          if (branch) filter.branch = branch;
+          if (active !== undefined) filter.active = active === 'true';
+
+          const users = await User.find(filter)
+            .populate('branch', 'name')
+            .populate('createdBy', 'name')
+            .select('-password -faceDescriptor');
+
+          res.json(users);
+        } catch (err) {
+          res.status(500).json({ msg: err.message });
+        }
+      });
+    } catch (err) {
+      res.status(500).json({ msg: err.message });
+    }
+  },
+  async (req, res) => {
+    try {
+      const { role: filterRole, branch, active } = req.query;
+      const filter = { companyId: req.companyId };
+      if (filterRole) filter.role = filterRole;
       if (branch) filter.branch = branch;
       if (active !== undefined) filter.active = active === 'true';
 
