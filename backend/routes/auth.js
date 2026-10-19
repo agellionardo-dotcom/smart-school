@@ -36,27 +36,11 @@ async function prepareUserResponse(user) {
   const userObj = user.toObject ? user.toObject() : { ...user };
   delete userObj.password;
 
-  // ✅ تأكد إن role و companyRole موجودين
-  userObj.role = user.role;
-  userObj.companyRole = user.companyRole;
-  userObj.companyId = user.companyId;
-
-  if (user.companyId) {
-    const company = await Company.findById(user.companyId).select(
-      'name slug logo type subscription.plan subscription.status subscription.isTrial subscription.endDate'
-    );
-    userObj.company = company;
-  }
-
-async function prepareUserResponse(user) {
-  const userObj = user.toObject ? user.toObject() : { ...user };
-  delete userObj.password;
-
   // ✅ تأكد إن role و companyRole و companyId و branch موجودين
   userObj.role = user.role;
   userObj.companyRole = user.companyRole;
   userObj.companyId = user.companyId;
-  userObj.branch = user.branch; // ← ضيف ده
+  userObj.branch = user.branch;
 
   if (user.companyId) {
     const company = await Company.findById(user.companyId).select(
@@ -65,8 +49,6 @@ async function prepareUserResponse(user) {
     userObj.company = company;
   }
 
-  return userObj;
-}
   return userObj;
 }
 
@@ -124,14 +106,14 @@ router.post('/signup', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
-  companyId: company._id,
-  name: companyName,
-  email: email.toLowerCase(),
-  password: hashedPassword,
-  role: 'employee',            // ✅ صح
-  companyRole: 'company_owner',
-  active: true,
-});
+      companyId: company._id,
+      name: companyName,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      role: 'employee',
+      companyRole: 'company_owner',
+      active: true,
+    });
 
     company.ownerId = user._id;
     await company.save();

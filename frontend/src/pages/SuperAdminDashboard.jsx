@@ -1,5 +1,5 @@
 // 📁 frontend/src/pages/SuperAdminDashboard.jsx
-// ⬅️ ملف جديد — SuperAdmin Dashboard الرئيسي
+// ⬅️ استبدل الملف بالكامل
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ import './SuperAdminDashboard.css';
 import OverviewTab from '../components/superadmin/OverviewTab';
 import CompaniesTab from '../components/superadmin/CompaniesTab';
 import AuditLogTab from '../components/superadmin/AuditLogTab';
+import SettingsTab from '../components/superadmin/SettingsTab'; // ← ✅ جديد
 
 export default function SuperAdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,6 +40,7 @@ export default function SuperAdminDashboard() {
     { id: 'overview',  label: '📊 نظرة عامة' },
     { id: 'companies', label: '🏢 الشركات' },
     { id: 'audit',     label: '📋 سجل النظام' },
+    { id: 'settings',  label: '⚙️ الإعدادات' }, // ← ✅ جديد
   ];
 
   return (
@@ -77,6 +79,7 @@ export default function SuperAdminDashboard() {
         {tab === 'overview'  && <OverviewTab />}
         {tab === 'companies' && <CompaniesTab />}
         {tab === 'audit'     && <AuditLogTab />}
+        {tab === 'settings'  && <SettingsTab />} {/* ← ✅ جديد */}
       </div>
     </div>
   );
