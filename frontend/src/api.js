@@ -4,15 +4,33 @@
 import axios from 'axios';
 
 // ============================================
-// ✅ Base URL — ذكي: localhost في التطوير، Railway في Production
+// ✅ Base URL — ذكي:
+// - المتصفح على الكمبيوتر (localhost) → localhost
+// - التطبيق (Capacitor) أو الموقع المرفوع → Railway
 // ============================================
-const isDev =
+
+// ✅ نتحقق لو إحنا في متصفح عادي (مش تطبيق Capacitor)
+const isCapacitor =
+  window.Capacitor &&
+  window.Capacitor.isNativePlatform &&
+  window.Capacitor.isNativePlatform();
+
+// ✅ نتحقق لو إحنا على localhost (كمبيوتر)
+const isLocalhost =
   window.location.hostname === 'localhost' ||
   window.location.hostname === '127.0.0.1';
 
-const API_URL = isDev
-  ? 'http://localhost:5000/api'                                  // ← محلي (تطوير)
-  : 'https://smart-school-production-9bdf.up.railway.app/api';   // ← Railway (production)
+// ✅ القرار:
+// - لو Capacitor (موبايل) → Railway
+// - لو localhost + مش Capacitor (كمبيوتر) → localhost
+// - غير كده (Vercel) → Railway
+const API_URL =
+  isCapacitor || !isLocalhost
+    ? 'https://smart-school-production-9bdf.up.railway.app/api'
+    : 'http://localhost:5000/api';
+
+console.log('[API] Mode:', isCapacitor ? '📱 Mobile' : isLocalhost ? '💻 Localhost' : '🌐 Production');
+console.log('[API] URL:', API_URL);
 
 // ============================================
 // ✅ Axios Instance
