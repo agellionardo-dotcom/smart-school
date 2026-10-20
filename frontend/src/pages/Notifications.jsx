@@ -45,9 +45,15 @@ export default function Notifications() {
 
   // ✅ الموافقة / الرفض
   const handleLeaveAction = async (leaveId, status, notificationId) => {
-    const rejectionReason = status === 'rejected'
-      ? window.prompt('سبب الرفض (اختياري):') || ''
-      : undefined;
+    let rejectionReason = '';
+
+    if (status === 'rejected') {
+      rejectionReason = window.prompt('سبب الرفض (مطلوب):') || '';
+      if (!rejectionReason.trim()) {
+        alert('⚠️ لازم تكتب سبب الرفض');
+        return;
+      }
+    }
 
     setProcessingId(notificationId);
 
@@ -57,10 +63,7 @@ export default function Notifications() {
         rejectionReason,
       });
 
-      // ✅ تعليم الإشعار كمقروء
       await api.put(`/in-app-notifications/${notificationId}/read`);
-
-      // ✅ تحديث القائمة
       await loadNotifications();
 
       alert(status === 'approved' ? '✅ تمت الموافقة' : '❌ تم الرفض');
@@ -119,6 +122,7 @@ export default function Notifications() {
       ) : (
         notifications.map((n) => {
           const isLeaveRequest = n.type === 'leave_request';
+          const isLeaveRejected = n.type === 'leave_rejected';
           const data = n.data || {};
           const isProcessing = processingId === n._id;
 
@@ -142,7 +146,7 @@ export default function Notifications() {
                     {n.message}
                   </p>
 
-                  {/* ✅ تفاصيل الموظف والإجازة */}
+                  {/* ✅ تفاصيل الموظف والإجازة (للـ HR) */}
                   {isLeaveRequest && data.employeeName && (
                     <div
                       style={{
@@ -164,6 +168,29 @@ export default function Notifications() {
                           {' '} <b>إلى:</b> {new Date(data.endDate).toLocaleDateString('ar-EG')}
                         </div>
                       )}
+                      {data.reason && (
+                        <div style={{ marginTop: 6, padding: '6px 8px', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.3)', borderRadius: 6, color: '#fcd34d' }}>
+                          <b>📝 السبب:</b> {data.reason}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ✅ سبب الرفض (للموظف) */}
+                  {isLeaveRejected && data.rejectionReason && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: '8px 12px',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        color: '#fca5a5',
+                        direction: 'rtl',
+                      }}
+                    >
+                      <b>📝 سبب الرفض:</b> {data.rejectionReason}
                     </div>
                   )}
                 </div>
@@ -173,7 +200,7 @@ export default function Notifications() {
                 </span>
               </div>
 
-              {/* ✅ أزرار الموافقة/الرفض للإجازات غير المقروءة */}
+              {/* ✅ أزرار الموافقة/الرفض للإجازات (حتى لو مقروء) */}
               {isLeaveRequest && data.leaveId && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   <button
@@ -195,7 +222,6 @@ export default function Notifications() {
                 </div>
               )}
 
-              {/* ✅ لو الإشعار مقروء → زرار تعليم كمقروء فقط */}
               {!n.read && !isLeaveRequest && (
                 <button
                   className="btn gray"

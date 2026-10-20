@@ -88,14 +88,15 @@ router.post('/', auth, tenant, async (req, res) => {
      title: 'طلب إجازة جديد',
      message: `${employee.name} طلب إجازة (${type})`,
      data: {
-      leaveId: leave._id,
-      employeeId: employee._id,
-      employeeName: employee.name,
-      employeeBranch: employee.branch?.name || '—',
-      leaveType: type,
-      startDate: leave.startDate,
-      endDate: leave.endDate,
-     },
+  leaveId: leave._id,
+  employeeId: employee._id,
+  employeeName: employee.name,
+  employeeBranch: employee.branch?.name || '—',
+  leaveType: type,
+  startDate: leave.startDate,
+  endDate: leave.endDate,
+  reason: reason || 'لم يُذكر سبب',  // ← ✅ ضيف ده
+},
      read: false,
      });
   }
@@ -226,24 +227,27 @@ router.put('/:id', auth, tenant, async (req, res) => {
 
     await leave.save();
 
-    // ✅ إشعار للموظف
-    if (['approved', 'rejected'].includes(status)) {
-      try {
-        await Notification.create({
-          companyId: req.companyId,
-          user: leave.user,
-          type: status === 'approved' ? 'leave_approved' : 'leave_rejected',
-          title: status === 'approved' ? '✅ تمت الموافقة على إجازتك' : '❌ تم رفض إجازتك',
-          message: status === 'approved'
-            ? 'تمت الموافقة على طلب إجازتك'
-            : `تم رفض إجازتك${rejectionReason ? `: ${rejectionReason}` : ''}`,
-          data: { leaveId: leave._id },
-          read: false,
-        });
-      } catch (notifyErr) {
-        console.error('Notify error:', notifyErr.message);
-      }
-    }
+  // ✅ إشعار للموظف
+if (['approved', 'rejected'].includes(status)) {
+  try {
+    await Notification.create({
+      companyId: req.companyId,
+      user: leave.user,
+      type: status === 'approved' ? 'leave_approved' : 'leave_rejected',
+      title: status === 'approved' ? '✅ تمت الموافقة على إجازتك' : '❌ تم رفض إجازتك',
+      message: status === 'approved'
+        ? 'تمت الموافقة على طلب إجازتك'
+        : `تم رفض إجازتك${rejectionReason ? `: ${rejectionReason}` : ''}`,
+      data: {
+        leaveId: leave._id,
+        rejectionReason: rejectionReason || null, // ← ✅ ضيف ده
+      },
+      read: false,
+    });
+  } catch (notifyErr) {
+    console.error('Notify error:', notifyErr.message);
+  }
+}
 
     // ✅ Audit Log
     await logAction({
