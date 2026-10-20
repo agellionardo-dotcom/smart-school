@@ -79,17 +79,26 @@ router.post('/', auth, tenant, async (req, res) => {
       }
 
       // ✅ إنشاء الإشعارات
-      for (const userId of notifyUsers) {
-        await Notification.create({
-          companyId: req.companyId,
-          user: userId,
-          type: 'leave_request',
-          title: 'طلب إجازة جديد',
-          message: `${employee.name} طلب إجازة (${type})`,
-          data: { leaveId: leave._id, employeeId: employee._id },
-          read: false,
-        });
-      }
+      // ✅ إنشاء الإشعارات (مع تفاصيل كاملة)
+     for (const userId of notifyUsers) {
+     await Notification.create({
+     companyId: req.companyId,
+     user: userId,
+     type: 'leave_request',
+     title: 'طلب إجازة جديد',
+     message: `${employee.name} طلب إجازة (${type})`,
+     data: {
+      leaveId: leave._id,
+      employeeId: employee._id,
+      employeeName: employee.name,
+      employeeBranch: employee.branch?.name || '—',
+      leaveType: type,
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+     },
+     read: false,
+     });
+  }
 
       // ✅ Socket.io (لو متاح)
       const io = req.app.get('io');
