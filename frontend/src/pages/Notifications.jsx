@@ -43,7 +43,6 @@ export default function Notifications() {
     }
   };
 
-  // ✅ الموافقة / الرفض
   const handleLeaveAction = async (leaveId, status, notificationId) => {
     let rejectionReason = '';
 
