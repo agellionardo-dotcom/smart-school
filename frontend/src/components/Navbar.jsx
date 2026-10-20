@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import api from '../api';
 import { getQueueCount } from '../services/offlineStorage';
 import ThemeToggle from './ThemeToggle';
 import NavbarActions from './NavbarActions';
@@ -10,19 +11,16 @@ import NavbarActions from './NavbarActions';
 export default function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [queueCount, setQueueCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0); // ✅ جديد
   const nav = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-  // ✅ تحديد الصلاحيات
   const isSuperAdmin = user.role === 'superadmin';
   const isCompanyOwner = user.companyRole === 'company_owner';
   const isImpersonating = !!user.isImpersonating;
 
-  // ✅ القائمة العادية تظهر لو:
   const showRegularMenu = (!isSuperAdmin && !isCompanyOwner) || isImpersonating;
-
-  // ✅ تاب "لوحة الإدارة" يظهر لو:
   const showAdminTab = isSuperAdmin || isCompanyOwner || isImpersonating;
 
   useEffect(() => {
@@ -37,6 +35,22 @@ export default function Navbar() {
 
     loadCount();
     const interval = setInterval(loadCount, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ✅ تحميل عدد الإشعارات غير المقروءة
+  useEffect(() => {
+    const loadUnread = async () => {
+      try {
+        const { data } = await api.get('/in-app-notifications/unread-count');
+        setUnreadCount(data.count);
+      } catch (err) {
+        // صامت (عشان لو المستخدم مش مسجل دخول)
+      }
+    };
+
+    loadUnread();
+    const interval = setInterval(loadUnread, 30000); // كل 30 ثانية
     return () => clearInterval(interval);
   }, []);
 
@@ -84,6 +98,37 @@ export default function Navbar() {
         </div>
 
         <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* ✅ زر الإشعارات */}
+          <Link
+            to="/notifications"
+            className="ss-navbar-toggle"
+            style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            🔔
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  left: -4,
+                  background: '#ef4444',
+                  color: '#fff',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 4px',
+                }}
+              >
+                {unreadCount}
+              </span>
+            )}
+          </Link>
+
           {isSuperAdmin && !isImpersonating && (
             <Link to="/superadmin" className="ss-superadmin-btn" style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10,
@@ -186,6 +231,18 @@ export default function Navbar() {
                 </>
               )}
 
+              <Link to="/notifications" className={`ss-drawer-link ${isActive('/notifications') ? 'active' : ''}`} onClick={closeDrawer} style={{ justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span className="ss-icon">🔔</span>
+                  <span>الإشعارات</span>
+                </div>
+                {unreadCount > 0 && (
+                  <span className="ss-badge-count" style={{ background: '#ef4444' }}>
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+
               <div className="ss-drawer-divider"></div>
 
               <button className="ss-drawer-link ss-logout-btn" onClick={logout}>
@@ -205,7 +262,7 @@ export default function Navbar() {
 
       <style>{`
         .ss-navbar { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 14px; padding: 12px 20px; background: var(--ss-bg-glass, rgba(10, 22, 40, 0.75)); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-bottom: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.08)); box-shadow: var(--ss-shadow-md, 0 4px 24px rgba(0, 0, 0, 0.2)); }
-        .ss-navbar-toggle { background: var(--ss-bg-glass, rgba(255, 255, 255, 0.08)); border: 1px solid var(--ss-border-glass, rgba(255, 255, 255, 0.12)); color: var(--ss-text-primary, #fff); width: 42px; height: 42px; border-radius: 12px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
+        .ss-navbar-toggle { background: var(--ss-bg-glass, rgba(255, 255, 255, 0.08)); border: 1px solid var(--ss-border-glass, rgba(255, 255, 255, 0.12)); color: var(--ss-text-primary, #fff); width: 42px; height: 42px; border-radius: 12px; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
         .ss-navbar-brand { display: flex; align-items: center; gap: 12px; }
         .ss-navbar-logo { width: 42px; height: 42px; object-fit: contain; border-radius: 10px; }
         .ss-navbar-title { margin: 0; color: var(--ss-text-primary, #fff); font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #7C7CE0, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; }

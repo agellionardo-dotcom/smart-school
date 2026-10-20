@@ -11,6 +11,7 @@ import EmployeeProfile from './pages/EmployeeProfile';
 import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Notifications from './pages/Notifications'; // ✅ ضفناه هنا
 import Landing from './pages/Landing';
 import SignUp from './pages/SignUp';
 import VerifyEmail from './pages/VerifyEmail';
@@ -114,7 +115,6 @@ export default function App() {
           console.log('[Network] Connected:', isConnected);
 
           if (isConnected) {
-            // ✅ 1. مزامنة سجلات الحضور المعلقة أولاً
             try {
               const pendingResult = await syncPendingAttendance({ silent: false });
               if (pendingResult.success > 0) {
@@ -124,7 +124,6 @@ export default function App() {
               console.warn('[App] فشل مزامنة الحضور المعلق:', err);
             }
 
-            // ✅ 2. مزامنة الـ Queue العادي
             const result = await syncQueue({ silent: false });
 
             if (result.total > 0) {
@@ -192,6 +191,15 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Leaves />
+              </PrivateRoute>
+            }
+          />
+          {/* ✅ جديد: Route الإشعارات */}
+          <Route
+            path="/notifications"
+            element={
+              <PrivateRoute>
+                <Notifications />
               </PrivateRoute>
             }
           />

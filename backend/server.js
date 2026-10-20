@@ -144,7 +144,9 @@ app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/face', require('./routes/face'));
 app.use('/api/documents', require('./routes/documents'));
-app.use('/api/notifications', require('./routes/notifications'));
+// ✅ In-App Notifications
+app.use('/api/notifications', require('./routes/notifications'));       // ← Firebase (القديم)
+app.use('/api/in-app-notifications', require('./routes/in-app-notifications')); // ← الجديد
 app.use('/api/audit-logs', require('./routes/auditLogs'));
 
 // ✅ 7. 404 Handler
