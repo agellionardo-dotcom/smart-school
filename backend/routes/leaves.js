@@ -1,17 +1,22 @@
+// 📁 backend/routes/leaves.js
+// ⬅️ استبدل الملف بالكامل
+
 const router = require('express').Router();
 const Leave = require('../models/Leave');
+const User = require('../models/User');
+const Branch = require('../models/Branch');
+const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
 const tenant = require('../middleware/tenant');
 const { logAction } = require('../middleware/auditLog');
 
 // ============================================
-// ✅ 1. إنشاء إجازة جديدة
+// ✅ 1. إنشاء إجازة جديدة (مع الإشعارات)
 // ============================================
 router.post('/', auth, tenant, async (req, res) => {
   try {
     const { type, startDate, endDate, days, reason, attachments } = req.body;
 
-    // ✅ Validation
     if (!type || !startDate || !endDate) {
       return res.status(400).json({
         msg: 'النوع، تاريخ البداية، وتاريخ النهاية مطلوبين',
@@ -19,7 +24,7 @@ router.post('/', auth, tenant, async (req, res) => {
     }
 
     const leave = await Leave.create({
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
       user: req.user.id,
       type,
       startDate,
@@ -30,7 +35,82 @@ router.post('/', auth, tenant, async (req, res) => {
       status: 'pending',
     });
 
-    // ✅ تسجيل في Audit Log
+    // ✅ إرسال إشعارات
+    try {
+      const employee = await User.findById(req.user.id).populate('branch');
+
+      const notifyUsers = [];
+
+      // 1. الـ HR بتاع فرع الموظف
+      if (employee.branch?._id) {
+        const branchHR = await User.findOne({
+          companyId: req.companyId,
+          branch: employee.branch._id,
+          companyRole: 'hr',
+        });
+        if (branchHR && String(branchHR._id) !== String(req.user.id)) {
+          notifyUsers.push(branchHR._id);
+        }
+      }
+
+      // 2. الـ HR بتاع الفرع الرئيسي
+      const hq = await Branch.findOne({
+        companyId: req.companyId,
+        type: 'main',
+      });
+      if (hq) {
+        const hqHR = await User.findOne({
+          companyId: req.companyId,
+          branch: hq._id,
+          companyRole: 'hr',
+        });
+        if (hqHR && String(hqHR._id) !== String(req.user.id)) {
+          notifyUsers.push(hqHR._id);
+        }
+      }
+
+      // 3. Company Owner
+      const owner = await User.findOne({
+        companyId: req.companyId,
+        companyRole: 'company_owner',
+      });
+      if (owner && String(owner._id) !== String(req.user.id)) {
+        notifyUsers.push(owner._id);
+      }
+
+      // ✅ إنشاء الإشعارات
+      for (const userId of notifyUsers) {
+        await Notification.create({
+          companyId: req.companyId,
+          user: userId,
+          type: 'leave_request',
+          title: 'طلب إجازة جديد',
+          message: `${employee.name} طلب إجازة (${type})`,
+          data: { leaveId: leave._id, employeeId: employee._id },
+          read: false,
+        });
+      }
+
+      // ✅ Socket.io (لو متاح)
+      const io = req.app.get('io');
+      const onlineUsers = req.app.get('onlineUsers');
+      if (io && onlineUsers) {
+        notifyUsers.forEach((uid) => {
+          const socketId = onlineUsers.get(String(uid));
+          if (socketId) {
+            io.to(socketId).emit('notification', {
+              title: 'طلب إجازة جديد',
+              message: `${employee.name} طلب إجازة`,
+              data: { leaveId: leave._id },
+            });
+          }
+        });
+      }
+    } catch (notifyErr) {
+      console.error('Notify error:', notifyErr.message);
+    }
+
+    // ✅ Audit Log
     await logAction({
       req,
       action: 'create',
@@ -53,7 +133,7 @@ router.post('/', auth, tenant, async (req, res) => {
 router.get('/my', auth, tenant, async (req, res) => {
   try {
     const leaves = await Leave.find({
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
       user: req.user.id,
     }).sort({ createdAt: -1 });
 
@@ -68,7 +148,6 @@ router.get('/my', auth, tenant, async (req, res) => {
 // ============================================
 router.get('/all', auth, tenant, async (req, res) => {
   try {
-    // ✅ فحص الصلاحيات (companyRole)
     const role = req.user.companyRole || req.user.role;
     const allowed = ['superadmin', 'company_owner', 'hr', 'manager'];
 
@@ -76,10 +155,8 @@ router.get('/all', auth, tenant, async (req, res) => {
       return res.status(403).json({ msg: '⛔ ليس لديك صلاحية' });
     }
 
-    // ✅ فلتر
-    const filter = { companyId: req.companyId };   // ← ✅
+    const filter = { companyId: req.companyId };
 
-    // فلترة بالحالة
     if (req.query.status) filter.status = req.query.status;
     if (req.query.type) filter.type = req.query.type;
     if (req.query.user) filter.user = req.query.user;
@@ -97,11 +174,10 @@ router.get('/all', auth, tenant, async (req, res) => {
 });
 
 // ============================================
-// ✅ 4. موافقة / رفض إجازة
+// ✅ 4. موافقة / رفض إجازة (مع إشعار للموظف)
 // ============================================
 router.put('/:id', auth, tenant, async (req, res) => {
   try {
-    // ✅ فحص الصلاحيات
     const role = req.user.companyRole || req.user.role;
     const allowed = ['superadmin', 'company_owner', 'hr', 'manager'];
 
@@ -117,10 +193,9 @@ router.put('/:id', auth, tenant, async (req, res) => {
       });
     }
 
-    // ✅ نضمن إن الإجازة من نفس الشركة
     const leave = await Leave.findOne({
       _id: req.params.id,
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
     });
 
     if (!leave) {
@@ -142,7 +217,26 @@ router.put('/:id', auth, tenant, async (req, res) => {
 
     await leave.save();
 
-    // ✅ تسجيل في Audit Log
+    // ✅ إشعار للموظف
+    if (['approved', 'rejected'].includes(status)) {
+      try {
+        await Notification.create({
+          companyId: req.companyId,
+          user: leave.user,
+          type: status === 'approved' ? 'leave_approved' : 'leave_rejected',
+          title: status === 'approved' ? '✅ تمت الموافقة على إجازتك' : '❌ تم رفض إجازتك',
+          message: status === 'approved'
+            ? 'تمت الموافقة على طلب إجازتك'
+            : `تم رفض إجازتك${rejectionReason ? `: ${rejectionReason}` : ''}`,
+          data: { leaveId: leave._id },
+          read: false,
+        });
+      } catch (notifyErr) {
+        console.error('Notify error:', notifyErr.message);
+      }
+    }
+
+    // ✅ Audit Log
     await logAction({
       req,
       action: status === 'approved' ? 'approve' : 'reject',
@@ -173,7 +267,7 @@ router.get('/:id', auth, tenant, async (req, res) => {
   try {
     const leave = await Leave.findOne({
       _id: req.params.id,
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
     })
       .populate('user', 'name email position branch')
       .populate('approvedBy', 'name email');
@@ -182,7 +276,6 @@ router.get('/:id', auth, tenant, async (req, res) => {
       return res.status(404).json({ msg: 'الإجازة غير موجودة' });
     }
 
-    // ✅ الموظف العادي → بس إجازاته
     const role = req.user.companyRole || req.user.role;
     const isManager = ['superadmin', 'company_owner', 'hr', 'manager'].includes(role);
 
@@ -197,20 +290,19 @@ router.get('/:id', auth, tenant, async (req, res) => {
 });
 
 // ============================================
-// ✅ 6. إلغاء إجازة (صاحبها فقط)
+// ✅ 6. إلغاء إجازة
 // ============================================
 router.delete('/:id', auth, tenant, async (req, res) => {
   try {
     const leave = await Leave.findOne({
       _id: req.params.id,
-      companyId: req.companyId,   // ← ✅
+      companyId: req.companyId,
     });
 
     if (!leave) {
       return res.status(404).json({ msg: 'الإجازة غير موجودة' });
     }
 
-    // ✅ صاحب الإجازة بس أو الإدارة
     const role = req.user.companyRole || req.user.role;
     const isManager = ['superadmin', 'company_owner', 'hr'].includes(role);
     const isOwner = String(leave.user) === String(req.user.id);
@@ -219,7 +311,6 @@ router.delete('/:id', auth, tenant, async (req, res) => {
       return res.status(403).json({ msg: '⛔ ليس لديك صلاحية' });
     }
 
-    // لو الإجازة معتمدة → ما ينفعش تتلغي
     if (leave.status === 'approved' && !isManager && !req.isSuperAdmin) {
       return res.status(400).json({ msg: 'لا يمكن إلغاء إجازة معتمدة' });
     }

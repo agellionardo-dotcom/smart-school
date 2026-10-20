@@ -78,25 +78,34 @@ router.post('/branches', auth, tenant, checkPermission('branches.create'), async
   } catch (err) { res.status(500).json({ msg: err.message }); }
 });
 
-router.put('/branches/:id', auth, tenant, checkPermission('branches.edit'), async (req, res) => {
+router.delete('/branches/:id', auth, tenant, checkPermission('branches.delete'), async (req, res) => {
   try {
-    const branch = await Branch.findOneAndUpdate(
-      { _id: req.params.id, companyId: req.companyId },
-      req.body,
-      { new: true }
-    );
+    const userRole = req.user.companyRole || req.user.role;
+
+    // ✅ حماية: الـ HR يحذف فرعه بس (إلا لو HQ)
+    if (userRole === 'hr') {
+      const isHQ = await isHQHR(req.user, req.companyId);
+      if (!isHQ && String(req.params.id) !== String(req.user.branch)) {
+        return res.status(403).json({ msg: '⛔ غير مصرح بحذف هذا الفرع' });
+      }
+    }
+
+    const branch = await Branch.findOneAndDelete({
+      _id: req.params.id,
+      companyId: req.companyId,
+    });
 
     if (!branch) return res.status(404).json({ msg: 'الفرع غير موجود' });
 
     await logAction({
       req,
-      action: 'update',
+      action: 'delete',
       resource: 'branch',
       resourceId: branch._id,
-      description: `تعديل فرع: ${branch.name}`,
+      description: `حذف فرع: ${branch.name}`,
     });
 
-    res.json(branch);
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ msg: err.message }); }
 });
 
