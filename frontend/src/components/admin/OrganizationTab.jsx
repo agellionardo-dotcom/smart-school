@@ -1,163 +1,78 @@
+// 📁 frontend/src/components/admin/OrganizationTab.jsx
+// ⬅️ استبدل الملف بالكامل
+
 import React, { useState, useEffect } from 'react';
 import api from '../../api';
 
-const ROLE_GRADIENTS = {
-  superadmin: 'linear-gradient(135deg, #00e5ff, #a855f7)',
-  manager:    'linear-gradient(135deg, #3b82f6, #1e40af)',
-  hr:         'linear-gradient(135deg, #a855f7, #7e22ce)',
-  employee:   'linear-gradient(135deg, #10b981, #059669)',
-  viewer:     'linear-gradient(135deg, #94a3b8, #64748b)',
-};
-
-const ROLE_LABELS = {
-  superadmin: 'مدير النظام',
-  manager:    'مدير فرع',
-  hr:         'موارد بشرية',
-  employee:   'موظف',
-  viewer:     'مشاهد',
-};
+// ✅ ترتيب الأدوار (نفس الأدوار الموجودة في النظام، بس بأسماء مختلفة)
+const ROLE_HIERARCHY = [
+  { key: 'superadmin',    label: '👑 المدير العام', color: '#a855f7' },
+  { key: 'company_owner', label: '👑 المدير العام', color: '#a855f7' },
+  { key: 'manager',       label: '💼 وكيل إداري',   color: '#3b82f6' },
+  { key: 'hr',            label: '👥 موارد بشرية',  color: '#ec4899' },
+  { key: 'employee',      label: '👤 موظف',         color: '#10b981' },
+  { key: 'viewer',        label: '🛠️ عمال',         color: '#94a3b8' },
+];
 
 export default function OrganizationTab() {
-  const [tree, setTree] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
-  const [expanded, setExpanded] = useState({});
 
-  const loadTree = async () => {
+  const loadUsers = async () => {
     try {
-      const { data } = await api.get('/admin/organization/tree');
-      setTree(data);
-      const initExpanded = {};
-      const markExpanded = (nodes) => {
-        nodes.forEach(n => {
-          initExpanded[n._id] = true;
-          if (n.children?.length) markExpanded(n.children);
-        });
-      };
-      markExpanded(data);
-      setExpanded(initExpanded);
+      setLoading(true);
+      const { data } = await api.get('/admin/users');
+      setUsers(data || []);
     } catch (err) {
-      console.error('loadTree error:', err);
-      setMsg('❌ ' + (err.response?.data?.msg || 'فشل تحميل الهيكل التنظيمي'));
+      console.error('loadUsers error:', err);
+      setMsg('❌ فشل تحميل الموظفين');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadTree(); }, []);
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
-  const toggle = (id) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  // ✅ تجميع الموظفين حسب الدور (بس مع دمج superadmin و company_owner)
+  const groupedByRole = ROLE_HIERARCHY.map((role) => {
+    // ← لو الدور superadmin أو company_owner، نعتبرهم "المدير العام"
+    const rolesToCheck = role.key === 'superadmin' || role.key === 'company_owner'
+      ? ['superadmin', 'company_owner']
+      : [role.key];
 
-  const roleBadge = (role) => {
+    return {
+      ...role,
+      users: users.filter((u) => {
+        const roleKey = u.companyRole || u.role;
+        return rolesToCheck.includes(roleKey);
+      }),
+    };
+  }).filter((group) => group.users.length > 0);
+
+  // ✅ إزالة التكرار (لو superadmin و company_owner ظهروا مرتين)
+  const uniqueGroups = groupedByRole.filter((group, index, self) => {
+    if (group.key === 'superadmin' && self.some((g) => g.key === 'company_owner')) {
+      return false; // ← نستخدم "company_owner" بس
+    }
+    return true;
+  });
+
+  if (loading) {
     return (
-      <span
-        className="payroll-status"
-        style={{ background: ROLE_GRADIENTS[role] || ROLE_GRADIENTS.viewer }}
-      >
-        {ROLE_LABELS[role] || role}
-      </span>
-    );
-  };
-
-  const renderNode = (node, level = 0) => {
-    const hasChildren = node.children && node.children.length > 0;
-    const isOpen = expanded[node._id];
-
-    return (
-      <div key={node._id} style={{ marginRight: level * 24 }}>
-        <div
-          className="org-node"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '12px 14px',
-            margin: '6px 0',
-            background:
-              level === 0
-                ? 'rgba(0, 229, 255, 0.08)'
-                : 'var(--ss-bg-surface)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border:
-              level === 0
-                ? '1px solid rgba(0, 229, 255, 0.25)'
-                : '1px solid var(--ss-border-glass)',
-            borderRadius: 12,
-            boxShadow: 'var(--ss-shadow-sm)',
-            cursor: hasChildren ? 'pointer' : 'default',
-            transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          }}
-          onClick={() => hasChildren && toggle(node._id)}
-        >
-          {hasChildren && (
-            <span
-              style={{
-                marginLeft: 8,
-                fontSize: 12,
-                color: 'var(--ss-text-accent)',
-                transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s',
-                display: 'inline-block',
-              }}
-            >
-              ▶
-            </span>
-          )}
-          {!hasChildren && <span style={{ width: 20 }} />}
-
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 6,
-              }}
-            >
-              <b style={{ color: 'var(--ss-text-primary)', fontSize: 14 }}>{node.name}</b>
-              {roleBadge(node.role)}
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: 'var(--ss-text-muted)',
-                marginTop: 4,
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 8,
-              }}
-            >
-              {node.position && <span>💼 {node.position}</span>}
-              {node.department && <span>🏷️ {node.department}</span>}
-              {node.branch?.name && <span>🏢 {node.branch.name}</span>}
-            </div>
-          </div>
-
-          <div style={{ fontSize: 11, color: 'var(--ss-text-muted)' }}>
-            {hasChildren && `(${node.children.length})`}
-          </div>
-        </div>
-
-        {hasChildren && isOpen && (
-          <div
-            style={{
-              borderRight: '2px dashed var(--ss-border-glass)',
-              marginRight: 14,
-              paddingRight: 10,
-            }}
-          >
-            {node.children.map(child => renderNode(child, level + 1))}
-          </div>
-        )}
+      <div className="dashboard">
+        <p style={{ textAlign: 'center', padding: 40, color: 'var(--ss-text-muted)' }}>
+          ⏳ جاري التحميل...
+        </p>
       </div>
     );
-  };
+  }
 
   return (
     <div>
-      {/* ✅ Header */}
+      {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -183,85 +98,125 @@ export default function OrganizationTab() {
         </h3>
         <button
           className="btn gray"
+          onClick={loadUsers}
           style={{ padding: '8px 16px', fontSize: 13 }}
-          onClick={loadTree}
         >
           🔄 تحديث
         </button>
       </div>
 
-      {/* ✅ Message */}
       {msg && (
         <div
           style={{
             padding: '12px 16px',
             borderRadius: 12,
             marginBottom: 16,
-            fontSize: 13,
-            fontWeight: 600,
-            direction: 'rtl',
+            background: 'rgba(239, 68, 68, 0.15)',
+            color: '#fca5a5',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
             textAlign: 'right',
-            background: msg.startsWith('✅')
-              ? 'rgba(16, 185, 129, 0.15)'
-              : 'rgba(239, 68, 68, 0.15)',
-            color: msg.startsWith('✅') ? '#34d399' : '#fca5a5',
-            border: `1px solid ${
-              msg.startsWith('✅')
-                ? 'rgba(16, 185, 129, 0.3)'
-                : 'rgba(239, 68, 68, 0.3)'
-            }`,
-            animation: 'ssFadeIn 0.3s ease',
+            direction: 'rtl',
+            fontSize: 13,
           }}
         >
           {msg}
         </div>
       )}
 
-      {/* ✅ Tree */}
-      <div className="ss-glass" style={{ padding: 20 }}>
-        {loading ? (
-          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
-            ⏳ جاري التحميل...
-          </p>
-        ) : tree.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--ss-text-muted)' }}>
-            لا يوجد موظفون. تأكد من إضافة موظفين وتعيين مديرين لهم.
-          </p>
-        ) : (
-          <div>{tree.map(node => renderNode(node))}</div>
-        )}
-      </div>
+      {uniqueGroups.length === 0 ? (
+        <div className="ss-glass" style={{ padding: 40, textAlign: 'center', color: 'var(--ss-text-muted)' }}>
+          <p style={{ fontSize: 48, margin: 0 }}>🏢</p>
+          <p>لا يوجد موظفون، تأكد من إضافة موظفين.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {uniqueGroups.map((group) => (
+            <div key={group.key}>
+              {/* ✅ عنوان الدور */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  marginBottom: 12,
+                  padding: '8px 16px',
+                  background: `linear-gradient(90deg, ${group.color}22, transparent)`,
+                  borderRight: `4px solid ${group.color}`,
+                  borderRadius: 8,
+                }}
+              >
+                <span style={{ fontSize: 20 }}>{group.label.split(' ')[0]}</span>
+                <h4
+                  style={{
+                    margin: 0,
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: group.color,
+                  }}
+                >
+                  {group.label.substring(group.label.indexOf(' '))} ({group.users.length})
+                </h4>
+              </div>
 
-      {/* ✅ Note */}
-      <div
-        className="ss-glass-subtle"
-        style={{
-          marginTop: 20,
-          padding: 14,
-          borderRadius: 12,
-          fontSize: 12,
-          color: 'var(--ss-text-secondary)',
-          lineHeight: 1.8,
-          direction: 'rtl',
-          textAlign: 'right',
-        }}
-      >
-        <b style={{ color: 'var(--ss-text-accent)' }}>💡 ملاحظة:</b> الشجرة بتبني نفسها من حقل{' '}
-        <code
-          style={{
-            background: 'rgba(0, 229, 255, 0.15)',
-            color: 'var(--ss-text-accent)',
-            padding: '2px 6px',
-            borderRadius: 4,
-            fontFamily: 'monospace',
-          }}
-        >
-          managerId
-        </code>{' '}
-        في بيانات كل موظف. عشان تضيف موظف تحت مدير معين، افتح{' '}
-        <b style={{ color: '#a78bfa' }}>EmployeeProfile</b> بتاعه وعدّل حقل{' '}
-        <b style={{ color: 'var(--ss-text-primary)' }}>"المدير المباشر"</b>.
-      </div>
+              {/* ✅ قائمة الموظفين في هذا الدور */}
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+                {group.users.map((u) => (
+                  <div
+                    key={u._id}
+                    className="ss-glass"
+                    style={{
+                      padding: 16,
+                      borderRight: `3px solid ${group.color}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div
+                        style={{
+                          width: 42,
+                          height: 42,
+                          borderRadius: '50%',
+                          background: `linear-gradient(135deg, ${group.color}, ${group.color}88)`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 18,
+                          fontWeight: 700,
+                          color: '#fff',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {u.name?.charAt(0) || '?'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--ss-text-primary)' }}>
+                          {u.name}
+                        </h4>
+                        <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--ss-text-secondary)' }}>
+                          {u.position || '—'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--ss-border-subtle)' }}>
+                      <p style={{ margin: '4px 0', fontSize: 12, color: 'var(--ss-text-muted)' }}>
+                        🏢 {u.branch?.name || '—'}
+                      </p>
+                      <p style={{ margin: '4px 0', fontSize: 12, color: 'var(--ss-text-muted)' }}>
+                        📧 {u.email}
+                      </p>
+                      {u.department && (
+                        <p style={{ margin: '4px 0', fontSize: 12, color: 'var(--ss-text-muted)' }}>
+                          💼 {u.department}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
