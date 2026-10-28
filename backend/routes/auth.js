@@ -37,7 +37,6 @@ async function prepareUserResponse(user) {
   const userObj = user.toObject ? user.toObject() : { ...user };
   delete userObj.password;
 
-  // ✅ تأكد إن role و companyRole و companyId و branch موجودين
   userObj.role = user.role;
   userObj.companyRole = user.companyRole;
   userObj.companyId = user.companyId;
@@ -50,7 +49,6 @@ async function prepareUserResponse(user) {
     userObj.company = company;
   }
 
-  // ✅ populate الفرع عشان نعرف type (main/sub)
   if (user.branch) {
     const branchData = await Branch.findById(user.branch).select('name type _id');
     userObj.branchData = branchData;
@@ -861,6 +859,48 @@ router.post('/change-password', auth, tenant, async (req, res) => {
     });
   } catch (err) {
     console.error('Change password error:', err);
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+// ============================================
+// ✅ 16. تحديث الملف الشخصي (للموظف نفسه)
+// ============================================
+router.put('/update-profile', auth, tenant, async (req, res) => {
+  try {
+    const { phone, address, emergencyContact, profileImage } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'المستخدم غير موجود' });
+    }
+
+    // ✅ الحقول المسموح بتعديلها بس
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+    if (emergencyContact !== undefined) user.emergencyContact = emergencyContact;
+    if (profileImage !== undefined) user.profileImage = profileImage;
+
+    await user.save();
+
+    await logAction({
+      req,
+      action: 'update',
+      resource: 'user',
+      resourceId: user._id,
+      description: 'تحديث الملف الشخصي',
+      details: { fields: Object.keys(req.body) },
+    });
+
+    const userResponse = await prepareUserResponse(user);
+
+    res.json({
+      success: true,
+      msg: '✅ تم تحديث الملف الشخصي',
+      user: userResponse,
+    });
+  } catch (err) {
+    console.error('Update profile error:', err);
     res.status(500).json({ msg: err.message });
   }
 });

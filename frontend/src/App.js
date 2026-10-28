@@ -11,7 +11,7 @@ import EmployeeProfile from './pages/EmployeeProfile';
 import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import Notifications from './pages/Notifications'; // ✅ ضفناه هنا
+import Notifications from './pages/Notifications';
 import Landing from './pages/Landing';
 import SignUp from './pages/SignUp';
 import VerifyEmail from './pages/VerifyEmail';
@@ -24,6 +24,8 @@ import ScanQr from './pages/ScanQr';
 import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import SyncQueue from './pages/SyncQueue';
+import Profile from './pages/Profile'; // ✅ جديد
+import MyPayslips from './pages/MyPayslips'; // ✅ جديد
 import Navbar from './components/Navbar';
 import AIChat from './components/AIChat';
 import NotificationPermission from './components/NotificationPermission';
@@ -194,12 +196,29 @@ export default function App() {
               </PrivateRoute>
             }
           />
-          {/* ✅ جديد: Route الإشعارات */}
           <Route
             path="/notifications"
             element={
               <PrivateRoute>
                 <Notifications />
+              </PrivateRoute>
+            }
+          />
+          {/* ✅ جديد: صفحة الملف الشخصي */}
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+          {/* ✅ جديد: صفحة قسائم الرواتب */}
+          <Route
+            path="/my-payslips"
+            element={
+              <PrivateRoute>
+                <MyPayslips />
               </PrivateRoute>
             }
           />

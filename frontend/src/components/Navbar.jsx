@@ -11,7 +11,7 @@ import NavbarActions from './NavbarActions';
 export default function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [queueCount, setQueueCount] = useState(0);
-  const [unreadCount, setUnreadCount] = useState(0); // ✅ جديد
+  const [unreadCount, setUnreadCount] = useState(0);
   const nav = useNavigate();
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -38,19 +38,18 @@ export default function Navbar() {
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ تحميل عدد الإشعارات غير المقروءة
   useEffect(() => {
     const loadUnread = async () => {
       try {
         const { data } = await api.get('/in-app-notifications/unread-count');
         setUnreadCount(data.count);
       } catch (err) {
-        // صامت (عشان لو المستخدم مش مسجل دخول)
+        // صامت
       }
     };
 
     loadUnread();
-    const interval = setInterval(loadUnread, 30000); // كل 30 ثانية
+    const interval = setInterval(loadUnread, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -98,7 +97,6 @@ export default function Navbar() {
         </div>
 
         <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* ✅ زر الإشعارات */}
           <Link
             to="/notifications"
             className="ss-navbar-toggle"
@@ -220,6 +218,16 @@ export default function Navbar() {
                   <Link to="/leaves" className={`ss-drawer-link ${isActive('/leaves') ? 'active' : ''}`} onClick={closeDrawer}>
                     <span className="ss-icon">📝</span>
                     <span>الإجازات</span>
+                  </Link>
+                  {/* ✅ جديد: الملف الشخصي */}
+                  <Link to="/profile" className={`ss-drawer-link ${isActive('/profile') ? 'active' : ''}`} onClick={closeDrawer}>
+                    <span className="ss-icon">👤</span>
+                    <span>الملف الشخصي</span>
+                  </Link>
+                  {/* ✅ جديد: قسائم الرواتب */}
+                  <Link to="/my-payslips" className={`ss-drawer-link ${isActive('/my-payslips') ? 'active' : ''}`} onClick={closeDrawer}>
+                    <span className="ss-icon">💰</span>
+                    <span>قسائم الرواتب</span>
                   </Link>
                   <Link to="/sync-queue" className={`ss-drawer-link ${isActive('/sync-queue') ? 'active' : ''}`} onClick={closeDrawer} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
