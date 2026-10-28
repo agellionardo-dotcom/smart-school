@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 const Company = require('../models/Company');
+const Branch = require('../models/Branch'); // ✅ ضيفناها
 const auth = require('../middleware/auth');
 const tenant = require('../middleware/tenant');
 const { sendResetPasswordEmail, sendWelcomeEmail } = require('../utils/emailService');
@@ -47,6 +48,12 @@ async function prepareUserResponse(user) {
       'name slug logo type subscription.plan subscription.status subscription.isTrial subscription.endDate'
     );
     userObj.company = company;
+  }
+
+  // ✅ populate الفرع عشان نعرف type (main/sub)
+  if (user.branch) {
+    const branchData = await Branch.findById(user.branch).select('name type _id');
+    userObj.branchData = branchData;
   }
 
   return userObj;
