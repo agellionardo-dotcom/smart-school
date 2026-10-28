@@ -12,12 +12,28 @@
 }
 
 body {
-  background: transparent;
+  /* ✅ خلفية المنصة الجديدة */
+  background-image: url('/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  
   min-height: 100vh;
   direction: rtl;
   color: var(--ss-text-primary);
   position: relative;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ✅ Overlay خفيف عشان الكلام يبقى مقروء */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 22, 40, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: -1;
 }
 
 #root {
@@ -40,6 +56,17 @@ body {
   box-shadow: var(--ss-shadow-lg);
   color: var(--ss-text-primary);
   transition: all var(--ss-transition-base);
+}
+
+/* ✅ تحسين الـ Glassmorphism مع الخلفية الجديدة */
+.ss-glass {
+  background: rgba(15, 33, 56, 0.65) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
 }
 
 /* ---------- .btn ---------- */
