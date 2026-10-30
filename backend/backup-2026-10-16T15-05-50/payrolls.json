@@ -1,0 +1,78 @@
+[
+  {
+    "_id": "6ac7ab2df23ea38cd9102359",
+    "user": "6ac64f9ca0a4eac3e11656d5",
+    "branch": "6abfaa625deb81fcd06878b4",
+    "month": 10,
+    "year": 2026,
+    "basicSalary": 0,
+    "allowances": {
+      "housing": 0,
+      "transportation": 0,
+      "food": 0,
+      "phone": 0,
+      "other": 0
+    },
+    "bonuses": {
+      "performance": 0,
+      "overtime": 0,
+      "other": 0
+    },
+    "deductions": {
+      "absence": 0,
+      "late": 0,
+      "insurance": 0,
+      "tax": 0,
+      "loans": 0,
+      "other": 0
+    },
+    "totalAllowances": 0,
+    "totalBonuses": 0,
+    "totalDeductions": 0,
+    "netSalary": 0,
+    "status": "draft",
+    "notes": "",
+    "createdBy": "6abfaa635deb81fcd06878b9",
+    "createdAt": "2026-10-08T14:39:41.015Z",
+    "updatedAt": "2026-10-08T14:39:41.015Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ac7ab2df23ea38cd910235c",
+    "user": "6ac692294cfe1306d117c1b0",
+    "branch": "6abfaa625deb81fcd06878b4",
+    "month": 10,
+    "year": 2026,
+    "basicSalary": 0,
+    "allowances": {
+      "housing": 0,
+      "transportation": 0,
+      "food": 0,
+      "phone": 0,
+      "other": 0
+    },
+    "bonuses": {
+      "performance": 0,
+      "overtime": 0,
+      "other": 0
+    },
+    "deductions": {
+      "absence": 0,
+      "late": 0,
+      "insurance": 0,
+      "tax": 0,
+      "loans": 0,
+      "other": 0
+    },
+    "totalAllowances": 0,
+    "totalBonuses": 0,
+    "totalDeductions": 0,
+    "netSalary": 0,
+    "status": "draft",
+    "notes": "",
+    "createdBy": "6abfaa635deb81fcd06878b9",
+    "createdAt": "2026-10-08T14:39:41.318Z",
+    "updatedAt": "2026-10-08T14:39:41.318Z",
+    "__v": 0
+  }
+]

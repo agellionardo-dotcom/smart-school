@@ -1,0 +1,19 @@
+[
+  {
+    "_id": "6abfb00402d7004c0c7e477e",
+    "schoolName": "Smart School",
+    "logoText": "🎓",
+    "primaryColor": "#0a1f44",
+    "secondaryColor": "#8b95a7",
+    "workStartTime": "08:00",
+    "workEndTime": "14:00",
+    "lateGraceMinutes": 15,
+    "enableQRCode": true,
+    "enableFaceRecognition": true,
+    "enableGeoFence": true,
+    "defaultRadius": 5,
+    "holidays": [],
+    "updatedAt": "2026-10-13T20:25:16.978Z",
+    "__v": 0
+  }
+]

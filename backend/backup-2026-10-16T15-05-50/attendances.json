@@ -1,0 +1,171 @@
+[
+  {
+    "_id": "6ac483aef7155943590ace51",
+    "user": "6ac3f4f8f7155943590acd47",
+    "branch": "6abfaa625deb81fcd06878b4",
+    "checkIn": "2026-10-06T05:14:22.079Z",
+    "checkInLocation": {
+      "lat": 27.7455338,
+      "lng": 30.8430159
+    },
+    "lateMinutes": 0,
+    "status": "present",
+    "method": "gps",
+    "date": "2026-10-06T05:14:22.080Z",
+    "__v": 0,
+    "checkOut": "2026-10-06T16:34:47.350Z",
+    "checkOutLocation": {
+      "lat": 28.080113746192193,
+      "lng": 30.757802899973214
+    }
+  },
+  {
+    "_id": "6ac8f397ab356f31069e59bb",
+    "user": "6abfaa635deb81fcd06878b9",
+    "branch": "6abfb91f02d7004c0c7e47d3",
+    "checkIn": "2026-10-09T14:00:55.556Z",
+    "checkInLocation": {
+      "lat": 28.079870608106518,
+      "lng": 30.75827458768357
+    },
+    "lateMinutes": 510,
+    "status": "late",
+    "method": "gps",
+    "date": "2026-10-08T21:00:00.000Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ac8f425ab356f31069e59c5",
+    "user": "6ac692294cfe1306d117c1b0",
+    "branch": "6abfb91f02d7004c0c7e47d3",
+    "checkIn": "2026-10-09T14:03:17.364Z",
+    "checkInLocation": {
+      "lat": 28.0800744,
+      "lng": 30.7577197
+    },
+    "lateMinutes": 513,
+    "status": "late",
+    "method": "gps",
+    "date": "2026-10-08T21:00:00.000Z",
+    "__v": 0
+  },
+  {
+    "_id": "6aca2f8f0790f3b52229fdd5",
+    "user": "6ac692294cfe1306d117c1b0",
+    "branch": "6abfb91f02d7004c0c7e47d3",
+    "checkIn": "2026-10-10T12:29:03.299Z",
+    "checkInLocation": {
+      "lat": 28.080245155060556,
+      "lng": 30.75764897249757
+    },
+    "lateMinutes": 419,
+    "status": "late",
+    "method": "gps",
+    "verification": {
+      "method": "gps_only",
+      "biometricUsed": false,
+      "biometricType": null,
+      "deviceId": "6ac692294cfe1306d117c1b0"
+    },
+    "date": "2026-10-09T21:00:00.000Z",
+    "__v": 0,
+    "checkOut": "2026-10-10T12:31:03.196Z",
+    "checkOutLocation": {
+      "lat": 28.080245155060556,
+      "lng": 30.75764897249757
+    }
+  },
+  {
+    "_id": "6acb492b197f801c1b91da99",
+    "user": "6ac692294cfe1306d117c1b0",
+    "branch": "6abfb91f02d7004c0c7e47d3",
+    "checkIn": "2026-10-11T08:30:35.300Z",
+    "checkInLocation": {
+      "lat": 28.080105334441534,
+      "lng": 30.757793704711887
+    },
+    "lateMinutes": 180,
+    "status": "late",
+    "method": "gps",
+    "verification": {
+      "method": "gps_only",
+      "biometricUsed": false,
+      "biometricType": null,
+      "deviceId": null
+    },
+    "date": "2026-10-10T21:00:00.000Z",
+    "__v": 0
+  },
+  {
+    "_id": "6acb492b197f801c1b91da9b",
+    "user": "6ac692294cfe1306d117c1b0",
+    "branch": "6abfb91f02d7004c0c7e47d3",
+    "checkIn": "2026-10-11T08:30:35.304Z",
+    "checkInLocation": {
+      "lat": 28.080105334441534,
+      "lng": 30.757793704711887
+    },
+    "lateMinutes": 180,
+    "status": "late",
+    "method": "gps",
+    "verification": {
+      "method": "gps_only",
+      "biometricUsed": false,
+      "biometricType": null,
+      "deviceId": null
+    },
+    "date": "2026-10-10T21:00:00.000Z",
+    "__v": 0
+  },
+  {
+    "_id": "6acd4f4c5091df6cca2ef578",
+    "user": "6ac692294cfe1306d117c1b0",
+    "branch": "6abfb91f02d7004c0c7e47d3",
+    "checkIn": "2026-10-12T21:21:16.956Z",
+    "checkInLocation": {
+      "lat": 28.080089064825003,
+      "lng": 30.757745280743634
+    },
+    "lateMinutes": 0,
+    "status": "present",
+    "method": "gps_biometric",
+    "verification": {
+      "method": "gps_biometric",
+      "biometricUsed": true,
+      "biometricType": "3",
+      "faceVerified": false,
+      "faceDistance": null,
+      "deviceId": "6ac692294cfe1306d117c1b0"
+    },
+    "date": "2026-10-12T21:00:00.000Z",
+    "__v": 0,
+    "checkOut": "2026-10-12T21:22:18.550Z",
+    "checkOutLocation": {
+      "lat": 28.080089064825003,
+      "lng": 30.757745280743634
+    }
+  },
+  {
+    "_id": "6acf0f3fd090c76d8059fa56",
+    "user": "6ac692294cfe1306d117c1b0",
+    "branch": "6abfaa625deb81fcd06878b4",
+    "checkIn": "2026-10-14T05:12:31.265Z",
+    "checkInLocation": {
+      "lat": 27.7455213,
+      "lng": 30.8431135
+    },
+    "lateMinutes": 0,
+    "status": "present",
+    "method": "gps_biometric",
+    "verification": {
+      "method": "gps_biometric",
+      "biometricUsed": true,
+      "biometricType": "3",
+      "faceVerified": false,
+      "faceDistance": null,
+      "deviceId": "6ac692294cfe1306d117c1b0"
+    },
+    "date": "2026-10-13T21:00:00.000Z",
+    "__v": 0
+  }
+]

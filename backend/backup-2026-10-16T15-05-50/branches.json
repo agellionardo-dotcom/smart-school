@@ -1,0 +1,100 @@
+[
+  {
+    "_id": "6abfaa615deb81fcd06878b1",
+    "name": "الفرع الرئيسي - المنيا",
+    "type": "main",
+    "parent": null,
+    "location": {
+      "lat": 28.022352,
+      "lng": 30.864397
+    },
+    "radius": 100,
+    "active": true,
+    "createdAt": "2026-10-02T12:58:09.258Z",
+    "__v": 0,
+    "address": "",
+    "phone": "",
+    "qrToken": "ea63ad44feb31d13d2655d42266583da"
+  },
+  {
+    "_id": "6abfaa625deb81fcd06878b4",
+    "name": "فرع ملوي",
+    "type": "sub",
+    "parent": "6abfaa615deb81fcd06878b1",
+    "location": {
+      "lat": 27.745563,
+      "lng": 30.84316
+    },
+    "radius": 100,
+    "active": true,
+    "createdAt": "2026-10-02T12:58:10.562Z",
+    "__v": 0,
+    "address": "",
+    "phone": "",
+    "qrToken": "159da494f005b6d559c69a29bd3fe179"
+  },
+  {
+    "_id": "6abfaa625deb81fcd06878b3",
+    "name": "فرع بني مزار",
+    "type": "sub",
+    "parent": "6abfaa615deb81fcd06878b1",
+    "location": {
+      "lat": 28.52411,
+      "lng": 30.800328
+    },
+    "radius": 100,
+    "active": true,
+    "createdAt": "2026-10-02T12:58:10.561Z",
+    "__v": 0,
+    "address": "",
+    "phone": ""
+  },
+  {
+    "_id": "6abfaa625deb81fcd06878b5",
+    "name": "فرع المعادي",
+    "type": "sub",
+    "parent": "6abfaa615deb81fcd06878b1",
+    "location": {
+      "lat": 29.9603,
+      "lng": 31.25
+    },
+    "radius": 30,
+    "active": true,
+    "createdAt": "2026-10-02T12:58:10.562Z",
+    "__v": 0,
+    "address": "",
+    "phone": ""
+  },
+  {
+    "_id": "6abfb91f02d7004c0c7e47d3",
+    "name": "ابو فليو المنيا ",
+    "type": "sub",
+    "parent": "6abfaa615deb81fcd06878b1",
+    "location": {
+      "lat": 28.080275,
+      "lng": 30.757602
+    },
+    "radius": 100,
+    "phone": "",
+    "address": "",
+    "active": true,
+    "createdAt": "2026-10-02T14:01:03.407Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abfb96102d7004c0c7e47d6",
+    "name": "فرع تمريض",
+    "type": "sub",
+    "parent": "6abfaa615deb81fcd06878b1",
+    "location": {
+      "lat": 28.100888,
+      "lng": 30.752755
+    },
+    "radius": 100,
+    "phone": "",
+    "address": "",
+    "active": true,
+    "createdAt": "2026-10-02T14:02:09.719Z",
+    "__v": 0
+  }
+]

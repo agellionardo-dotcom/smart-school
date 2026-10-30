@@ -1,386 +1,209 @@
-﻿// frontend/src/components/Navbar.jsx
+import React from 'react';
+import { 
+  FaHome, FaUsers, FaMoneyBillWave, FaCog, FaBell, 
+  FaSearch, FaUserCircle, FaBuilding, FaBriefcase 
+} from 'react-icons/fa';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { getQueueCount } from '../services/offlineStorage';
-import ThemeToggle from './ThemeToggle';
-import NavbarActions from './NavbarActions';   // ← جديد
+// بيانات وهمية للرسم البياني المالي
+const financialData = [
+  { name: 'يناير', value: 4000 },
+  { name: 'فبراير', value: 3000 },
+  { name: 'مارس', value: 5000 },
+  { name: 'أبريل', value: 4500 },
+  { name: 'مايو', value: 6000 },
+  { name: 'يونيو', value: 5500 },
+];
 
-export default function Navbar() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [queueCount, setQueueCount] = useState(0);
-  const nav = useNavigate();
-  const location = useLocation();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+// بيانات وهمية للموظفين
+const employees = [
+  { id: 1, name: 'أحمد محمد', role: 'مدير مبيعات', avatar: 'https://i.pravatar.cc/150?img=11' },
+  { id: 2, name: 'سارة علي', role: 'مطور واجهات', avatar: 'https://i.pravatar.cc/150?img=5' },
+  { id: 3, name: 'خالد يوسف', role: 'محاسب', avatar: 'https://i.pravatar.cc/150?img=12' },
+  { id: 4, name: 'نورة عبدالله', role: 'أخصائي موارد بشرية', avatar: 'https://i.pravatar.cc/150?img=9' },
+];
 
-  useEffect(() => {
-    const loadCount = async () => {
-      try {
-        const count = await getQueueCount();
-        setQueueCount(count);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    loadCount();
-    const interval = setInterval(loadCount, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const logout = () => {
-    if (window.confirm('هل تريد تسجيل الخروج؟')) {
-      localStorage.clear();
-      nav('/');
-    }
-  };
-
-  const closeDrawer = () => setDrawerOpen(false);
-  const isActive = (path) => location.pathname === path;
-
-  const roleLabels = {
-    superadmin: 'المدير العام',
-    manager: 'مدير فرع',
-    hr: 'موارد بشرية',
-    employee: 'موظف',
-    viewer: 'مشاهد',
-  };
-
+export default function App() {
   return (
-    <>
-      {/* ============ Navbar (Glass) ============ */}
-      <nav className="ss-navbar">
-        <button
-          className="ss-navbar-toggle"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="فتح القائمة"
-        >
-          ☰
-        </button>
-        <div className="ss-navbar-brand">
-          <img
-            src="/logo.png"
-            alt="SMART"
-            className="ss-navbar-logo"
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
-          <h2 className="ss-navbar-title">Smart School</h2>
-        </div>
-
-        {/* ✅ أزرار الإدارة/العودة + تبديل الوضع */}
-        <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <NavbarActions />
-          <ThemeToggle />
-        </div>
-      </nav>
-
-      {/* ============ Drawer ============ */}
-      {drawerOpen && (
-        <>
-          <div className="ss-drawer-overlay" onClick={closeDrawer}></div>
-          <aside className="ss-drawer">
-            {/* Header */}
-            <div className="ss-drawer-header">
-              <img
-                src="/logo.png"
-                alt="SMART"
-                className="ss-drawer-logo"
-                onError={(e) => { e.target.style.display = 'none'; }}
-              />
-              <h3>Smart School</h3>
-              <p>نظام الحضور والانصراف</p>
+    <div className="flex h-screen bg-[#f8fafc] font-arabic text-gray-800 overflow-hidden">
+      
+      {/* القائمة الجانبية (Sidebar) - على اليمين لأن الاتجاه RTL */}
+      <aside className="w-64 bg-white shadow-sm flex flex-col justify-between hidden md:flex border-l border-gray-100">
+        <div>
+          {/* الشعار */}
+          <div className="h-20 flex items-center justify-center border-b border-gray-100">
+            <div className="flex items-center gap-2 text-2xl font-bold text-brand-blue">
+              <FaBuilding className="text-brand-cyan" />
+              <span>نظام HR</span>
             </div>
+          </div>
+          
+          {/* روابط التنقل */}
+          <nav className="p-4 space-y-2">
+            <a href="#" className="flex items-center gap-3 px-4 py-3 bg-blue-50 text-brand-blue rounded-xl font-bold transition">
+              <FaHome size={20} />
+              <span>الرئيسية</span>
+            </a>
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-50 hover:text-brand-blue rounded-xl transition font-medium">
+              <FaUsers size={20} />
+              <span>الموظفون</span>
+            </a>
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-50 hover:text-brand-blue rounded-xl transition font-medium">
+              <FaBriefcase size={20} />
+              <span>الشركات</span> {/* التاب المطلوب لإضافة الشركات */}
+            </a>
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-50 hover:text-brand-blue rounded-xl transition font-medium">
+              <FaMoneyBillWave size={20} />
+              <span>الرواتب</span>
+            </a>
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-50 hover:text-brand-blue rounded-xl transition font-medium">
+              <FaCog size={20} />
+              <span>الإعدادات</span>
+            </a>
+          </nav>
+        </div>
+      </aside>
 
-            {/* User Info */}
-            <div className="ss-drawer-user">
-              <div className="ss-drawer-user-name">👤 {user.name}</div>
-              <div className="ss-drawer-user-role">
-                {roleLabels[user.role] || user.role}
+      {/* المحتوى الرئيسي */}
+      <main className="flex-1 flex flex-col overflow-y-auto">
+        
+        {/* الشريط العلوي (Header) */}
+        <header className="h-20 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between px-6 border-b border-gray-100">
+          {/* البحث */}
+          <div className="relative w-96 hidden md:block">
+            <input 
+              type="text" 
+              placeholder="ابحث عن موظف، قسم، أو شركة..." 
+              className="w-full bg-gray-50 text-gray-700 rounded-full py-2.5 pr-12 pl-4 focus:outline-none focus:ring-2 focus:ring-brand-blue/20 transition"
+            />
+            <FaSearch className="absolute right-4 top-3.5 text-gray-400" />
+          </div>
+
+          {/* الملف الشخصي والإشعارات */}
+          <div className="flex items-center gap-6">
+            <button className="relative p-2 text-gray-500 hover:text-brand-blue transition">
+              <FaBell size={22} />
+              <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+            </button>
+            <div className="flex items-center gap-3 border-r pr-6 border-gray-200">
+              <div className="text-left hidden sm:block">
+                <p className="text-sm font-bold text-gray-800">محمد عبدالله</p>
+                <p className="text-xs text-gray-500">مدير النظام</p>
+              </div>
+              <FaUserCircle size={40} className="text-gray-300" />
+            </div>
+          </div>
+        </header>
+
+        {/* محتوى الصفحة */}
+        <div className="p-6 space-y-6">
+          
+          {/* الترحيب */}
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-800">الرئيسية</h1>
+            <p className="text-gray-500 text-sm mt-1">نظرة عامة على شركة التقنية - الأحد 5 يناير 2026</p>
+          </div>
+
+          {/* المؤشرات العلوية (Metrics) */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[
+              { title: 'إجمالي الموظفين', value: '45', icon: <FaUsers />, color: 'text-blue-500', bg: 'bg-blue-50' },
+              { title: 'على رأس العمل', value: '16', icon: <FaBriefcase />, color: 'text-green-500', bg: 'bg-green-50' },
+              { title: 'الأقسام', value: '12', icon: <FaBuilding />, color: 'text-orange-500', bg: 'bg-orange-50' },
+              { title: 'في إجازة اليوم', value: '29', icon: <FaUserCircle />, color: 'text-cyan-500', bg: 'bg-cyan-50' },
+            ].map((item, idx) => (
+              <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm font-medium mb-1">{item.title}</p>
+                  <h3 className="text-3xl font-extrabold text-gray-800">{item.value}</h3>
+                </div>
+                <div className={`p-4 rounded-xl ${item.bg} ${item.color} text-2xl`}>
+                  {item.icon}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* الصفوف الوسطى */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* الرسم البياني الدائري (نسبة الموظفين) */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+              <h3 className="text-lg font-bold text-gray-800 self-start mb-4">حالة الموظفين</h3>
+              <div className="relative w-48 h-48 flex items-center justify-center">
+                {/* دائرة SVG */}
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="40" stroke="#f1f5f9" strokeWidth="12" fill="none" />
+                  <circle cx="50" cy="50" r="40" stroke="#1e3a8a" strokeWidth="12" fill="none" strokeDasharray="251.2" strokeDashoffset={251.2 - (251.2 * 89) / 100} strokeLinecap="round" />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-4xl font-extrabold text-gray-800">89%</span>
+                  <span className="text-xs text-gray-500 mt-1">نسبة رأس المال البشري</span>
+                </div>
+              </div>
+              <div className="flex justify-between w-full mt-6 text-sm">
+                <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-brand-blue"></span> 16 على رأس العمل</span>
+                <span className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-orange-500"></span> 12 في إجازة</span>
               </div>
             </div>
 
-            {/* Menu */}
-            <div className="ss-drawer-menu">
-              <Link
-                to="/dashboard"
-                className={`ss-drawer-link ${isActive('/dashboard') ? 'active' : ''}`}
-                onClick={closeDrawer}
-              >
-                <span className="ss-icon">🏠</span>
-                <span>الرئيسية</span>
-              </Link>
-
-              <Link
-                to="/attendance"
-                className={`ss-drawer-link ${isActive('/attendance') ? 'active' : ''}`}
-                onClick={closeDrawer}
-              >
-                <span className="ss-icon">📍</span>
-                <span>الحضور والانصراف</span>
-              </Link>
-
-              <Link
-                to="/leaves"
-                className={`ss-drawer-link ${isActive('/leaves') ? 'active' : ''}`}
-                onClick={closeDrawer}
-              >
-                <span className="ss-icon">📝</span>
-                <span>الإجازات</span>
-              </Link>
-
-              <Link
-                to="/sync-queue"
-                className={`ss-drawer-link ${isActive('/sync-queue') ? 'active' : ''}`}
-                onClick={closeDrawer}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span className="ss-icon">🔄</span>
-                  <span>المزامنة</span>
-                </div>
-                {queueCount > 0 && (
-                  <span className="ss-badge-count">{queueCount}</span>
-                )}
-              </Link>
-
-              <div className="ss-drawer-divider"></div>
-
-              <button className="ss-drawer-link ss-logout-btn" onClick={logout}>
-                <span className="ss-icon">🚪</span>
-                <span>تسجيل الخروج</span>
-              </button>
+            {/* قائمة الموظفين الجدد */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-gray-800">أحدث الموظفين</h3>
+                <button className="text-sm font-bold text-brand-blue hover:underline">عرض الكل</button>
+              </div>
+              <div className="space-y-4">
+                {employees.map((emp) => (
+                  <div key={emp.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition border border-transparent hover:border-gray-100">
+                    <div className="flex items-center gap-4">
+                      <img src={emp.avatar} alt={emp.name} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm" />
+                      <div>
+                        <p className="font-bold text-gray-800 text-sm">{emp.name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{emp.role}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full">نشط</span>
+                  </div>
+                ))}
+              </div>
             </div>
+          </div>
 
-            <div className="ss-drawer-footer">
-              © 2026 SMART For Computer & Electronics
-              <br />
-              v2.9
+          {/* الرسم البياني المالي (التحليلات) */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold text-gray-800">التحليلات المالية (الرواتب)</h3>
+              <select className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-brand-blue focus:border-brand-blue block p-2">
+                <option>آخر 6 أشهر</option>
+                <option>السنة الحالية</option>
+              </select>
             </div>
-          </aside>
-        </>
-      )}
+            <div className="h-72 w-full" dir="ltr">
+              {/* Recharts تدعم RTL بشكل تلقائي إذا تم ضبطها، لكننا نتركها LTR للرسم البياني لسهولة القراءة */}
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={financialData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    itemStyle={{ color: '#1e3a8a', fontWeight: 'bold' }}
+                  />
+                  <Area type="monotone" dataKey="value" stroke="#1e3a8a" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-      {/* ============ Styles ============ */}
-      <style>{`
-        .ss-navbar {
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          padding: 12px 20px;
-          background: var(--ss-bg-glass, rgba(10, 22, 40, 0.75));
-          backdrop-filter: blur(20px) saturate(180%);
-          -webkit-backdrop-filter: blur(20px) saturate(180%);
-          border-bottom: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.08));
-          box-shadow: var(--ss-shadow-md, 0 4px 24px rgba(0, 0, 0, 0.2));
-          transition: all 0.3s ease;
-        }
-
-        .ss-navbar-toggle {
-          background: var(--ss-bg-glass, rgba(255, 255, 255, 0.08));
-          border: 1px solid var(--ss-border-glass, rgba(255, 255, 255, 0.12));
-          color: var(--ss-text-primary, #fff);
-          width: 42px;
-          height: 42px;
-          border-radius: 12px;
-          cursor: pointer;
-          font-size: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s;
-          flex-shrink: 0;
-        }
-        .ss-navbar-toggle:hover {
-          background: rgba(0, 229, 255, 0.15);
-          border-color: rgba(0, 229, 255, 0.4);
-        }
-
-        .ss-navbar-brand {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          flex-shrink: 0;
-        }
-        .ss-navbar-logo {
-          width: 42px;
-          height: 42px;
-          object-fit: contain;
-          border-radius: 10px;
-        }
-        .ss-navbar-title {
-          margin: 0;
-          color: var(--ss-text-primary, #fff);
-          font-size: 20px;
-          font-weight: 700;
-          background: linear-gradient(135deg, #00e5ff, #a855f7);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          white-space: nowrap;
-        }
-
-        .ss-drawer-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(4px);
-          z-index: 998;
-          animation: ssFadeIn 0.2s ease;
-        }
-
-        @keyframes ssFadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        .ss-drawer {
-          position: fixed;
-          top: 0;
-          right: 0;
-          bottom: 0;
-          width: min(340px, 88vw);
-          z-index: 999;
-          background: var(--ss-bg-secondary, rgba(15, 33, 56, 0.92));
-          backdrop-filter: blur(24px) saturate(180%);
-          -webkit-backdrop-filter: blur(24px) saturate(180%);
-          border-left: 1px solid var(--ss-border-glass, rgba(255, 255, 255, 0.1));
-          box-shadow: -10px 0 40px rgba(0, 0, 0, 0.4);
-          display: flex;
-          flex-direction: column;
-          animation: ssSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-          overflow-y: auto;
-        }
-
-        @keyframes ssSlideIn {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-
-        .ss-drawer-header {
-          padding: 24px 20px;
-          text-align: center;
-          border-bottom: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.08));
-          background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(168, 85, 247, 0.08));
-        }
-        .ss-drawer-logo {
-          width: 70px;
-          height: 70px;
-          object-fit: contain;
-          margin-bottom: 12px;
-          border-radius: 14px;
-        }
-        .ss-drawer-header h3 {
-          margin: 0;
-          color: var(--ss-text-primary, #fff);
-          font-size: 18px;
-          font-weight: 700;
-        }
-        .ss-drawer-header p {
-          margin: 4px 0 0;
-          color: var(--ss-text-muted, rgba(255, 255, 255, 0.6));
-          font-size: 12px;
-        }
-
-        .ss-drawer-user {
-          padding: 16px 20px;
-          background: var(--ss-bg-glass, rgba(0, 0, 0, 0.15));
-          border-bottom: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.08));
-          text-align: center;
-        }
-        .ss-drawer-user-name {
-          color: var(--ss-text-primary, #fff);
-          font-size: 15px;
-          font-weight: 600;
-          margin-bottom: 4px;
-        }
-        .ss-drawer-user-role {
-          color: #67e8f9;
-          font-size: 12px;
-          font-weight: 500;
-        }
-
-        .ss-drawer-menu {
-          flex: 1;
-          padding: 12px 0;
-          overflow-y: auto;
-        }
-
-        .ss-drawer-link {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          padding: 14px 20px;
-          color: var(--ss-text-secondary, rgba(255, 255, 255, 0.85));
-          text-decoration: none;
-          font-size: 14px;
-          font-weight: 500;
-          transition: all 0.2s;
-          border-right: 3px solid transparent;
-          background: transparent;
-          border-top: none;
-          border-bottom: none;
-          border-left: none;
-          font-family: inherit;
-          text-align: right;
-          width: 100%;
-          cursor: pointer;
-        }
-        .ss-drawer-link:hover {
-          background: var(--ss-bg-glass, rgba(255, 255, 255, 0.06));
-          color: var(--ss-text-primary, #fff);
-        }
-        .ss-drawer-link.active {
-          background: linear-gradient(90deg, rgba(0, 229, 255, 0.15), transparent);
-          border-right-color: #00e5ff;
-          color: var(--ss-text-primary, #fff);
-        }
-
-        .ss-icon {
-          font-size: 18px;
-          width: 24px;
-          text-align: center;
-          flex-shrink: 0;
-        }
-
-        .ss-badge-count {
-          background: linear-gradient(135deg, #fb923c, #ef4444);
-          color: #fff;
-          padding: 3px 10px;
-          border-radius: 10px;
-          font-size: 11px;
-          font-weight: 700;
-          min-width: 22px;
-          text-align: center;
-          box-shadow: 0 2px 8px rgba(251, 146, 60, 0.4);
-        }
-
-        .ss-drawer-divider {
-          height: 1px;
-          background: linear-gradient(90deg, transparent, var(--ss-border-glass, rgba(255, 255, 255, 0.1)), transparent);
-          margin: 8px 0;
-        }
-
-        .ss-logout-btn {
-          color: #fca5a5 !important;
-          cursor: pointer;
-        }
-        .ss-logout-btn:hover {
-          background: rgba(239, 68, 68, 0.12) !important;
-          color: #fecaca !important;
-        }
-
-        .ss-drawer-footer {
-          padding: 16px 20px;
-          text-align: center;
-          color: var(--ss-text-muted, rgba(255, 255, 255, 0.4));
-          font-size: 11px;
-          border-top: 1px solid var(--ss-border-subtle, rgba(255, 255, 255, 0.06));
-          line-height: 1.6;
-        }
-      `}</style>
-    </>
+        </div>
+      </main>
+    </div>
   );
 }

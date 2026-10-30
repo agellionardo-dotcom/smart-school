@@ -1,0 +1,70 @@
+[
+  {
+    "_id": "6ac7929ce93c72cbc84b8034",
+    "user": "6ac64f9ca0a4eac3e11656d5",
+    "branch": "6abfaa625deb81fcd06878b4",
+    "type": "fire",
+    "message": "",
+    "status": "resolved",
+    "notes": "تم",
+    "createdAt": "2026-10-08T12:54:52.215Z",
+    "updatedAt": "2026-10-08T12:56:46.493Z",
+    "__v": 0,
+    "resolvedAt": "2026-10-08T12:56:46.493Z",
+    "resolvedBy": "6abfaa635deb81fcd06878b9"
+  },
+  {
+    "_id": "6ac794731c4e105a02525677",
+    "user": "6ac64f9ca0a4eac3e11656d5",
+    "branch": "6abfaa625deb81fcd06878b4",
+    "type": "evacuation",
+    "message": "",
+    "status": "resolved",
+    "notes": "تم الاخلاء ",
+    "createdAt": "2026-10-08T13:02:43.326Z",
+    "updatedAt": "2026-10-08T13:03:47.055Z",
+    "__v": 0,
+    "resolvedAt": "2026-10-08T13:03:47.054Z",
+    "resolvedBy": "6abfaa635deb81fcd06878b9"
+  },
+  {
+    "_id": "6ac7c487f07565b24d910c4b",
+    "user": "6ac64f9ca0a4eac3e11656d5",
+    "branch": "6abfaa625deb81fcd06878b4",
+    "type": "security",
+    "message": "",
+    "status": "cancelled",
+    "notes": "",
+    "createdAt": "2026-10-08T16:27:51.714Z",
+    "updatedAt": "2026-10-08T16:28:58.091Z",
+    "__v": 0,
+    "resolvedAt": "2026-10-08T16:28:58.091Z"
+  },
+  {
+    "_id": "6ac7c4d8f07565b24d910c6b",
+    "user": "6ac64f9ca0a4eac3e11656d5",
+    "branch": "6abfaa625deb81fcd06878b4",
+    "type": "fire",
+    "message": "",
+    "status": "cancelled",
+    "notes": "",
+    "createdAt": "2026-10-08T16:29:12.969Z",
+    "updatedAt": "2026-10-08T16:29:30.680Z",
+    "__v": 0,
+    "resolvedAt": "2026-10-08T16:29:30.680Z"
+  },
+  {
+    "_id": "6ac7c4f0f07565b24d910c7b",
+    "user": "6ac64f9ca0a4eac3e11656d5",
+    "branch": "6abfaa625deb81fcd06878b4",
+    "type": "evacuation",
+    "message": "",
+    "status": "resolved",
+    "notes": "",
+    "createdAt": "2026-10-08T16:29:36.829Z",
+    "updatedAt": "2026-10-08T16:29:44.463Z",
+    "__v": 0,
+    "resolvedAt": "2026-10-08T16:29:44.462Z",
+    "resolvedBy": "6abfaa635deb81fcd06878b9"
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "_id": "6ad129d88defacd69202fb14",
+    "title": "تحدييث جديد",
+    "content": "تم تحديث المحتوى",
+    "type": "info",
+    "branch": null,
+    "createdBy": "6abfaa635deb81fcd06878b9",
+    "expiresAt": null,
+    "active": true,
+    "readBy": [],
+    "createdAt": "2026-10-15T19:30:32.992Z",
+    "updatedAt": "2026-10-15T19:30:32.992Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ad137a249b469f8c9639080",
+    "title": "هى",
+    "content": "انا",
+    "type": "urgent",
+    "branch": null,
+    "createdBy": "6abfaa635deb81fcd06878b9",
+    "expiresAt": "2026-02-01T00:00:00.000Z",
+    "active": true,
+    "readBy": [],
+    "createdAt": "2026-10-15T20:29:22.246Z",
+    "updatedAt": "2026-10-15T20:29:22.246Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ad1397149b469f8c96390d2",
+    "title": "انا",
+    "content": "ممنمممممممممممممممم",
+    "type": "info",
+    "branch": null,
+    "createdBy": "6abfaa635deb81fcd06878b9",
+    "expiresAt": null,
+    "active": true,
+    "readBy": [],
+    "createdAt": "2026-10-15T20:37:05.618Z",
+    "updatedAt": "2026-10-15T20:37:05.618Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ad139a149b469f8c96390dd",
+    "title": "يؤرسيرسيرسيشسؤؤ",
+    "content": "يسرسيييييييييي",
+    "type": "info",
+    "branch": null,
+    "createdBy": "6abfaa635deb81fcd06878b9",
+    "expiresAt": null,
+    "active": true,
+    "readBy": [],
+    "createdAt": "2026-10-15T20:37:53.262Z",
+    "updatedAt": "2026-10-15T20:37:53.262Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ad13b4849b469f8c9639136",
+    "title": "سسسسسسسسسسسسسسسسسسسسسسسسس",
+    "content": "سسسسسسسسسسسسسسسسسسسسسسسسس",
+    "type": "info",
+    "branch": null,
+    "createdBy": "6abfaa635deb81fcd06878b9",
+    "expiresAt": null,
+    "active": true,
+    "readBy": [],
+    "createdAt": "2026-10-15T20:44:56.379Z",
+    "updatedAt": "2026-10-15T20:44:56.379Z",
+    "__v": 0
+  }
+]
