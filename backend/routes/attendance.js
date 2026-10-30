@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const Attendance = require('../models/Attendance');
 const Branch = require('../models/Branch');
+const Settings = require('../models/Settings');
 const auth = require('../middleware/auth');
 
 // ============================================
@@ -15,6 +16,40 @@ function distance(lat1, lon1, lat2, lon2) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ============================================
+// ✅ Helper: قراءة أوقات العمل من Settings
+// ============================================
+async function getWorkHours() {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = await Settings.create({});
+    }
+    return {
+      workStartTime: settings.workStartTime || '08:00',
+      workEndTime: settings.workEndTime || '14:00',
+      lateGraceMinutes: settings.lateGraceMinutes || 0,
+    };
+  } catch (err) {
+    console.warn('getWorkHours error, using defaults:', err.message);
+    return {
+      workStartTime: '08:00',
+      workEndTime: '14:00',
+      lateGraceMinutes: 0,
+    };
+  }
+}
+
+// ============================================
+// ✅ Helper: تحويل "HH:MM" إلى Date (نفس اليوم)
+// ============================================
+function timeStringToDate(timeStr, refDate = new Date()) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const d = new Date(refDate);
+  d.setHours(h, m, 0, 0);
+  return d;
 }
 
 // ============================================
@@ -59,11 +94,34 @@ async function checkInHandler(req, res) {
       return res.status(400).json({ msg: 'تم تسجيل الحضور مسبقاً' });
     }
 
+    // ✅ اقرا أوقات العمل من Settings
+    const { workStartTime, workEndTime, lateGraceMinutes } = await getWorkHours();
+
     const now = new Date();
-    const workStart = new Date();
-    workStart.setHours(8, 30, 0, 0);
-    const lateMinutes =
-      now > workStart ? Math.floor((now - workStart) / 60000) : 0;
+    const workStart = timeStringToDate(workStartTime, now);
+    const workEnd = timeStringToDate(workEndTime, now);
+
+    // ✅ منطق جديد
+    let lateMinutes = 0;
+    let status = 'present';
+
+    if (now < workStart) {
+      // جه قبل بداية العمل
+      lateMinutes = 0;
+      status = 'present';
+    } else if (now <= workEnd) {
+      // في وقت العمل
+      const diffMinutes = Math.floor((now - workStart) / 60000);
+      lateMinutes = Math.max(0, diffMinutes - lateGraceMinutes);
+      status = lateMinutes > 0 ? 'late' : 'present';
+    } else {
+      // بعد نهاية العمل
+      return res.status(400).json({
+        msg: `التسجيل خارج وقت العمل (${workStartTime} — ${workEndTime})`,
+        workStartTime,
+        workEndTime,
+      });
+    }
 
     // ✅ تحديد طريقة التحقق الرئيسية
     let mainMethod = 'gps';
@@ -84,7 +142,7 @@ async function checkInHandler(req, res) {
       checkIn: now,
       checkInLocation: { lat, lng },
       lateMinutes,
-      status: lateMinutes > 0 ? 'late' : 'present',
+      status,
       method: mainMethod,
       verification: {
         method: verificationMethod,
@@ -96,7 +154,6 @@ async function checkInHandler(req, res) {
       },
     });
 
-    // ✅ إرجاع مع معلومات الفرع
     const populated = await Attendance.findById(att._id).populate('branch', 'name type');
 
     res.json({
@@ -232,7 +289,6 @@ async function todayHandler(req, res) {
 
 // ============================================
 // ✅ Route: التحقق من النطاق الجغرافي
-// POST /api/attendance/check-range
 // ============================================
 router.post('/check-range', auth, async (req, res) => {
   try {

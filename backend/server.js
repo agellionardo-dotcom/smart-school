@@ -45,6 +45,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/branches', require('./routes/branches'));
 app.use('/api/admin', require('./routes/admin'));
